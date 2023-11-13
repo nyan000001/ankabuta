@@ -1,0 +1,215 @@
+<!doctype html>
+<html>
+<head>
+<title>ankabuta</title>
+<style>
+* { font-size:12pt; font-family:sans-serif; margin:0; box-sizing:border-box; tab-size:4; }
+textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
+textarea:disabled, input:disabled { border-color:#555; background:#ccc; }
+textarea, input { border:1px solid #000; border-radius:3px; }
+input { width:80px; }
+
+#wrapper { padding:1px; position:fixed; width:100%; height:calc(100% - 50px); display:flex; }
+#wrapper > * { overflow:auto; padding:5px; margin:1px 1px 0 1px; }
+#codebox { font:10pt monospace; width:300px; white-space:pre; resize:horizontal; }
+#log { flex-grow:1; white-space:pre-wrap; }
+#rooms { width:100px; }
+
+#rooms > a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
+#rooms > a:hover { color:#f55; }
+
+#form { padding:1px; bottom:0; position:fixed; width:100%; height:50px; display:flex; }
+#form * { margin:0 1px 1px 1px; }
+#msgbox { flex-grow:1; resize:none; padding:5px; }
+#toggle, #run, #codebox, iframe { display:none; }
+</style>
+</head>
+<body>
+<div id="wrapper">
+<textarea id="codebox" spellcheck="false">function join(name) {
+	send(name+' has joined');
+	pm('Welcome, '+name+'!', name);
+}
+function leave(name) {
+	send(name+' has left');
+}
+function get(msg, name) {
+	const arr = msg.split(' ');
+	const cmd = arr.shift();
+	if(/^\/(pm|msg|whisper)$/.test(cmd)) {
+		pm(name+' (private): '+arr.slice(1).join(' '), arr[0]);
+	} else send(name+': '+msg);
+}</textarea>
+<div id="log"></div>
+<div id="rooms"></div>
+</div>
+<form id="form">
+<input type="button" id="toggle" value="Hide">
+<input type="button" id="run" value="Run">
+<textarea id="msgbox" disabled></textarea>
+<input type="submit" id="say" value="Say" disabled>
+</form>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+socket.once('start', (name, rooms) => {
+	const get = id => document.getElementById(id);
+	const addroom = room => {
+		const a = document.createElement('a');
+		a.textContent = a.id = a.href = room;
+		get('rooms').append(a);
+	}
+	for(const room of rooms) {
+		addroom(room);
+	}
+	const addmsg = msg => {
+		const arr = msg.split(/(\*\*|\/\/|--|__)(.+?)\1/);
+		const div = document.createElement('div');
+		for(let i = 0; i < arr.length; i += 3) {
+			div.append(arr[i]);
+			const span = document.createElement('span');
+			span.style = { '**':'font-weight:bold', '//':'font-style:italic', '--':'text-decoration:line-through', '__':'text-decoration:underline' }[arr[i+1]];
+			span.textContent = arr[i+2];
+			div.append(span);
+		}
+		get('log').appendChild(div);
+		div.scrollIntoView();
+	}
+	let iframe;
+	get('form').onsubmit = e => {
+		e.preventDefault();
+		const msg = get('msgbox').value;
+		if(!msg) return;
+		const arr = msg.split(' ');
+		const cmd = arr.shift();
+		if(/^\/(join|j)$/.test(cmd)) {
+			socket.emit('join', arr.join(' '));
+		} else if(/^\/(leave|l)$/.test(cmd)) {
+			socket.emit('leave');
+		} else if(iframe) {
+			if(/^\/(kick|k)$/.test(cmd)) {
+				socket.emit('kick', arr.join(' '));
+			} else {
+				iframe.contentWindow.get?.(msg, name);
+			}
+		} else {
+			socket.emit('say', msg);
+		}
+		if(msg[0] == '/') addmsg(msg);
+		get('msgbox').value = '';
+	}
+	get('msgbox').onkeydown = e => {
+		if(!e.shiftKey && e.key == 'Enter') {
+			e.preventDefault();
+			get('say').click();
+		}
+	}
+	get('codebox').oninput = () => get('run').disabled = false;
+	get('codebox').onkeydown = e => {
+		if(e.ctrlKey && e.key == 's') {
+			e.preventDefault();
+			get('run').click();
+		} else if(e.key == 'Tab') {
+			e.preventDefault();
+			const start = get('codebox').selectionStart;
+			const end = get('codebox').selectionEnd;
+			const text = get('codebox').value;
+			const arr = [text.slice(0, start), text.slice(start, end), text.slice(end)];
+			let num = 0;
+			if(e.shiftKey) {
+				arr[0] = arr[0].replace(/\n\t(?!.*\n)/, '\n');
+				arr[1] = arr[1].replace(/\n\t/g, '\n');
+			} else {
+				if(arr[1].includes('\n')) {
+					arr[0] = arr[0].replace(/\n(?!.*\n)/, '\n\t');
+					arr[1] = arr[1].replace(/\n/g, '\n\t');
+				} else {
+					arr[1] = '\t';
+					num = 1;
+				}
+			}
+			get('codebox').value = arr.join('');
+			get('codebox').selectionStart = arr[0].length + num;
+			get('codebox').selectionEnd = arr[0].length + arr[1].length;
+		}
+	}
+	socket.on('addroom', addroom);
+	socket.on('joinroom', (room, admin) => {
+		console.log('hi'); //
+		history.replaceState(null, '', document.location.pathname+room);
+		document.title = 'ankabuta'+room;
+		get('msgbox').disabled = get('say').disabled = false;
+		get('msgbox').focus();
+		addmsg('You have joined '+room);
+		if(!admin) {
+			socket.on('hear', addmsg);
+			return;
+		}
+		get('codebox').style.display = get('toggle').style.display = get('run').style.display = 'block';
+		let bool = false;
+		get('toggle').onclick = () => {
+			get('codebox').style.display = get('run').style.display = bool? 'block': 'none';
+			get('toggle').value = bool? 'Hide': 'Show';
+			bool = !bool;
+		}
+		iframe = document.createElement('iframe');
+		get('run').onclick = e => {
+			e.preventDefault();
+			get('run').disabled = true;
+			for(const cmd of ['join', 'leave', 'get']) {
+				socket.off(cmd);
+			}
+			iframe.src = 'about:blank';
+			document.body.append(iframe);
+			iframe.contentWindow.print = addmsg;
+			iframe.contentWindow.send = msg => {
+				socket.emit('send', msg);
+				addmsg(msg);
+			}
+			iframe.contentWindow.kick = name2 => socket.emit('kick', name2);
+			iframe.contentWindow.pm = (msg, name2) => {
+				if(name2 == name) {
+					addmsg(msg);
+				} else {
+					socket.emit('pm', msg, name2);
+				}
+			}
+//			iframe.contentWindow.eval('try {' + get('codebox').value + '} catch(error) { console.log(error); }');
+			iframe.contentWindow.eval(get('codebox').value);
+			for(const cmd of ['join', 'leave', 'get']) {
+				if(iframe.contentWindow[cmd]) {
+					socket.on(cmd, (...arr) => iframe.contentWindow[cmd](...arr));
+				}
+			}
+		}
+		get('run').click();
+	});
+	socket.on('rmvroom', room => get(room).remove());
+	socket.on('leaveroom', (room, msg, admin) => {
+		console.log('bye'); //
+		history.replaceState(null, '', document.location.pathname);
+		document.title = 'ankabuta';
+		get('msgbox').disabled = get('say').disabled = true;
+		addmsg(msg);
+		if(!admin) {
+			socket.off('hear');
+			return;
+		}
+		for(const cmd of ['join', 'leave', 'get']) {
+			socket.off(cmd);
+		}
+		get('toggle').style.display = get('run').style.display = get('codebox').style.display = 'none';
+		iframe.remove();
+		iframe = null;
+	});
+	if(location.hash) {
+		socket.emit('join', location.hash);		
+	}
+	onhashchange = () => {
+		console.log(location.hash); //
+		socket.emit('join', location.hash);
+	}
+});
+</script>
+</body>
+</html>
