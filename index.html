@@ -36,9 +36,9 @@ function leave(name) {
 function hear(msg, name) {
 	const arr = msg.split(' ');
 	const cmd = arr.shift();
-	if(/^\/(pm|msg|whisper)$/.test(cmd)) {
+	if(cmd == '/pm') {
 		send(name+' (private): '+arr.slice(1).join(' '), arr[0]);
-	} if(/^\/(me|action|self)$/.test(cmd)) {
+	} if(cmd == '/me') {
 		sendAll('* '+name+' '+arr.join(' '));
 	} else {
 		sendAll(name+': '+msg);
@@ -219,6 +219,10 @@ socket.once('start', (name, rooms) => {
 		console.log(location.hash); //
 		socket.emit('join', location.hash);
 	}
+	socket.on('disconnect', () => {
+		get('codebox').disabled = get('run').disabled = get('msgbox').disabled = get('say').disabled = true;
+		addmsg('Connection failed!');
+	});
 });
 </script>
 </body>
