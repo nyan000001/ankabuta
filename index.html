@@ -67,19 +67,27 @@ socket.once('start', (name, rooms) => {
 		addroom(room);
 	}
 	const addmsg = (msg, sys) => {
-		const arr = msg.split(/(\*\*|\/\/|--|__)(.+?)\1/);
 		const div = document.createElement('div');
 		if(sys) {
 			div.className = 'sysmsg';
 			div.textContent = msg;
 		} else {
-			for(let i = 0; i < arr.length; i += 3) {
-				div.append(arr[i]);
+			const loop = text => {
+				const match = text.match(/(^.*?)\[(#(?=[a-z0-9]{3})|[*_/-])(.+)\2\](.*)/si);
+				if(!match) return text;
+				const frag = document.createDocumentFragment();
 				const span = document.createElement('span');
-				span.style = { '**':'font-weight:bold', '//':'font-style:italic', '--':'text-decoration:line-through', '__':'text-decoration:underline' }[arr[i+1]];
-				span.textContent = arr[i+2];
-				div.append(span);
+				let hex;
+				if(match[2] == '#') {
+					hex = match[3].slice(0, 3);
+					match[3] = match[3].slice(3);
+				}
+				span.style = { '#':'color:#'+hex, '*':'font-weight:bold', '_':'text-decoration:underline', '/':'font-style:italic', '-':'text-decoration:line-through' }[match[2]];
+				span.append(loop(match[3]));
+				frag.append(loop(match[1]), span, loop(match[4]));
+				return frag;
 			}
+			div.append(loop(msg));
 		}
 		get('log').appendChild(div);
 		div.scrollIntoView();
