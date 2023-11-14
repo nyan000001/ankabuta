@@ -4,6 +4,9 @@ const io = require('socket.io')(http);
 app.get('/', (req, res) => {
 	res.sendFile(__dirname + '/index.html');
 });
+app.get('/favicon.ico', (req, res) => {
+	res.sendFile(__dirname + '/favicon.ico');
+});
 const admins = {};
 io.on('connection', socket => {
 	const rand = arr => arr[~~(Math.random()*arr.length)];
@@ -92,20 +95,30 @@ io.on('connection', socket => {
 
 		socket.on('say', msg => {
 			if(!valid(msg) || admins[socket.room] == socket) return;
-			admins[socket.room].emit('get', msg, socket.name);
+			admins[socket.room].emit('hear', msg, socket.name);
 		});
 
-		socket.on('send', msg => {
-			if(!valid(msg) || admins[socket.room] != socket) return;
-			socket.to(socket.room).emit('hear', msg);
-		});
-
-		socket.on('pm', async (msg, name) => {
+		socket.on('send', async (msg, name) => {
 			if(!valid(msg, name) || admins[socket.room] != socket || name == socket.name) return;
 			const sockets = await io.in(name).fetchSockets();
 			if(sockets[0]?.room == socket.room) {
 				sockets[0].emit('hear', msg);
 			}
+		});
+
+		socket.on('sendExcept', async (msg, name) => {
+			if(!valid(msg, name) || admins[socket.room] != socket) return;
+			const sockets = await io.in(name).fetchSockets();
+			if(!sockets.length) {
+				io.to(socket.room).emit('hear', msg);
+			} else if(sockets[0].room == socket.room) {
+				sockets[0].to(socket.room).emit('hear', msg);
+			}
+		});
+
+		socket.on('sendAll', msg => {
+			if(!valid(msg) || admins[socket.room] != socket) return;
+			io.to(socket.room).emit('hear', msg);
 		});
 
 		socket.on('kick', async name => {
@@ -117,6 +130,4 @@ io.on('connection', socket => {
 		});
 	});
 });
-http.listen(3000, () => {
-	console.log('listening on *:3000');
-});
+http.listen(process.env.PORT || 3000);
