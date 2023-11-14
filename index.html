@@ -14,8 +14,8 @@ input { width:80px; }
 #wrapper > * { overflow:auto; padding:5px; margin:1px 1px 0 1px; }
 #codebox { font:9pt monospace; width:300px; white-space:pre; resize:horizontal; }
 #log { flex-grow:1; white-space:pre-wrap; }
+.sysmsg { font:bold 10pt monospace; }
 #rooms { width:100px; }
-
 #rooms > a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 #rooms > a:hover { color:#f55; }
 
@@ -45,7 +45,7 @@ function hear(msg, name) {
 		sendAll(name+': '+msg);
 	}
 }</textarea>
-<div id="log"></div>
+<div id="log" role="log"></div>
 <div id="rooms"></div>
 </div>
 <form id="form">
@@ -67,15 +67,20 @@ socket.once('start', (name, rooms) => {
 	for(const room of rooms) {
 		addroom(room);
 	}
-	const addmsg = msg => {
+	const addmsg = (msg, sys) => {
 		const arr = msg.split(/(\*\*|\/\/|--|__)(.+?)\1/);
 		const div = document.createElement('div');
-		for(let i = 0; i < arr.length; i += 3) {
-			div.append(arr[i]);
-			const span = document.createElement('span');
-			span.style = { '**':'font-weight:bold', '//':'font-style:italic', '--':'text-decoration:line-through', '__':'text-decoration:underline' }[arr[i+1]];
-			span.textContent = arr[i+2];
-			div.append(span);
+		if(sys) {
+			div.className = 'sysmsg';
+			div.textContent = msg;
+		} else {
+			for(let i = 0; i < arr.length; i += 3) {
+				div.append(arr[i]);
+				const span = document.createElement('span');
+				span.style = { '**':'font-weight:bold', '//':'font-style:italic', '--':'text-decoration:line-through', '__':'text-decoration:underline' }[arr[i+1]];
+				span.textContent = arr[i+2];
+				div.append(span);
+			}
 		}
 		get('log').appendChild(div);
 		div.scrollIntoView();
@@ -87,7 +92,7 @@ socket.once('start', (name, rooms) => {
 		if(!msg) return;
 		const arr = msg.split(' ');
 		const cmd = arr.shift();
-		if(msg[0] == '/') addmsg(msg);
+		if(msg[0] == '/') addmsg(msg, true);
 		if(/^\/(join|j)$/.test(cmd)) {
 			socket.emit('join', arr.join(' '));
 		} else if(/^\/(leave|l)$/.test(cmd)) {
@@ -145,7 +150,7 @@ socket.once('start', (name, rooms) => {
 		document.title = 'ankabuta'+room;
 		get('msgbox').disabled = get('say').disabled = false;
 		get('msgbox').focus();
-		addmsg('You have joined '+room);
+		addmsg('You have joined '+room, true);
 		if(!admin) {
 			socket.on('hear', addmsg);
 			return;
@@ -161,12 +166,9 @@ socket.once('start', (name, rooms) => {
 		get('run').onclick = e => {
 			e.preventDefault();
 			get('run').disabled = true;
-			for(const cmd of ['join', 'leave', 'hear']) {
-				socket.off(cmd);
-			}
 //			iframe.src = 'about:blank';
 			document.body.append(iframe);
-			iframe.contentWindow.print = addmsg;
+			iframe.contentWindow.print = msg => addmsg(msg);
 			iframe.contentWindow.kick = name2 => socket.emit('kick', name2);
 			iframe.contentWindow.send = (msg, name2) => {
 				if(name2 == name) {
@@ -185,13 +187,13 @@ socket.once('start', (name, rooms) => {
 				}
 				socket.emit('sendExcept', msg, name2);
 			}
-//			iframe.contentWindow.eval('try {' + get('codebox').value + '} catch(error) { console.log(error); }');
-			iframe.contentWindow.eval(get('codebox').value);
-			for(const cmd of ['join', 'leave', 'hear']) {
-				if(iframe.contentWindow[cmd]) {
-					socket.on(cmd, (...arr) => iframe.contentWindow[cmd](...arr));
-				}
+			for(const event of ['join', 'leave', 'hear']) {
+//				iframe.contentWindow[event] = (...arr) => console.log({ 'join':arr[0]+' has joined', 'leave':arr[0]+' has left', 'hear':arr[1]+': '+arr[0] }[event]);
+				iframe.contentWindow[event] = () => {};
+				socket.off(event);
+				socket.on(event, (...arr) => iframe.contentWindow[event](...arr));
 			}
+			iframe.contentWindow.eval(get('codebox').value);
 		}
 		get('run').click();
 	});
@@ -201,13 +203,13 @@ socket.once('start', (name, rooms) => {
 		history.pushState(null, '', document.location.pathname);
 		document.title = 'ankabuta';
 		get('msgbox').disabled = get('say').disabled = true;
-		addmsg(msg);
+		addmsg(msg, true);
 		if(!admin) {
 			socket.off('hear');
 			return;
 		}
-		for(const cmd of ['join', 'leave', 'hear']) {
-			socket.off(cmd);
+		for(const event of ['join', 'leave', 'hear']) {
+			socket.off(event);
 		}
 		get('toggle').style.display = get('run').style.display = get('codebox').style.display = 'none';
 		iframe.remove();
@@ -222,7 +224,7 @@ socket.once('start', (name, rooms) => {
 	}
 	socket.on('disconnect', () => {
 		get('codebox').disabled = get('run').disabled = get('msgbox').disabled = get('say').disabled = true;
-		addmsg('Connection failed!');
+		addmsg('Connection failed!', true);
 	});
 });
 </script>
