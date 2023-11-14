@@ -28,8 +28,7 @@ input { width:80px; }
 <body>
 <div id="wrapper">
 <textarea id="codebox" spellcheck="false">function join(name) {
-	sendExcept(name+' has joined', name);
-	send('Welcome, '+name+'!', name);
+	sendAll(name+' has joined', name, 'Welcome, '+name+'!');
 }
 function leave(name) {
 	sendAll(name+' has left');
@@ -38,8 +37,8 @@ function hear(msg, name) {
 	const arr = msg.split(' ');
 	const cmd = arr.shift();
 	if(cmd == '/pm') {
-		send(name+' (private): '+arr.slice(1).join(' '), arr[0]);
-	} if(cmd == '/me') {
+		sendOnly(name+' (private): '+arr.slice(1).join(' '), arr[0]);
+	} else if(cmd == '/me') {
 		sendAll('* '+name+' '+arr.join(' '));
 	} else {
 		sendAll(name+': '+msg);
@@ -141,6 +140,7 @@ socket.once('start', (name, rooms) => {
 			get('codebox').value = arr.join('');
 			get('codebox').selectionStart = arr[0].length + num;
 			get('codebox').selectionEnd = arr[0].length + arr[1].length;
+			get('run').disabled = false;
 		}
 	}
 	socket.on('addroom', addroom);
@@ -170,22 +170,21 @@ socket.once('start', (name, rooms) => {
 			document.body.append(iframe);
 			iframe.contentWindow.print = msg => addmsg(msg);
 			iframe.contentWindow.kick = name2 => socket.emit('kick', name2);
-			iframe.contentWindow.send = (msg, name2) => {
-				if(name2 == name) {
-					addmsg(msg);
-				} else {
-					socket.emit('send', msg, name2);
+			iframe.contentWindow.sendOnly = (msg1, name2, msg2) => {
+				if(name2 == name || (Array.isArray(name2) && name2.includes(name))) {
+					addmsg(msg1);
+				} else if(typeof msg2 == 'string') {
+					addmsg(msg2);
 				}
+				socket.emit('sendOnly', msg1, name2, msg2);
 			}
-			iframe.contentWindow.sendAll = msg => {
-				socket.emit('sendAll', msg);
-				addmsg(msg);
-			}
-			iframe.contentWindow.sendExcept = (msg, name2) => {
-				if(name2 != name) {
-					addmsg(msg);
+			iframe.contentWindow.sendAll = (msg1, name2, msg2) => {
+				if(name2 != name && !(Array.isArray(name2) && name2.includes(name))) {
+					addmsg(msg1);
+				} else if(typeof msg2 == 'string') {
+					addmsg(msg2);
 				}
-				socket.emit('sendExcept', msg, name2);
+				socket.emit('sendAll', msg1, name2, msg2);
 			}
 			for(const event of ['join', 'leave', 'hear']) {
 //				iframe.contentWindow[event] = (...arr) => console.log({ 'join':arr[0]+' has joined', 'leave':arr[0]+' has left', 'hear':arr[1]+': '+arr[0] }[event]);
@@ -222,7 +221,7 @@ socket.once('start', (name, rooms) => {
 		console.log(location.hash); //
 		socket.emit('join', location.hash);
 	}
-	socket.on('disconnect', () => {
+	socket.once('disconnect', () => {
 		get('codebox').disabled = get('run').disabled = get('msgbox').disabled = get('say').disabled = true;
 		addmsg('Connection failed!', true);
 	});

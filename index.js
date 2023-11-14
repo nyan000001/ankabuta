@@ -98,27 +98,34 @@ io.on('connection', socket => {
 			admins[socket.room].emit('hear', msg, socket.name);
 		});
 
-		socket.on('send', async (msg, name) => {
-			if(!valid(msg, name) || admins[socket.room] != socket || name == socket.name) return;
-			const sockets = await io.in(name).fetchSockets();
-			if(sockets[0]?.room == socket.room) {
-				sockets[0].emit('hear', msg);
+		socket.on('sendOnly', async (msg1, names, msg2) => {
+			if(!valid(msg1) || admins[socket.room] != socket) return;
+			if(Array.isArray(names) || (names = [names])) {
+				const sockets = await io.in(socket.room).fetchSockets();
+				for(const socket2 of sockets) {
+					if(names.includes(socket2.name)) {
+						socket2.emit('hear', msg1);
+					} else if(valid(msg2)) {
+						socket2.emit('hear', msg2);
+					}
+				}
 			}
 		});
 
-		socket.on('sendExcept', async (msg, name) => {
-			if(!valid(msg, name) || admins[socket.room] != socket) return;
-			const sockets = await io.in(name).fetchSockets();
-			if(!sockets.length) {
-				io.to(socket.room).emit('hear', msg);
-			} else if(sockets[0].room == socket.room) {
-				sockets[0].to(socket.room).emit('hear', msg);
+		socket.on('sendAll', async (msg1, names, msg2) => {
+			if(!valid(msg1) || admins[socket.room] != socket) return;
+			if(Array.isArray(names) || (names = [names])) {
+				const sockets = await io.in(socket.room).fetchSockets();
+				for(const socket2 of sockets) {
+					if(!names.includes(socket2.name)) {
+						socket2.emit('hear', msg1);
+					} else if(valid(msg2)) {
+						socket2.emit('hear', msg2);
+					}
+				}
+			} else {
+				io.to(socket.room).emit('hear', msg1);
 			}
-		});
-
-		socket.on('sendAll', msg => {
-			if(!valid(msg) || admins[socket.room] != socket) return;
-			io.to(socket.room).emit('hear', msg);
 		});
 
 		socket.on('kick', async name => {
