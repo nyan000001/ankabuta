@@ -11,7 +11,7 @@ const admins = {};
 io.on('connection', socket => {
 	const rand = arr => arr[~~(Math.random()*arr.length)];
 	const sockets = [...io.sockets.sockets.values()];
-	socket.ip = socket.request.connection.remoteAddress;
+	socket.ip = socket.handshake.address;
 	const socket2 = sockets.find(socket2 => socket2 != socket && socket2.ip == socket.ip);
 	let name;
 	let taken = true;
