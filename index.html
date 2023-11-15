@@ -217,21 +217,33 @@ socket.once('start', (myname, rooms) => {
 			iframe.contentWindow.persistent = persistent;
 			iframe.contentWindow.print = msg => addmsg(msg);
 			iframe.contentWindow.kick = name => socket.emit('kick', name);
-			iframe.contentWindow.sendOnly = (msg1, name, msg2) => {
-				if(name == myname || (Array.isArray(name) && name.includes(myname))) {
+			iframe.contentWindow.sendOnly = (msg1, names, msg2) => {
+				if(!msg1 || !names) return;
+				if(!Array.isArray(names)) {
+					names = [names];
+				}
+				if(names.includes(myname)) {
 					addmsg(msg1);
 				} else if(typeof msg2 == 'string') {
 					addmsg(msg2);
 				}
-				socket.emit('sendOnly', msg1, name, msg2);
+				socket.emit('sendOnly', msg1, names, msg2);
 			}
-			iframe.contentWindow.sendAll = (msg1, name, msg2) => {
-				if(name != myname && !(Array.isArray(name) && name.includes(myname))) {
+			iframe.contentWindow.sendAll = (msg1, names, msg2) => {
+				if(!msg1) return;
+				if(names) {
+					if(!Array.isArray(names)) {
+						names = [names];
+					}
+					if(!names.includes(myname)) {
+						addmsg(msg1);
+					} else if(typeof msg2 == 'string') {
+						addmsg(msg2);
+					}
+				} else {
 					addmsg(msg1);
-				} else if(typeof msg2 == 'string') {
-					addmsg(msg2);
 				}
-				socket.emit('sendAll', msg1, name, msg2);
+				socket.emit('sendAll', msg1, names, msg2);
 			}
 			for(const event of ['join', 'leave', 'hear']) {
 //				iframe.contentWindow[event] = (...arr) => console.log({ 'join':arr[0]+' has joined', 'leave':arr[0]+' has left', 'hear':arr[1]+': '+arr[0] }[event]);
@@ -281,6 +293,7 @@ socket.once('start', (myname, rooms) => {
 	socket.once('disconnect', () => {
 		get('codebox').disabled = get('run').disabled = get('msgbox').disabled = get('say').disabled = true;
 		addmsg('Connection failed!', true);
+		socket.removeAllListeners();
 	});
 });
 </script>

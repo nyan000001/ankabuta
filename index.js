@@ -106,7 +106,7 @@ io.on('connection', socket => {
 		if(admins[socket.room] == socket) {
 			socket.on('sendOnly', async (msg1, names, msg2) => {
 				if(!valid(msg1)) return;
-				if(Array.isArray(names) || (names = [names])) {
+				if(Array.isArray(names)) {
 					const sockets = await io.in(socket.room).fetchSockets();
 					for(const socket2 of sockets) {
 						if(names.includes(socket2.name)) {
@@ -119,7 +119,7 @@ io.on('connection', socket => {
 			});
 			socket.on('sendAll', async (msg1, names, msg2) => {
 				if(!valid(msg1)) return;
-				if(Array.isArray(names) || (names = [names])) {
+				if(Array.isArray(names)) {
 					const sockets = await io.in(socket.room).fetchSockets();
 					for(const socket2 of sockets) {
 						if(!names.includes(socket2.name)) {
