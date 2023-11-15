@@ -8,34 +8,45 @@
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
 textarea:disabled, input:disabled { border-color:#555; background:#ccc; }
 textarea, input { border:1px solid #000; border-radius:3px; }
-input { width:80px; }
 
 #wrapper { padding:1px; position:fixed; width:100%; height:calc(100% - 50px); display:flex; }
 #wrapper > * { overflow:auto; padding:5px; margin:1px 1px 0 1px; }
 #codebox { font:9pt monospace; width:300px; white-space:pre; resize:horizontal; }
 #log { flex-grow:1; white-space:pre-wrap; }
 .sysmsg { font:bold 10pt monospace; }
-#rooms { width:100px; }
-#rooms > a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
-#rooms > a:hover { color:#f55; }
-#rooms > a.myroom { color:#000 !important; cursor:default; }
+#div { width:150px; white-space:pre-wrap; }
+#roomform { display:flex; width:100%; }
+#roomform > input { margin:1px; }
+#room { min-width:10px; }
 
-#form { padding:1px; bottom:0; position:fixed; width:100%; height:50px; display:flex; }
-#form * { margin:0 1px 1px 1px; }
+a { font-weight:bold; color:#09f; text-decoration:none; display:block; margin:2px; }
+a:hover { color:#f55; }
+a.myroom { color:#000 !important; cursor:default; }
+
+#msgform { padding:1px; bottom:0; position:fixed; width:100%; height:50px; display:flex; }
+#msgform > * { margin:0 1px 1px 1px; }
+#msgform > input { width:80px; }
 #msgbox { flex-grow:1; resize:none; padding:5px; }
-#toggle, #run, #codebox, iframe { display:none; }
+#log, #div, #leave, #toggle, #run, #codebox, iframe { display:none; }
 </style>
 </head>
 <body>
 <div id="wrapper">
 <textarea id="codebox" spellcheck="false"></textarea>
 <div id="log" role="log"></div>
-<div id="rooms"></div>
+<div id="div" role="log"></div>
+<div id="rooms">
+<form id="roomform">
+<input type="text" id="room" autofocus>
+<input type="submit" id="go" value="Go">
+</form>
 </div>
-<form id="form">
+</div>
+<form id="msgform">
+<input type="button" id="leave" value="Leave">
 <input type="button" id="toggle" value="Hide">
 <input type="button" id="run" value="Run">
-<textarea id="msgbox" disabled></textarea>
+<textarea id="msgbox"></textarea>
 <input type="submit" id="say" value="Say" disabled>
 </form>
 <script src="/socket.io/socket.io.js"></script>
@@ -43,33 +54,32 @@ input { width:80px; }
 const socket = io();
 let persistent;
 socket.once('start', (myname, rooms) => {
-	const defaultcode =
-		`persistent.users = persistent.users || { '${myname}':{} };
-		function join(name) {
-			sendAll(name+' has joined', name, 'Welcome, '+name+'!');
-			sendOnly('Users: '+Object.keys(persistent.users).join(', '), name);
-			persistent.users[name] = {};
-		}
-		function leave(name) {
-			sendAll(name+' has left');
-			delete persistent.users[name];
-		}
-		function hear(msg, name) {
-			const arr = msg.split(' ');
-			const cmd = arr.shift();
-			if(cmd == '/pm') {
-				sendOnly(name+' (private): '+arr.slice(1).join(' '), arr[0]);
-			} else if(cmd == '/me') {
-				sendAll('* '+name+' '+arr.join(' '));
-			} else {
-				sendAll(name+': '+msg);
-			}
-		}`.replace(/^\t\t/gm, '');
-	let myroom;
+	if(location.hash) {
+		socket.emit('join', decodeURI(location.hash));
+	}
+	onhashchange = () => {
+		console.log(decodeURI(location.hash)); //
+		socket.emit('join', decodeURI(location.hash));
+	}
 	let iframe;
 	let interval;
 	let msgcount = 0;
 	const get = id => document.getElementById(id);
+	socket.once('disconnect', () => {
+		get('go').disabled = get('leave').disabled = get('toggle').disabled = get('run').disabled = get('say').disabled = true;
+		const div = document.createElement('div');
+		div.className = 'sysmsg';
+		div.textContent = 'Connection failed!';
+		if(get('log').style.display == 'block') {
+			get('log').appendChild(div);
+		} else {
+			get('rooms').appendChild(div);
+		}
+		div.scrollIntoView();
+
+//		addmsg('Connection failed!', true);
+		socket.removeAllListeners();
+	});
 	const addroom = room => {
 		const a = document.createElement('a');
 		a.textContent = a.id = a.href = room;
@@ -78,129 +88,187 @@ socket.once('start', (myname, rooms) => {
 	for(const room of rooms) {
 		addroom(room);
 	}
-	const addmsg = (msg, sys) => {
-		const div = document.createElement('div');
-		if(sys) {
-			div.className = 'sysmsg';
-			div.textContent = msg;
-		} else {
-			msgcount++;
-			if(!interval && document.visibilityState == 'hidden') {
-				let i = 0;
-				const animate = () => {
-					if(!myroom) {
-						document.title = 'ankabuta';
-						return;
-					}
-					let title = [...('ankabuta'+myroom)];
-					title[i] = title[i].toUpperCase();
-					do {
-						i = (i + 1) % title.length;
-					} while(title[i] == title[i].toUpperCase());
-					document.title = '('+msgcount+') '+title.join('');
-				};
-				document.title = '('+msgcount+') ankabuta'+myroom;
-				interval = setInterval(animate, 400);
-			}
-			const loop = text => {
-				const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])(.+)\2\](.*)/si);
-				if(!match) return text;
-				const frag = document.createDocumentFragment();
-				const span = document.createElement('span');
-				let hex;
-				if(match[2] == '#') {
-					hex = match[3].slice(0, 3);
-					match[3] = match[3].slice(3);
-				}
-				span.style = { '#':'color:#'+hex, '*':'font-weight:bold', '_':'text-decoration:underline', '/':'font-style:italic', '-':'text-decoration:line-through' }[match[2]];
-				span.append(loop(match[3]));
-				frag.append(loop(match[1]), span, loop(match[4]));
-				return frag;
-			}
-			div.append(loop(msg));
-		}
-		get('log').appendChild(div);
-		div.scrollIntoView();
-	}
-	document.addEventListener('visibilitychange', () => {
-		if(!myroom || document.visibilityState == 'hidden' || !interval) return;
-		interval = clearInterval(interval);
-		document.title = 'ankabuta'+myroom;
-	});
-	get('form').onsubmit = e => {
+	get('roomform').onsubmit = e => {
 		e.preventDefault();
-		const msg = get('msgbox').value;
-		if(!msg) return;
-		const arr = msg.split(' ');
-		const cmd = arr.shift();
-		if(msg[0] == '/') addmsg(msg, true);
-		if(/^\/(join|j)$/.test(cmd)) {
-			socket.emit('join', arr.join(' '));
-		} else if(/^\/(leave|l)$/.test(cmd)) {
-			socket.emit('leave');
-		} else if(iframe) {
-			if(/^\/(kick|k)$/.test(cmd)) {
-				socket.emit('kick', arr.join(' '));
-			} else {
-				iframe.contentWindow.hear?.(msg, myname);
-			}
-		} else {
-			socket.emit('say', msg);
-		}
-		get('msgbox').value = '';
+		const room = get('room').value;
+		if(!room) return;
+		get('room').value = '';
+		socket.emit('join', room);
 	}
-	get('msgbox').onkeydown = e => {
+	get('room').onkeydown = e => {
 		if(!e.shiftKey && e.key == 'Enter') {
 			e.preventDefault();
-			get('say').click();
-		}
-	}
-	get('codebox').oninput = () => get('run').disabled = false;
-	get('codebox').onkeydown = e => {
-		if(e.ctrlKey && e.key == 's') {
-			e.preventDefault();
-			get('run').click();
-		} else if(e.key == 'Tab') {
-			e.preventDefault();
-			const start = get('codebox').selectionStart;
-			const end = get('codebox').selectionEnd;
-			const text = get('codebox').value;
-			const arr = [text.slice(0, start), text.slice(start, end), text.slice(end)];
-			let num = 0;
-			if(e.shiftKey) {
-				arr[0] = arr[0].replace(/\n\t(?!.*\n)/, '\n');
-				arr[1] = arr[1].replace(/\n\t/g, '\n');
-			} else {
-				if(arr[1].includes('\n')) {
-					arr[0] = arr[0].replace(/\n(?!.*\n)/, '\n\t');
-					arr[1] = arr[1].replace(/\n/g, '\n\t');
-				} else {
-					arr[1] = '\t';
-					num = 1;
-				}
-			}
-			get('codebox').value = arr.join('');
-			get('codebox').selectionStart = arr[0].length + num;
-			get('codebox').selectionEnd = arr[0].length + arr[1].length;
-			get('run').disabled = false;
+			get('go').click();
 		}
 	}
 	socket.on('addroom', addroom);
+	socket.on('rmvroom', room => get(room).remove());
 	socket.on('joinroom', (room, admin) => {
 		console.log('hi'); //
-		myroom = room;
 		get(room).className = 'myroom';
 		history.replaceState(null, '', document.location.pathname+room);
 		document.title = 'ankabuta'+room;
-		get('msgbox').disabled = get('say').disabled = false;
+		get('say').disabled = false;
 		get('msgbox').focus();
+		get('log').textContent = '';
+		get('log').style.display = get('div').style.display = get('leave').style.display = 'block';
+		get('rooms').style.display = 'none';
+		get('leave').onclick = () => socket.emit('leave');
+		const addmsg = (msg, sys) => {
+			const div = document.createElement('div');
+			if(sys) {
+				div.className = 'sysmsg';
+				div.textContent = msg;
+			} else {
+				msgcount++;
+				if(!interval && document.visibilityState == 'hidden') {
+					let i = 0;
+					const animate = () => {
+						let title = [...('ankabuta'+room)];
+						title[i] = title[i].toUpperCase();
+						do {
+							i = (i + 1) % title.length;
+						} while(title[i] == title[i].toUpperCase());
+						document.title = '('+msgcount+') '+title.join('');
+					};
+					document.title = '('+msgcount+') ankabuta'+room;
+					interval = setInterval(animate, 400);
+				}
+				const loop = text => {
+					const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])(.+)\2\](.*)/si);
+					if(!match) return text;
+					const frag = document.createDocumentFragment();
+					const span = document.createElement('span');
+					let hex;
+					if(match[2] == '#') {
+						hex = match[3].slice(0, 3);
+						match[3] = match[3].slice(3);
+					}
+					span.style = { '#':'color:#'+hex, '*':'font-weight:bold', '_':'text-decoration:underline', '/':'font-style:italic', '-':'text-decoration:line-through' }[match[2]];
+					span.append(loop(match[3]));
+					frag.append(loop(match[1]), span, loop(match[4]));
+					return frag;
+				}
+				div.append(loop(msg));
+			}
+			get('log').appendChild(div);
+			div.scrollIntoView();
+		}
+		const stopanimation = () => {
+			if(document.visibilityState == 'hidden' || !interval) return;
+			interval = clearInterval(interval);
+			document.title = 'ankabuta'+room;
+		}
+		document.addEventListener('visibilitychange', stopanimation);
+		const change = (id, text) => {
+			if(id == '' || id == null) {
+				get('div').textContent = '';
+				return;
+			}
+			if(text == null) {
+				get(id)?.remove();
+				return;
+			}
+			const div = get(id) || document.createElement('div');
+			div.textContent = text;
+			if(!div.parentNode) {
+				div.id = id;
+				get('div').append(div);
+			}
+		}
+		get('msgform').onsubmit = e => {
+			e.preventDefault();
+			const msg = get('msgbox').value;
+			if(!msg) return;
+			const arr = msg.split(' ');
+			const cmd = arr.shift();
+			if(msg[0] == '/') addmsg(msg, true);
+			if(/^\/(join|j)$/.test(cmd)) {
+				socket.emit('join', arr.join(' '));
+			} else if(/^\/(leave|l)$/.test(cmd)) {
+				socket.emit('leave');
+			} else if(iframe) {
+				if(/^\/(kick|k)$/.test(cmd)) {
+					socket.emit('kick', arr.join(' '));
+				} else {
+					iframe.contentWindow.hear?.(msg, myname);
+				}
+			} else {
+				socket.emit('say', msg);
+			}
+			get('msgbox').value = '';
+		}
+		get('msgbox').onkeydown = e => {
+			if(!e.shiftKey && e.key == 'Enter') {
+				e.preventDefault();
+				get('say').click();
+			}
+		}
 		addmsg('You have joined '+room, true);
+		socket.once('leaveroom', msg => {
+			console.log('bye'); //
+			if(interval) {
+				interval = clearInterval(interval);
+			}
+			document.title = 'ankabuta';
+			document.removeEventListener('visibilitychange', stopanimation);
+			const leave = () => {
+				get(room).removeAttribute('class');
+				history.pushState(null, '', document.location.pathname);
+				get('say').disabled = true;
+				get('log').style.display = get('div').style.display = get('leave').style.display = 'none';
+				get('rooms').style.display = 'block';
+				get('room').focus();
+				if(!admin) {
+					socket.off('change');
+					socket.off('hear');
+					return;
+				}
+				for(const event of ['join', 'leave', 'hear']) {
+					socket.off(event);
+				}
+				get('toggle').style.display = get('run').style.display = get('codebox').style.display = 'none';
+				iframe.remove();
+				iframe = null;
+			}
+			if(msg) {
+				addmsg(msg, true);
+				get('toggle').disabled = get('run').disabled = get('say').disabled = true;
+				get('leave').onclick = () => leave();
+				get('leave').focus();
+			} else {
+				leave();
+			}
+		});
 		if(!admin) {
+			socket.on('change', change);
 			socket.on('hear', addmsg);
 			return;
 		}
 		persistent = {};
-		get('codebox').value = defaultcode;
+		get('codebox').value =
+			`persistent.users = persistent.users || { '${myname}':{} };
+			function join(name) {
+				sendAll(name+' has joined', name, 'Welcome, '+name+'!');
+				sendOnly('Users: '+Object.keys(persistent.users).join(', '), name);
+				persistent.users[name] = {};
+			}
+			function leave(name) {
+				sendAll(name+' has left');
+				delete persistent.users[name];
+			}
+			function hear(msg, name) {
+				const arr = msg.split(' ');
+				const cmd = arr.shift();
+				if(cmd == '/pm') {
+					sendOnly(name+' (private): '+arr.slice(1).join(' '), arr[0]);
+				} else if(cmd == '/me') {
+					sendAll('* '+name+' '+arr.join(' '));
+				} else {
+					sendAll(name+': '+msg);
+				}
+			}`.replace(/^\t\t\t/gm, '');
+		get('run').disabled = false;
 		get('codebox').style.display = get('toggle').style.display = get('run').style.display = 'block';
 		let bool = false;
 		get('toggle').onclick = () => {
@@ -208,7 +276,38 @@ socket.once('start', (myname, rooms) => {
 			get('toggle').value = bool? 'Hide': 'Show';
 			bool = !bool;
 		}
+		get('codebox').oninput = () => get('run').disabled = false;
+		get('codebox').onkeydown = e => {
+			if(e.ctrlKey && e.key == 's') {
+				e.preventDefault();
+				get('run').click();
+			} else if(e.key == 'Tab') {
+				e.preventDefault();
+				const start = get('codebox').selectionStart;
+				const end = get('codebox').selectionEnd;
+				const text = get('codebox').value;
+				const arr = [text.slice(0, start), text.slice(start, end), text.slice(end)];
+				let num = 0;
+				if(e.shiftKey) {
+					arr[0] = arr[0].replace(/\n\t(?!.*\n)/, '\n');
+					arr[1] = arr[1].replace(/\n\t/g, '\n');
+				} else {
+					if(arr[1].includes('\n')) {
+						arr[0] = arr[0].replace(/\n(?!.*\n)/, '\n\t');
+						arr[1] = arr[1].replace(/\n/g, '\n\t');
+					} else {
+						arr[1] = '\t';
+						num = 1;
+					}
+				}
+				get('codebox').value = arr.join('');
+				get('codebox').selectionStart = arr[0].length + num;
+				get('codebox').selectionEnd = arr[0].length + arr[1].length;
+				get('run').disabled = false;
+			}
+		}
 		iframe = document.createElement('iframe');
+		let code;
 		get('run').onclick = e => {
 			e.preventDefault();
 			get('run').disabled = true;
@@ -217,6 +316,10 @@ socket.once('start', (myname, rooms) => {
 			iframe.contentWindow.persistent = persistent;
 			iframe.contentWindow.print = msg => addmsg(msg);
 			iframe.contentWindow.kick = name => socket.emit('kick', name);
+			iframe.contentWindow.change = (id, text) => {
+				change(id, text);
+				socket.emit('change', id, text);
+			}
 			iframe.contentWindow.sendOnly = (msg1, names, msg2) => {
 				if(!msg1 || !names) return;
 				if(!Array.isArray(names)) {
@@ -224,7 +327,7 @@ socket.once('start', (myname, rooms) => {
 				}
 				if(names.includes(myname)) {
 					addmsg(msg1);
-				} else if(typeof msg2 == 'string') {
+				} else if(msg2) {
 					addmsg(msg2);
 				}
 				socket.emit('sendOnly', msg1, names, msg2);
@@ -237,7 +340,7 @@ socket.once('start', (myname, rooms) => {
 					}
 					if(!names.includes(myname)) {
 						addmsg(msg1);
-					} else if(typeof msg2 == 'string') {
+					} else if(msg2) {
 						addmsg(msg2);
 					}
 				} else {
@@ -257,43 +360,22 @@ socket.once('start', (myname, rooms) => {
 			} catch(err) {
 				console.error(err);
 				addmsg(err.name+': '+err.message, true);
-				iframe.contentWindow.eval(code);
+				iframe.contentWindow.eval(code);/*
+				const arr = get('codebox').value.split('\n');
+				const match = err.stack.match(/<anonymous>:(\d+):(\d+)/);
+				if(match) {
+					const row = match[1] - 1;
+					const col = match[2] - 1;
+					let index = 0;
+					for(let i = 0; i < row; i++) {
+						index += arr[i].length + 1; // +1 for the linebreak
+					}
+					get('codebox').selectionStart = get('codebox').selectionEnd = index + col;
+					get('codebox').focus();
+				}*/
 			}
 		}
 		get('run').click();
-	});
-	socket.on('rmvroom', room => get(room).remove());
-	socket.on('leaveroom', (msg, admin) => {
-		console.log('bye'); //
-		get(myroom).removeAttribute('class');
-		myroom = null;
-		history.pushState(null, '', document.location.pathname);
-		document.title = 'ankabuta';
-		get('msgbox').disabled = get('say').disabled = true;
-		addmsg(msg, true);
-		if(!admin) {
-			socket.off('hear');
-			return;
-		}
-		for(const event of ['join', 'leave', 'hear']) {
-			socket.off(event);
-		}
-		get('toggle').style.display = get('run').style.display = get('codebox').style.display = 'none';
-		get('run').disabled = false;
-		iframe.remove();
-		iframe = null;
-	});
-	if(location.hash) {
-		socket.emit('join', decodeURI(location.hash));
-	}
-	onhashchange = () => {
-		console.log(decodeURI(location.hash)); //
-		socket.emit('join', decodeURI(location.hash));
-	}
-	socket.once('disconnect', () => {
-		get('codebox').disabled = get('run').disabled = get('msgbox').disabled = get('say').disabled = true;
-		addmsg('Connection failed!', true);
-		socket.removeAllListeners();
 	});
 });
 </script>

@@ -11,7 +11,7 @@ const admins = {};
 io.on('connection', socket => {
 	const rand = arr => arr[~~(Math.random()*arr.length)];
 	const sockets = [...io.sockets.sockets.values()];
-	socket.ip = socket.handshake.headers['x-forwarded-for'];
+	socket.ip = socket.request.connection.remoteAddress;
 	const socket2 = sockets.find(socket2 => socket2 != socket && socket2.ip == socket.ip);
 	let name;
 	let taken = true;
@@ -25,7 +25,7 @@ io.on('connection', socket => {
 			}
 			name += rand('aeiou');
 			if(Math.random() < .7) {
-				name += rand(['ch', 'f', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'ss', 't', 'w', 'x', 'y', 'zz']) + rand('aeiou');
+				name += rand(['ch', 'f', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'ss', 't', 'w', 'x', 'zz']) + rand('aeiou');
 			} else {
 				name += rand(['bbo', 'ggo', 'll', 'mba', 'ndy', 'ng', 'ngo', 'nter', 'pper', 'ppy', 'ster', 'tty']);
 			}
@@ -47,8 +47,8 @@ io.on('connection', socket => {
 	socket.join(socket.name);
 	socket.emit('start', socket.name, Object.keys(admins));
 	const leave = async (socket, msg) => {
+		socket.emit('leaveroom', msg);
 		if(admins[socket.room] == socket) {
-			socket.emit('leaveroom', msg, true);
 			const sockets = await io.in(socket.room).fetchSockets();
 			delete admins[socket.room];
 			for(const socket2 of sockets) {
@@ -65,10 +65,9 @@ io.on('connection', socket => {
 				io.emit('rmvroom', socket.room);
 			}
 		} else {
-			socket.emit('leaveroom', msg);
 			admins[socket.room].emit('leave', socket.name);
 		}
-		for(const listener of ['disconnect', 'leave', 'say', 'sendOnly', 'sendAll', 'kick']) {
+		for(const listener of ['disconnect', 'leave', 'say', 'sendOnly', 'sendAll', 'change', 'kick']) {
 			socket.removeAllListeners(listener);
 		}
 		socket.leave(socket.room);
@@ -80,7 +79,7 @@ io.on('connection', socket => {
 		room = room.replace(/\s/g, '_').replace(/^#?/, '#');
 		if(socket.room) {
 			if(socket.room == room) return;
-			await leave(socket, 'You have left '+socket.room);
+			await leave(socket);
 		}
 		socket.room = room;
 		if(admins[socket.room]) {
@@ -97,7 +96,7 @@ io.on('connection', socket => {
 			socket.emit('joinroom', socket.room, true);
 		}
 		socket.on('disconnect', () => leave(socket));
-		socket.on('leave', () => leave(socket, 'You have left '+socket.room));
+		socket.on('leave', () => leave(socket));
 		socket.on('say', msg => {
 			if(!valid(msg) || admins[socket.room] == socket) return;
 			admins[socket.room].emit('hear', msg, socket.name);
@@ -131,6 +130,9 @@ io.on('connection', socket => {
 				} else {
 					io.to(socket.room).emit('hear', msg1);
 				}
+			});
+			socket.on('change', (index, text) => {
+				io.to(socket.room).emit('change', index, text);
 			});
 			socket.on('kick', async name => {
 				if(!valid(name)) return;
