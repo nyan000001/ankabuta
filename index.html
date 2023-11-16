@@ -19,6 +19,7 @@ textarea, input { border:1px solid #000; border-radius:3px; }
 #wrapper { display:flex; padding:1px; position:fixed; width:100%; height:calc(100% - 50px); }
 #wrapper > * { padding:5px; margin:1px 1px 0 1px; }
 #wrapper > *:not(#codebox) { white-space:pre-wrap; word-break:break-word; overflow-y:auto; }
+#sidebar:blank { display:none; }
 #codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
 #log { flex-grow:1; }
 #wrapper > *:not(#log) { flex-shrink:0 }
@@ -74,7 +75,7 @@ socket.once('start', (myname, rooms) => {
 		const div = document.createElement('div');
 		div.className = 'sysmsg';
 		div.textContent = 'Connection failed!';
-		if(get('log').style.display == 'block') {
+		if(document.body.classList.contains('joined')) {
 			get('log').appendChild(div);
 		} else {
 			get('rooms').appendChild(div);
@@ -260,6 +261,7 @@ socket.once('start', (myname, rooms) => {
 		}
 		document.body.classList.add('admin');
 		const persistent = { users:{ [myname]:{} } };
+		console.log(localStorage.getItem('code'));
 		get('codebox').value =
 			`function join(name) {
 				sendAll(name+' has joined',
@@ -314,6 +316,9 @@ socket.once('start', (myname, rooms) => {
 		let code;
 		get('run').onclick = e => {
 			e.preventDefault();
+			if(get('codebox').value.length > 500) {
+				localStorage.setItem('code', get('codebox').value);
+			}
 			get('run').disabled = true;
 			iframe.src = 'about:blank';
 			document.body.append(iframe);
