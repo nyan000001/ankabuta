@@ -76,7 +76,7 @@ io.on('connection', socket => {
 	const valid = (...arr) => arr.every(x => x && typeof x == 'string');
 	socket.on('join', async room => {
 		if(!valid(room)) return;
-		room = room.replace(/\s/g, '_').replace(/^#?/, '#');
+		room = room.replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
 		if(socket.room) {
 			if(socket.room == room) return;
 			await leave(socket);
@@ -103,36 +103,31 @@ io.on('connection', socket => {
 		});
 
 		if(admins[socket.room] == socket) {
-			socket.on('sendOnly', async (msg1, names, msg2) => {
-				if(!valid(msg1)) return;
+			const send = async (msg1, names, msg2, bool) => {
 				if(Array.isArray(names)) {
 					const sockets = await io.in(socket.room).fetchSockets();
 					for(const socket2 of sockets) {
-						if(names.includes(socket2.name)) {
+						if(names.includes(socket2.name) == bool) {
 							socket2.emit('hear', msg1);
 						} else if(valid(msg2)) {
 							socket2.emit('hear', msg2);
 						}
 					}
+					return true;
 				}
+			}
+			socket.on('sendOnly', (msg1, names, msg2) => {
+				if(!valid(msg1)) return;
+				send(msg1, names, msg2, true);
 			});
 			socket.on('sendAll', async (msg1, names, msg2) => {
 				if(!valid(msg1)) return;
-				if(Array.isArray(names)) {
-					const sockets = await io.in(socket.room).fetchSockets();
-					for(const socket2 of sockets) {
-						if(!names.includes(socket2.name)) {
-							socket2.emit('hear', msg1);
-						} else if(valid(msg2)) {
-							socket2.emit('hear', msg2);
-						}
-					}
-				} else {
+				if(!await send(msg1, names, msg2, false)) {
 					io.to(socket.room).emit('hear', msg1);
 				}
 			});
-			socket.on('change', (index, text) => {
-				io.to(socket.room).emit('change', index, text);
+			socket.on('change', (id, text) => {
+				io.to(socket.room).emit('change', id, text);
 			});
 			socket.on('kick', async name => {
 				if(!valid(name)) return;

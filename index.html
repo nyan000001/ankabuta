@@ -3,23 +3,33 @@
 <head>
 <title>ankabuta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@500&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
 <style>
-* { font-size:11pt; font-family:sans-serif; margin:0; box-sizing:border-box; tab-size:4; }
+* { font-size:11pt; font-family:'Roboto', 'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
 textarea:disabled, input:disabled { border-color:#555; background:#ccc; }
 textarea, input { border:1px solid #000; border-radius:3px; }
+#rooms, #log, #sidebar, #leave, #run, #codebox, iframe { display:none; }
+.joined #log, .joined #sidebar, .joined #leave { display:block; }
+.joined #rooms { width:150px; }
+.joined #roomform { margin:0 0 3px 0; }
+.joined a { display:block; padding:6px; padding-left:6px; text-indent:-6px; }
+.admin #codebox, .admin #run { display:block; }
 
-#wrapper { padding:1px; position:fixed; width:100%; height:calc(100% - 50px); display:flex; }
-#wrapper > * { overflow:auto; padding:5px; margin:1px 1px 0 1px; }
-#codebox { font:9pt monospace; width:300px; white-space:pre; resize:horizontal; }
-#log { flex-grow:1; white-space:pre-wrap; }
-.sysmsg { font:bold 10pt monospace; }
-#div { width:150px; white-space:pre-wrap; }
-#roomform { display:flex; width:100%; }
+#wrapper { display:flex; padding:1px; position:fixed; width:100%; height:calc(100% - 50px); }
+#wrapper > * { padding:5px; margin:1px 1px 0 1px; }
+#wrapper > *:not(#codebox) { white-space:pre-wrap; word-break:break-word; overflow-y:auto; }
+#codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
+#log { flex-grow:1; }
+#wrapper > *:not(#log) { flex-shrink:0 }
+.sysmsg { text-shadow:1px 1px 2px #000, 0 0 2px #000, 0 0 2px #000, 0 0 2px #000; color:#fff; }
+#sidebar { width:150px; }
+
+#rooms { width:100%; }
+#roomform { display:flex; margin:15px; justify-content:center; }
 #roomform > input { margin:1px; }
 #room { min-width:10px; }
-
-a { font-weight:bold; color:#09f; text-decoration:none; display:block; margin:2px; }
+a { font-weight:bold; color:#09f; text-decoration:none; display:inline-block; margin:2px; line-height:12px; padding:15px; }
 a:hover { color:#f55; }
 a.myroom { color:#000 !important; cursor:default; }
 
@@ -27,24 +37,17 @@ a.myroom { color:#000 !important; cursor:default; }
 #msgform > * { margin:0 1px 1px 1px; }
 #msgform > input { width:80px; }
 #msgbox { flex-grow:1; resize:none; padding:5px; }
-#log, #div, #leave, #toggle, #run, #codebox, iframe { display:none; }
 </style>
 </head>
 <body>
 <div id="wrapper">
+<div id="rooms"><form id="roomform"><input type="text" id="room" autofocus><input type="submit" id="go" value="Go"></form></div>
 <textarea id="codebox" spellcheck="false"></textarea>
 <div id="log" role="log"></div>
-<div id="div" role="log"></div>
-<div id="rooms">
-<form id="roomform">
-<input type="text" id="room" autofocus>
-<input type="submit" id="go" value="Go">
-</form>
-</div>
+<div id="sidebar" role="log"></div>
 </div>
 <form id="msgform">
 <input type="button" id="leave" value="Leave">
-<input type="button" id="toggle" value="Hide">
 <input type="button" id="run" value="Run">
 <textarea id="msgbox"></textarea>
 <input type="submit" id="say" value="Say" disabled>
@@ -52,8 +55,13 @@ a.myroom { color:#000 !important; cursor:default; }
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-let persistent;
 socket.once('start', (myname, rooms) => {
+	const get = id => document.getElementById(id);
+	let iframe;
+	let interval;
+	let msgcount = 0;
+	const msgs = [];
+	let msgindex = 0;
 	if(location.hash) {
 		socket.emit('join', decodeURI(location.hash));
 	}
@@ -61,12 +69,8 @@ socket.once('start', (myname, rooms) => {
 		console.log(decodeURI(location.hash)); //
 		socket.emit('join', decodeURI(location.hash));
 	}
-	let iframe;
-	let interval;
-	let msgcount = 0;
-	const get = id => document.getElementById(id);
 	socket.once('disconnect', () => {
-		get('go').disabled = get('leave').disabled = get('toggle').disabled = get('run').disabled = get('say').disabled = true;
+		get('go').disabled = get('leave').disabled = get('run').disabled = get('say').disabled = true;
 		const div = document.createElement('div');
 		div.className = 'sysmsg';
 		div.textContent = 'Connection failed!';
@@ -110,9 +114,7 @@ socket.once('start', (myname, rooms) => {
 		document.title = 'ankabuta'+room;
 		get('say').disabled = false;
 		get('msgbox').focus();
-		get('log').textContent = '';
-		get('log').style.display = get('div').style.display = get('leave').style.display = 'block';
-		get('rooms').style.display = 'none';
+		document.body.classList.add('joined');
 		get('leave').onclick = () => socket.emit('leave');
 		const addmsg = (msg, sys) => {
 			const div = document.createElement('div');
@@ -135,7 +137,7 @@ socket.once('start', (myname, rooms) => {
 					interval = setInterval(animate, 400);
 				}
 				const loop = text => {
-					const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])(.+)\2\](.*)/si);
+					const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])(.+?)\2\](.*)/si);
 					if(!match) return text;
 					const frag = document.createDocumentFragment();
 					const span = document.createElement('span');
@@ -158,28 +160,31 @@ socket.once('start', (myname, rooms) => {
 			if(document.visibilityState == 'hidden' || !interval) return;
 			interval = clearInterval(interval);
 			document.title = 'ankabuta'+room;
+			msgcount = 0;
 		}
 		document.addEventListener('visibilitychange', stopanimation);
 		const change = (id, text) => {
 			if(id == '' || id == null) {
-				get('div').textContent = '';
+				get('sidebar').textContent = '';
 				return;
 			}
 			if(text == null) {
 				get(id)?.remove();
 				return;
 			}
+			id = 'div'+id;
 			const div = get(id) || document.createElement('div');
 			div.textContent = text;
 			if(!div.parentNode) {
 				div.id = id;
-				get('div').append(div);
+				get('sidebar').append(div);
 			}
 		}
 		get('msgform').onsubmit = e => {
 			e.preventDefault();
 			const msg = get('msgbox').value;
 			if(!msg) return;
+			msgs.splice(msgindex++, Infinity, msg);
 			const arr = msg.split(' ');
 			const cmd = arr.shift();
 			if(msg[0] == '/') addmsg(msg, true);
@@ -187,6 +192,8 @@ socket.once('start', (myname, rooms) => {
 				socket.emit('join', arr.join(' '));
 			} else if(/^\/(leave|l)$/.test(cmd)) {
 				socket.emit('leave');
+			} else if(/^\/(clear|c)$/.test(cmd)) {
+				get('log').textContent = '';
 			} else if(iframe) {
 				if(/^\/(kick|k)$/.test(cmd)) {
 					socket.emit('kick', arr.join(' '));
@@ -199,7 +206,13 @@ socket.once('start', (myname, rooms) => {
 			get('msgbox').value = '';
 		}
 		get('msgbox').onkeydown = e => {
-			if(!e.shiftKey && e.key == 'Enter') {
+			if(e.ctrlKey && e.key == 'ArrowUp') {
+				msgindex = Math.max(--msgindex, 0);
+				get('msgbox').value = msgs[msgindex];
+			} else if(e.ctrlKey && e.key == 'ArrowDown') {
+				msgindex = Math.min(++msgindex, msgs.length);
+				get('msgbox').value = msgs[msgindex] || '';
+			} else if(!e.shiftKey && e.key == 'Enter') {
 				e.preventDefault();
 				get('say').click();
 			}
@@ -209,15 +222,16 @@ socket.once('start', (myname, rooms) => {
 			console.log('bye'); //
 			if(interval) {
 				interval = clearInterval(interval);
+				msgcount = 0;
 			}
 			document.title = 'ankabuta';
 			document.removeEventListener('visibilitychange', stopanimation);
 			const leave = () => {
+				document.body.removeAttribute('class');
 				get(room).removeAttribute('class');
 				history.pushState(null, '', document.location.pathname);
 				get('say').disabled = true;
-				get('log').style.display = get('div').style.display = get('leave').style.display = 'none';
-				get('rooms').style.display = 'block';
+				get('log').textContent = get('sidebar').textContent = '';
 				get('room').focus();
 				if(!admin) {
 					socket.off('change');
@@ -227,13 +241,12 @@ socket.once('start', (myname, rooms) => {
 				for(const event of ['join', 'leave', 'hear']) {
 					socket.off(event);
 				}
-				get('toggle').style.display = get('run').style.display = get('codebox').style.display = 'none';
 				iframe.remove();
 				iframe = null;
 			}
 			if(msg) {
 				addmsg(msg, true);
-				get('toggle').disabled = get('run').disabled = get('say').disabled = true;
+				get('run').disabled = get('say').disabled = true;
 				get('leave').onclick = () => leave();
 				get('leave').focus();
 			} else {
@@ -245,17 +258,15 @@ socket.once('start', (myname, rooms) => {
 			socket.on('hear', addmsg);
 			return;
 		}
-		persistent = {};
+		document.body.classList.add('admin');
+		const persistent = { users:{ [myname]:{} } };
 		get('codebox').value =
-			`persistent.users = persistent.users || { '${myname}':{} };
-			function join(name) {
-				sendAll(name+' has joined', name, 'Welcome, '+name+'!');
-				sendOnly('Users: '+Object.keys(persistent.users).join(', '), name);
-				persistent.users[name] = {};
+			`function join(name) {
+				sendAll(name+' has joined',
+					name, 'Welcome, '+name+'! Users: '+Object.keys(persistent.users).join(', '));
 			}
 			function leave(name) {
 				sendAll(name+' has left');
-				delete persistent.users[name];
 			}
 			function hear(msg, name) {
 				const arr = msg.split(' ');
@@ -269,13 +280,6 @@ socket.once('start', (myname, rooms) => {
 				}
 			}`.replace(/^\t\t\t/gm, '');
 		get('run').disabled = false;
-		get('codebox').style.display = get('toggle').style.display = get('run').style.display = 'block';
-		let bool = false;
-		get('toggle').onclick = () => {
-			get('codebox').style.display = get('run').style.display = bool? 'block': 'none';
-			get('toggle').value = bool? 'Hide': 'Show';
-			bool = !bool;
-		}
 		get('codebox').oninput = () => get('run').disabled = false;
 		get('codebox').onkeydown = e => {
 			if(e.ctrlKey && e.key == 's') {
@@ -314,7 +318,6 @@ socket.once('start', (myname, rooms) => {
 			iframe.src = 'about:blank';
 			document.body.append(iframe);
 			iframe.contentWindow.persistent = persistent;
-			iframe.contentWindow.print = msg => addmsg(msg);
 			iframe.contentWindow.kick = name => socket.emit('kick', name);
 			iframe.contentWindow.change = (id, text) => {
 				change(id, text);
@@ -350,10 +353,17 @@ socket.once('start', (myname, rooms) => {
 			}
 			for(const event of ['join', 'leave', 'hear']) {
 //				iframe.contentWindow[event] = (...arr) => console.log({ 'join':arr[0]+' has joined', 'leave':arr[0]+' has left', 'hear':arr[1]+': '+arr[0] }[event]);
-				iframe.contentWindow[event] = () => {};
 				socket.off(event);
-				socket.on(event, (...arr) => iframe.contentWindow[event](...arr));
 			}
+			socket.on('join', name => {
+				iframe.contentWindow.join?.(name);
+				persistent.users[name] = {};
+			});
+			socket.on('leave', name =>  {
+				delete persistent.users[name];
+				iframe.contentWindow.leave?.(name);
+			});
+			socket.on('hear', (msg, name) => iframe.contentWindow.hear?.(msg, name));
 			try {
 				iframe.contentWindow.eval(get('codebox').value);
 				code = get('codebox').value;
