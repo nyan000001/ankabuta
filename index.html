@@ -153,8 +153,8 @@ socket.once('start', (myname, rooms) => {
 						document.title = '('+msgcount+') ankabuta'+room;
 						interval = setInterval(animate, 400);
 					}
-					div.append(loop(msg));
 				}
+				div.append(loop(msg));
 			}
 			get('log').appendChild(div);
 			div.scrollIntoView();
@@ -397,15 +397,11 @@ socket.once('start', (myname, rooms) => {
 				} else {
 					let [msg1, names, msg2] = arr;
 					if(!msg1) return;
-					if(names) {
-						names = convert(names);
-						if(!names.includes(myname)) {
-							addmsg(msg1);
-						} else if(msg2) {
-							addmsg(msg2);
-						}
-					} else {
+					names = convert(names);
+					if(!names || !names.includes(myname)) {
 						addmsg(msg1);
+					} else if(msg2) {
+						addmsg(msg2);
 					}
 					socket.emit('sendAll', msg1, names, msg2);
 				}
