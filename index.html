@@ -81,8 +81,7 @@ socket.once('start', (myname, rooms) => {
 			get('rooms').appendChild(div);
 		}
 		div.scrollIntoView();
-
-//		addmsg('Connection failed!', true);
+		document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
 		socket.removeAllListeners();
 	});
 	const addroom = room => {
@@ -211,7 +210,6 @@ socket.once('start', (myname, rooms) => {
 				interval = clearInterval(interval);
 				msgcount = 0;
 			}
-			document.title = 'ankabuta';
 			document.removeEventListener('visibilitychange', stopanimation);
 			get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 			const leave = () => {
@@ -232,10 +230,12 @@ socket.once('start', (myname, rooms) => {
 				iframe = null;
 			}
 			if(msg) {
+				document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
 				addmsg(msg, true);
 				get('leave').onclick = () => leave();
 				get('leave').focus();
 			} else {
+				document.title = 'ankabuta';
 				leave();
 			}
 		});
