@@ -341,7 +341,7 @@ socket.once('start', (myname, rooms) => {
 		let code;
 		get('run').onclick = e => {
 			e.preventDefault();
-			if(get('codebox').value.length > 500) {
+			if(get('codebox').value.length > 1101) {
 				localStorage.setItem('code', get('codebox').value);
 			}
 			get('run').disabled = true;
