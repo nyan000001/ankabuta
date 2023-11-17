@@ -7,6 +7,10 @@ app.get('/', (req, res) => {
 app.get('/favicon.ico', (req, res) => {
 	res.sendFile(__dirname + '/favicon.ico');
 });
+/*app.use((req, res) => {
+	res.status(404);
+	res.sendFile(__dirname + '/404.htm');
+});*/
 const admins = {};
 io.on('connection', socket => {
 	const rand = arr => arr[~~(Math.random()*arr.length)];
@@ -55,7 +59,7 @@ io.on('connection', socket => {
 				socket2.emit('leaveroom', 'Disconnected from '+socket.room+'! (Admin has left)');
 				socket2.leave(socket.room);
 				delete socket2.room;
-				for(const listener of ['disconnect', 'leave', 'say']) {
+				for(const listener of ['say', 'leave', 'disconnect']) {
 					socket2.removeAllListeners(listener);
 				}
 			}
@@ -64,11 +68,14 @@ io.on('connection', socket => {
 			} else {
 				io.emit('rmvroom', socket.room);
 			}
+			for(const listener of ['say', 'sendOnly', 'sendAll', 'kick', 'leave', 'disconnect']) {
+				socket.removeAllListeners(listener);
+			}
 		} else {
 			admins[socket.room].emit('leave', socket.name);
-		}
-		for(const listener of ['disconnect', 'leave', 'say', 'sendOnly', 'sendAll', 'change', 'kick']) {
-			socket.removeAllListeners(listener);
+			for(const listener of ['say', 'leave', 'disconnect']) {
+				socket.removeAllListeners(listener);
+			}
 		}
 		socket.leave(socket.room);
 		delete socket.room;
@@ -86,6 +93,7 @@ io.on('connection', socket => {
 			socket.join(socket.room);
 			socket.emit('joinroom', socket.room);
 			admins[socket.room].emit('join', socket.name);
+			socket.on('say', msg => admins[socket.room].emit('hear', msg, socket.name));
 		} else {
 			admins[socket.room] = socket;
 			if(/^#hidden/.test(socket.room)) {
@@ -94,40 +102,48 @@ io.on('connection', socket => {
 				io.emit('addroom', socket.room);
 			}
 			socket.emit('joinroom', socket.room, true);
-		}
-		socket.on('disconnect', () => leave(socket));
-		socket.on('leave', () => leave(socket));
-		socket.on('say', msg => {
-			if(!valid(msg) || admins[socket.room] == socket) return;
-			admins[socket.room].emit('hear', msg, socket.name);
-		});
-
-		if(admins[socket.room] == socket) {
-			const send = async (msg1, names, msg2, bool) => {
+			const send = async (msg1, names, msg2, only, add) => {
 				if(Array.isArray(names)) {
 					const sockets = await io.in(socket.room).fetchSockets();
 					for(const socket2 of sockets) {
-						if(names.includes(socket2.name) == bool) {
-							socket2.emit('hear', msg1);
-						} else if(valid(msg2)) {
-							socket2.emit('hear', msg2);
+						if(add != null) {
+							if(names.includes(socket2.name) == only) {
+								socket2.emit('change', add, msg1);
+							} else if(msg2) {
+								socket2.emit('change', add, msg2);
+							}
+						} else {
+							if(names.includes(socket2.name) == only) {
+								socket2.emit('hear', msg1);
+							} else if(msg2) {
+								socket2.emit('hear', msg2);
+							}
 						}
 					}
 					return true;
 				}
 			}
-			socket.on('sendOnly', (msg1, names, msg2) => {
-				if(!valid(msg1)) return;
-				send(msg1, names, msg2, true);
-			});
-			socket.on('sendAll', async (msg1, names, msg2) => {
-				if(!valid(msg1)) return;
-				if(!await send(msg1, names, msg2, false)) {
-					io.to(socket.room).emit('hear', msg1);
+			socket.on('sendOnly', (...arr) => {
+				if(typeof arr[0] == 'boolean') {
+					const [add, msgs1, names, msgs2] = arr;
+					send(msgs1, names, msgs2, true, add);
+				} else {
+					const [msg1, names, msg2] = arr;
+					send(msg1, names, msg2, true);
 				}
 			});
-			socket.on('change', (id, text) => {
-				io.to(socket.room).emit('change', id, text);
+			socket.on('sendAll', async (...arr) => {
+				if(typeof arr[0] == 'boolean') {
+					const [add, msgs1, names, msgs2] = arr;
+					if(!await send(msgs1, names, msgs2, false, add)) {
+						io.to(socket.room).emit('change', msgs1);
+					}
+				} else {
+					const [msg1, names, msg2] = arr;
+					if(!await send(msg1, names, msg2, false)) {
+						io.to(socket.room).emit('hear', msg1);
+					}
+				}
 			});
 			socket.on('kick', async name => {
 				if(!valid(name)) return;
@@ -137,6 +153,8 @@ io.on('connection', socket => {
 				}
 			});
 		}
+		socket.on('leave', () => leave(socket));
+		socket.on('disconnect', () => leave(socket));
 	});
 });
 http.listen(process.env.PORT || 3000);

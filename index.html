@@ -3,13 +3,13 @@
 <head>
 <title>ankabuta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@500&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@600;750&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
 <style>
-* { font-size:11pt; font-family:'Roboto', 'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; }
+* { font-size:11pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
-textarea:disabled, input:disabled { border-color:#555; background:#ccc; }
+textarea:read-only, input:disabled { border-color:#555; background:#ccc; color:#888; outline:none; }
 textarea, input { border:1px solid #000; border-radius:3px; }
-#log, #sidebar, #leave, #run, #codebox, iframe { display:none; }
+#log, #sidebar, #leave, #run, #codebox, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave { display:block; }
 .joined #rooms { width:150px; display:none; }
 .joined #roomform { margin:0 0 3px 0; }
@@ -17,14 +17,14 @@ textarea, input { border:1px solid #000; border-radius:3px; }
 .admin #codebox, .admin #run { display:block; }
 
 #wrapper { display:flex; padding:1px; position:fixed; width:100%; height:calc(100% - 50px); }
-#wrapper > * { padding:5px; margin:1px 1px 0 1px; }
+#wrapper > *:not(#sidebar) { padding:5px; margin:1px 1px 0 1px; }
 #wrapper > *:not(#codebox) { white-space:pre-wrap; word-break:break-word; overflow-y:auto; }
-#sidebar:blank { display:none; }
+#sidebar:empty { display:none; }
+#youtube { width:200px; }
 #codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
 #log { flex-grow:1; }
 #wrapper > *:not(#log) { flex-shrink:0 }
-.sysmsg { text-shadow:1px 1px 2px #000, 0 0 2px #000, 0 0 2px #000, 0 0 2px #000; color:#fff; }
-#sidebar { width:150px; }
+.sysmsg { font-weight:bold; }
 
 #rooms { width:100%; }
 #roomform { display:flex; margin:15px; justify-content:center; }
@@ -49,8 +49,8 @@ a.myroom { color:#000 !important; cursor:default; }
 </div>
 <form id="msgform">
 <input type="button" id="leave" value="Leave">
-<input type="button" id="run" value="Run">
-<textarea id="msgbox"></textarea>
+<input type="button" id="run" value="Run" disabled>
+<textarea id="msgbox" readonly></textarea>
 <input type="submit" id="say" value="Say" disabled>
 </form>
 <script src="/socket.io/socket.io.js"></script>
@@ -71,7 +71,7 @@ socket.once('start', (myname, rooms) => {
 		socket.emit('join', decodeURI(location.hash));
 	}
 	socket.once('disconnect', () => {
-		get('go').disabled = get('leave').disabled = get('run').disabled = get('say').disabled = true;
+		get('go').disabled = get('leave').disabled = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 		const div = document.createElement('div');
 		div.className = 'sysmsg';
 		div.textContent = 'Connection failed!';
@@ -113,16 +113,32 @@ socket.once('start', (myname, rooms) => {
 		get(room).className = 'myroom';
 		history.replaceState(null, '', document.location.pathname+room);
 		document.title = 'ankabuta'+room;
-		get('say').disabled = false;
+		get('msgbox').readOnly = get('say').disabled = false;
 		get('msgbox').focus();
 		document.body.classList.add('joined');
 		get('leave').onclick = () => socket.emit('leave');
+		const loop = text => {
+			const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])((?:.*?\[\2.*?\2\])*.*?)\2\](.*)/si);
+			if(!match) return text;
+			const frag = document.createDocumentFragment();
+			const span = document.createElement('span');
+			let hex;
+			if(match[2] == '#') {
+				hex = match[3].slice(0, 3);
+				match[3] = match[3].slice(3);
+			}
+			span.style = { '#':'color:#'+hex, '*':'font-weight:bold', '_':'text-decoration:underline', '/':'font-style:italic', '-':'text-decoration:line-through' }[match[2]];
+			span.append(loop(match[3]));
+			frag.append(loop(match[1]), span, loop(match[4]));
+			return frag;
+		}
 		const addmsg = (msg, sys) => {
 			const div = document.createElement('div');
 			if(sys) {
 				div.className = 'sysmsg';
 				div.textContent = msg;
 			} else {
+				if(!msg || typeof msg != 'string') return;
 				msgcount++;
 				if(!interval && document.visibilityState == 'hidden') {
 					let i = 0;
@@ -137,21 +153,6 @@ socket.once('start', (myname, rooms) => {
 					document.title = '('+msgcount+') ankabuta'+room;
 					interval = setInterval(animate, 400);
 				}
-				const loop = text => {
-					const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])(.+?)\2\](.*)/si);
-					if(!match) return text;
-					const frag = document.createDocumentFragment();
-					const span = document.createElement('span');
-					let hex;
-					if(match[2] == '#') {
-						hex = match[3].slice(0, 3);
-						match[3] = match[3].slice(3);
-					}
-					span.style = { '#':'color:#'+hex, '*':'font-weight:bold', '_':'text-decoration:underline', '/':'font-style:italic', '-':'text-decoration:line-through' }[match[2]];
-					span.append(loop(match[3]));
-					frag.append(loop(match[1]), span, loop(match[4]));
-					return frag;
-				}
 				div.append(loop(msg));
 			}
 			get('log').appendChild(div);
@@ -164,23 +165,6 @@ socket.once('start', (myname, rooms) => {
 			msgcount = 0;
 		}
 		document.addEventListener('visibilitychange', stopanimation);
-		const change = (id, text) => {
-			if(id == '' || id == null) {
-				get('sidebar').textContent = '';
-				return;
-			}
-			if(text == null) {
-				get(id)?.remove();
-				return;
-			}
-			id = 'div'+id;
-			const div = get(id) || document.createElement('div');
-			div.textContent = text;
-			if(!div.parentNode) {
-				div.id = id;
-				get('sidebar').append(div);
-			}
-		}
 		get('msgform').onsubmit = e => {
 			e.preventDefault();
 			const msg = get('msgbox').value;
@@ -227,11 +211,11 @@ socket.once('start', (myname, rooms) => {
 			}
 			document.title = 'ankabuta';
 			document.removeEventListener('visibilitychange', stopanimation);
+			get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 			const leave = () => {
 				document.body.removeAttribute('class');
 				get(room).removeAttribute('class');
 				history.pushState(null, '', document.location.pathname);
-				get('say').disabled = true;
 				get('log').textContent = get('sidebar').textContent = '';
 				get('room').focus();
 				if(!admin) {
@@ -247,38 +231,78 @@ socket.once('start', (myname, rooms) => {
 			}
 			if(msg) {
 				addmsg(msg, true);
-				get('run').disabled = get('say').disabled = true;
 				get('leave').onclick = () => leave();
 				get('leave').focus();
 			} else {
 				leave();
 			}
 		});
+		const change = (add, arr) => {
+			if(!arr) {
+				get('sidebar').textContent = '';
+				return;
+			}
+			const isarr = Array.isArray(arr);
+			for(const key in arr) {
+				let id = 'div' + (isarr? arr[key]: key);
+				if(typeof id != 'string') continue;
+				id = id.replace(/\s.*/, '');
+				if(add) {
+					if(typeof arr[key] != 'string') continue;
+					const div = get(id) || document.createElement('div');
+					if(!div.parentNode) {
+						div.id = id;
+					} else {
+						div.textContent = '';
+					}
+					const match = arr[key].match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9a-z_-]{11}/i);
+					if(key == 'youtube' && match) {
+						const youtube = document.createElement('iframe');
+						youtube.id = 'youtube';
+						youtube.allowFullscreen = true;
+						youtube.src = 'https://www.youtube-nocookie.com/embed/'+match[0];
+						div.append(youtube);
+						get('sidebar').prepend(div);
+					} else {
+						div.append(loop(arr[key]));
+						get('sidebar').append(div);
+					}
+				} else {
+					get(id)?.remove();
+				}
+			}
+		}
 		if(!admin) {
 			socket.on('change', change);
 			socket.on('hear', addmsg);
 			return;
 		}
 		document.body.classList.add('admin');
-		const persistent = { users:{ [myname]:{} } };
+		const persistent = { users:{} };
 		console.log(localStorage.getItem('code'));
 		get('codebox').value =
-			`function join(name) {
-				sendAll(name+' has joined',
-					name, 'Welcome, '+name+'! Users: '+Object.keys(persistent.users).join(', '));
+			`const users = persistent.users;
+			const getName = name => users[name].emoji + '[*[#' + users[name].color + (name.replace(/\\d+/, '[#aaa$&#]')) + '#]*]';
+			function join(name) {
+				const emojis = [...'🐱🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐖🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🫏️️'];
+				const num = [...name.replace(/\\d+/, '')].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
+				users[name] = { emoji:emojis[num % emojis.length], color:num.toString(16).slice(0, 3).padStart(3, '0') };
+				sendAll(true, getName(name), name, Object.keys(users).map(name2 => getName(name2)+(name2 == name? ' 🡄 You': '')));
+				sendAll(getName(name)+' has joined', name, 'Welcome, '+getName(name)+'!');
 			}
 			function leave(name) {
-				sendAll(name+' has left');
+				sendAll(getName(name)+' has left');
+				delete users[name];
 			}
 			function hear(msg, name) {
 				const arr = msg.split(' ');
 				const cmd = arr.shift();
 				if(cmd == '/pm') {
-					sendOnly(name+' (private): '+arr.slice(1).join(' '), arr[0]);
+					sendOnly(getName(name)+' (private): '+arr.slice(1).join(' '), arr[0]);
 				} else if(cmd == '/me') {
-					sendAll('* '+name+' '+arr.join(' '));
+					sendAll('* '+getName(name)+' '+arr.join(' '));
 				} else {
-					sendAll(name+': '+msg);
+					sendAll(getName(name)+': '+msg);
 				}
 			}`.replace(/^\t\t\t/gm, '');
 		get('run').disabled = false;
@@ -295,11 +319,11 @@ socket.once('start', (myname, rooms) => {
 				const arr = [text.slice(0, start), text.slice(start, end), text.slice(end)];
 				let num = 0;
 				if(e.shiftKey) {
-					arr[0] = arr[0].replace(/\n\t(?!.*\n)/, '\n');
+					arr[0] = arr[0].replace(/(^|\n)\t(?!.*\n)/, '$1');
 					arr[1] = arr[1].replace(/\n\t/g, '\n');
 				} else {
 					if(arr[1].includes('\n')) {
-						arr[0] = arr[0].replace(/\n(?!.*\n)/, '\n\t');
+						arr[0] = arr[0].replace(/(^|\n)(?!.*\n)/, '$1\t');
 						arr[1] = arr[1].replace(/\n/g, '\n\t');
 					} else {
 						arr[1] = '\t';
@@ -313,6 +337,7 @@ socket.once('start', (myname, rooms) => {
 			}
 		}
 		iframe = document.createElement('iframe');
+		iframe.id = 'iframe';
 		let code;
 		get('run').onclick = e => {
 			e.preventDefault();
@@ -324,53 +349,73 @@ socket.once('start', (myname, rooms) => {
 			document.body.append(iframe);
 			iframe.contentWindow.persistent = persistent;
 			iframe.contentWindow.kick = name => socket.emit('kick', name);
-			iframe.contentWindow.change = (id, text) => {
-				change(id, text);
-				socket.emit('change', id, text);
-			}
-			iframe.contentWindow.sendOnly = (msg1, names, msg2) => {
-				if(!msg1 || !names) return;
-				if(!Array.isArray(names)) {
-					names = [names];
-				}
-				if(names.includes(myname)) {
-					addmsg(msg1);
-				} else if(msg2) {
-					addmsg(msg2);
-				}
-				socket.emit('sendOnly', msg1, names, msg2);
-			}
-			iframe.contentWindow.sendAll = (msg1, names, msg2) => {
-				if(!msg1) return;
-				if(names) {
-					if(!Array.isArray(names)) {
-						names = [names];
+			const convert = x => !x || Array.isArray(x) || Object(x) === x? x: [x];
+			iframe.contentWindow.sendOnly = (...arr) => {
+				if(typeof arr[0] == 'boolean') {
+					let [add, msgs1, names, msgs2] = arr;
+					msgs1 = convert(msgs1);
+					names = convert(names);
+					msgs2 = convert(msgs2);
+					if(names.includes(myname)) {
+						change(add, msgs1);
+					} else if(msgs2) {
+						change(add, msgs2);
 					}
-					if(!names.includes(myname)) {
+					socket.emit('sendOnly', add, msgs1, names, msgs2);
+				} else {
+					let [msg1, names, msg2] = arr;
+					if(!msg1 || !names) return;
+					names = convert(names);
+					if(names.includes(myname)) {
 						addmsg(msg1);
 					} else if(msg2) {
 						addmsg(msg2);
 					}
-				} else {
-					addmsg(msg1);
+					socket.emit('sendOnly', msg1, names, msg2);
 				}
-				socket.emit('sendAll', msg1, names, msg2);
+			}
+			iframe.contentWindow.sendAll = (...arr) => {
+				if(typeof arr[0] == 'boolean') {
+					let [add, msgs1, names, msgs2] = arr;
+					msgs1 = convert(msgs1);
+					if(names) {
+						names = convert(names);
+						msgs2 = convert(msgs2);
+						if(!names.includes(myname)) {
+							change(add, msgs1);
+						} else if(msgs2) {
+							change(add, msgs2);
+						}
+					} else {
+						change(add, msgs1);						
+					}
+					socket.emit('sendAll', add, msgs1, names, msgs2);
+				} else {
+					let [msg1, names, msg2] = arr;
+					if(!msg1) return;
+					if(names) {
+						names = convert(names);
+						if(!names.includes(myname)) {
+							addmsg(msg1);
+						} else if(msg2) {
+							addmsg(msg2);
+						}
+					} else {
+						addmsg(msg1);
+					}
+					socket.emit('sendAll', msg1, names, msg2);
+				}
 			}
 			for(const event of ['join', 'leave', 'hear']) {
 //				iframe.contentWindow[event] = (...arr) => console.log({ 'join':arr[0]+' has joined', 'leave':arr[0]+' has left', 'hear':arr[1]+': '+arr[0] }[event]);
 				socket.off(event);
 			}
-			socket.on('join', name => {
-				iframe.contentWindow.join?.(name);
-				persistent.users[name] = {};
-			});
-			socket.on('leave', name =>  {
-				delete persistent.users[name];
-				iframe.contentWindow.leave?.(name);
-			});
+			socket.on('join', name => iframe.contentWindow.join?.(name));
+			socket.on('leave', name => iframe.contentWindow.leave?.(name));
 			socket.on('hear', (msg, name) => iframe.contentWindow.hear?.(msg, name));
 			try {
 				iframe.contentWindow.eval(get('codebox').value);
+				iframe.contentWindow.join?.(myname);
 				code = get('codebox').value;
 			} catch(err) {
 				console.error(err);
