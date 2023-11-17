@@ -139,21 +139,23 @@ socket.once('start', (myname, rooms) => {
 				div.textContent = msg;
 			} else {
 				if(!msg || typeof msg != 'string') return;
-				msgcount++;
-				if(!interval && document.visibilityState == 'hidden') {
-					let i = 0;
-					const animate = () => {
-						let title = [...('ankabuta'+room)];
-						title[i] = title[i].toUpperCase();
-						do {
-							i = (i + 1) % title.length;
-						} while(title[i] == title[i].toUpperCase());
-						document.title = '('+msgcount+') '+title.join('');
-					};
-					document.title = '('+msgcount+') ankabuta'+room;
-					interval = setInterval(animate, 400);
+				if(document.visibilityState == 'hidden') {
+					msgcount++;
+					if(!interval) {
+						let i = 0;
+						const animate = () => {
+							let title = [...('ankabuta'+room)];
+							title[i] = title[i].toUpperCase();
+							do {
+								i = (i + 1) % title.length;
+							} while(title[i] == title[i].toUpperCase());
+							document.title = '('+msgcount+') '+title.join('');
+						};
+						document.title = '('+msgcount+') ankabuta'+room;
+						interval = setInterval(animate, 400);
+					}
+					div.append(loop(msg));
 				}
-				div.append(loop(msg));
 			}
 			get('log').appendChild(div);
 			div.scrollIntoView();
@@ -280,18 +282,20 @@ socket.once('start', (myname, rooms) => {
 		document.body.classList.add('admin');
 		const persistent = { users:{} };
 		console.log(localStorage.getItem('code'));
-		get('codebox').value =
+		const defaultcode = get('codebox').value =
 			`const users = persistent.users;
 			const getName = name => users[name].emoji + '[*[#' + users[name].color + (name.replace(/\\d+/, '[#aaa$&#]')) + '#]*]';
 			function join(name) {
 				const emojis = [...'🐱🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐖🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🫏️️'];
 				const num = [...name.replace(/\\d+/, '')].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
+				sendOnly(true, Object.keys(users), name);
 				users[name] = { emoji:emojis[num % emojis.length], color:num.toString(16).slice(0, 3).padStart(3, '0') };
-				sendAll(true, getName(name), name, Object.keys(users).map(name2 => getName(name2)+(name2 == name? ' 🡄 You': '')));
+				sendAll(true, name, name, name+' 🡄 You');
 				sendAll(getName(name)+' has joined', name, 'Welcome, '+getName(name)+'!');
 			}
 			function leave(name) {
 				sendAll(getName(name)+' has left');
+				sendAll(false, name);
 				delete users[name];
 			}
 			function hear(msg, name) {
@@ -341,7 +345,7 @@ socket.once('start', (myname, rooms) => {
 		let code;
 		get('run').onclick = e => {
 			e.preventDefault();
-			if(get('codebox').value.length > 1101) {
+			if(get('codebox').value.length > defaultcode.length) {
 				localStorage.setItem('code', get('codebox').value);
 			}
 			get('run').disabled = true;
@@ -356,7 +360,7 @@ socket.once('start', (myname, rooms) => {
 					msgs1 = convert(msgs1);
 					names = convert(names);
 					msgs2 = convert(msgs2);
-					if(names.includes(myname)) {
+					if(names?.includes(myname)) {
 						change(add, msgs1);
 					} else if(msgs2) {
 						change(add, msgs2);
@@ -366,7 +370,7 @@ socket.once('start', (myname, rooms) => {
 					let [msg1, names, msg2] = arr;
 					if(!msg1 || !names) return;
 					names = convert(names);
-					if(names.includes(myname)) {
+					if(names?.includes(myname)) {
 						addmsg(msg1);
 					} else if(msg2) {
 						addmsg(msg2);
