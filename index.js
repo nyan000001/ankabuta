@@ -144,7 +144,10 @@ io.on('connection', socket => {
 			socket.on('kick', async name => {
 				if(!valid(name)) return;
 				const sockets = await io.in(name).fetchSockets();
-				if(sockets[0]?.room == socket.room) {
+				if(name == socket.room) {
+					leave(socket);
+				} else {
+					if(sockets[0]?.room != socket.room) return;
 					leave(sockets[0], 'You\'ve been kicked from '+socket.room+'!', socket.name+' has been kicked');
 				}
 			});
