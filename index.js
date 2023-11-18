@@ -1,21 +1,15 @@
 const app = require('express')();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
-app.get('/', (req, res) => {
-	res.sendFile(__dirname + '/index.html');
-});
-app.get('/favicon.ico', (req, res) => {
-	res.sendFile(__dirname + '/favicon.ico');
-});
-/*app.use((req, res) => {
-	res.status(404);
-	res.sendFile(__dirname + '/404.htm');
-});*/
+app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
+app.use((req, res) => res.redirect('/'));
 const admins = {};
+let time = 0;
 io.on('connection', socket => {
+	if(time > Date.now() - 600000) return; // 10 minutes
 	const rand = arr => arr[~~(Math.random()*arr.length)];
 	const sockets = [...io.sockets.sockets.values()];
-	socket.ip = socket.handshake.address;
 	const socket2 = sockets.find(socket2 => socket2 != socket && socket2.ip == socket.ip);
 	let name;
 	let taken = true;
@@ -23,16 +17,22 @@ io.on('connection', socket => {
 		name = socket2.name.replace(/\d+/, '');
 	} else {
 		for(let i = 0; i < 1000; i++) {
-			name = '';
-			if(Math.random() < .9) {
-				name += rand(['ch', 'f', 'h', 'k', 'l', 'm', 'n', 'ny', 'p', 'r', 's', 't', 'w', 'x', 'y']);
-			}
-			name += rand('aeiou');
-			if(Math.random() < .7) {
-				name += rand(['ch', 'f', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'ss', 't', 'w', 'x', 'zz']) + rand('aeiou');
+			name = rand(['b', 'ch', 'f', 'h', 'k', 'l', 'm', 'n', 'ny', 'p', 'r', 's', 'sh', 't', 'w', 'x', 'y']) + rand('aeiou');
+			if(Math.random() < .8) {
+				name = rand([
+					name + rand(['ch', 'ff', 'h', 'ck', 'll', 'm', 'n', 'p', 'r', 'ss', 't', 'w', 'x', 'zz']) + rand(['', '', '', 'a', 'e', 'i', 'o', 'u']),
+					name + rand(['bbo', 'ggo', 'kku', 'll', 'mba', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tty', 'tzy', 'xter']),
+					rand(['ch', 'hu', 'tz', 'c', 'm', 'n', 'p', 't', 'x', 'y']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli'])
+				]);
 			} else {
-				name += rand(['bbo', 'ggo', 'll', 'mba', 'ndy', 'ng', 'ngo', 'nter', 'pper', 'ppy', 'ster', 'tty']);
+				name = rand([
+					name + rand('dnrst') + rand('aei') + rand(['lm', 'nd', 'nk', 'll', 'ss']) + 'a',
+					rand('bkw') + 'a' + rand('hlz') + 'oo',
+					rand(['b', 'h', 'k', 'l', 't', 'w', 'xi', 'y']) + 'ao',
+					rand('bhkltw') + 'ai'
+				]);
 			}
+			if(/^[^cxz]+tl|huo.+tl|x.+x|c.+c/.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
 			if(sockets.every(socket2 => socket2.name != name)) {
 				taken = false;
@@ -50,8 +50,8 @@ io.on('connection', socket => {
 	socket.name = name;
 	socket.join(socket.name);
 	socket.emit('start', socket.name, Object.keys(admins));
-	const leave = async (socket, msg) => {
-		socket.emit('leaveroom', msg);
+	const leave = async (socket, msg1, msg2) => {
+		socket.emit('leaveroom', msg1);
 		if(admins[socket.room] == socket) {
 			const sockets = await io.in(socket.room).fetchSockets();
 			delete admins[socket.room];
@@ -72,7 +72,7 @@ io.on('connection', socket => {
 				socket.removeAllListeners(listener);
 			}
 		} else {
-			admins[socket.room].emit('leave', socket.name);
+			admins[socket.room].emit('leave', msg2, socket.name);
 			for(const listener of ['say', 'leave', 'disconnect']) {
 				socket.removeAllListeners(listener);
 			}
@@ -149,12 +149,30 @@ io.on('connection', socket => {
 				if(!valid(name)) return;
 				const sockets = await io.in(name).fetchSockets();
 				if(sockets[0]?.room == socket.room) {
-					leave(sockets[0], 'You\'ve been kicked from '+socket.room+'!');
+					leave(sockets[0], 'You\'ve been kicked from '+socket.room+'!', socket.name+' has been kicked');
 				}
 			});
 		}
 		socket.on('leave', () => leave(socket));
-		socket.on('disconnect', () => leave(socket));
+		socket.on('disconnect', () => leave(socket, null, socket.name+' has disconnected'));
+	});
+	socket.onAny((...arr) => {
+		arr = [socket.ip, socket.name, socket.room, ...arr];
+		console.log(arr);
+		io.to('admin').emit('log', arr);
+	});
+	socket.once('sudo', password => {
+		if(password != process.env.PASSWORD) return;
+		socket.join('admin');
+		socket.on('ban', async (name, password) => {
+			if(name[0] == '#') {
+				admins[name]?.disconnect();
+			} else {
+				const sockets = await io.in(name).fetchSockets();
+				sockets[0]?.disconnect();
+			}
+			time = Date.now();
+		});
 	});
 });
-http.listen(process.env.PORT || 3000);
+http.listen(process.env.PORT ?? 3000);

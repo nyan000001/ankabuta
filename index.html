@@ -7,7 +7,7 @@
 <style>
 * { font-size:11pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
-textarea:read-only, input:disabled { border-color:#555; background:#ccc; color:#888; outline:none; }
+#msgbox:read-only, #room:read-only, input:disabled { border-color:#555; background:#ccc; color:#888; outline:none; }
 textarea, input { border:1px solid #000; border-radius:3px; }
 #log, #sidebar, #leave, #run, #codebox, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave { display:block; }
@@ -27,6 +27,7 @@ textarea, input { border:1px solid #000; border-radius:3px; }
 .sysmsg { font-weight:bold; }
 
 #rooms { width:100%; }
+#rooms .sysmsg { text-align:center; }
 #roomform { display:flex; margin:15px; justify-content:center; }
 #roomform > input { margin:1px; }
 #room { min-width:10px; }
@@ -38,6 +39,17 @@ a.myroom { color:#000 !important; cursor:default; }
 #msgform > * { margin:0 1px 1px 1px; }
 #msgform > input { width:80px; }
 #msgbox { flex-grow:1; resize:none; padding:5px; }
+
+@media (prefers-color-scheme:dark) {
+	body, input, textarea { background:#000; color:#fff; border-color:#999; }
+	textarea:focus, input:focus { outline-color:#999; background:#111; }
+	#msgbox:read-only, #room:read-only, input:disabled { background:#000; color:#444; }
+	::-webkit-scrollbar { width:10px; height:10px; }
+	::-webkit-scrollbar-track { background:#222; }
+	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
+	::-webkit-scrollbar-corner { background:#222; }
+	::-webkit-resizer { border-width: 8px; border-style: solid; border-color: transparent #999 #999 transparent; }
+}
 </style>
 </head>
 <body>
@@ -58,7 +70,6 @@ a.myroom { color:#000 !important; cursor:default; }
 const socket = io();
 socket.once('start', (myname, rooms) => {
 	const get = id => document.getElementById(id);
-	let iframe;
 	let interval;
 	let msgcount = 0;
 	const msgs = [];
@@ -71,14 +82,14 @@ socket.once('start', (myname, rooms) => {
 		socket.emit('join', decodeURI(location.hash));
 	}
 	socket.once('disconnect', () => {
-		get('go').disabled = get('leave').disabled = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
+		get('msgbox').readOnly = get('go').disabled = get('leave').disabled = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 		const div = document.createElement('div');
 		div.className = 'sysmsg';
 		div.textContent = 'Connection failed!';
 		if(document.body.classList.contains('joined')) {
 			get('log').appendChild(div);
 		} else {
-			get('rooms').appendChild(div);
+			get('roomform').after(div);
 		}
 		div.scrollIntoView();
 		document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
@@ -108,10 +119,11 @@ socket.once('start', (myname, rooms) => {
 	socket.on('addroom', addroom);
 	socket.on('rmvroom', room => get(room).remove());
 	socket.on('joinroom', (room, admin) => {
+		let iframe;
 		console.log('hi'); //
 		get(room).className = 'myroom';
-		history.replaceState(null, '', document.location.pathname+room);
 		document.title = 'ankabuta'+room;
+		history.replaceState(null, '', room);
 		get('msgbox').readOnly = get('say').disabled = false;
 		get('msgbox').focus();
 		document.body.classList.add('joined');
@@ -213,9 +225,9 @@ socket.once('start', (myname, rooms) => {
 			document.removeEventListener('visibilitychange', stopanimation);
 			get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 			const leave = () => {
+				history.replaceState(null, '', document.location.pathname);
 				document.body.removeAttribute('class');
-				get(room).removeAttribute('class');
-				history.pushState(null, '', document.location.pathname);
+				get(room)?.removeAttribute('class');
 				get('log').textContent = get('sidebar').textContent = '';
 				get('room').focus();
 				if(!admin) {
@@ -293,8 +305,8 @@ socket.once('start', (myname, rooms) => {
 				sendAll(true, name, name, name+' 🡄 You');
 				sendAll(getName(name)+' has joined', name, 'Welcome, '+getName(name)+'!');
 			}
-			function leave(name) {
-				sendAll(getName(name)+' has left');
+			function leave(msg, name) {
+				sendAll(msg);
 				sendAll(false, name);
 				delete users[name];
 			}
@@ -420,7 +432,7 @@ socket.once('start', (myname, rooms) => {
 			} catch(err) {
 				console.error(err);
 				addmsg(err.name+': '+err.message, true);
-				iframe.contentWindow.eval(code);/*
+				iframe.contentWindow.eval(code);
 				const arr = get('codebox').value.split('\n');
 				const match = err.stack.match(/<anonymous>:(\d+):(\d+)/);
 				if(match) {
@@ -431,12 +443,14 @@ socket.once('start', (myname, rooms) => {
 						index += arr[i].length + 1; // +1 for the linebreak
 					}
 					get('codebox').selectionStart = get('codebox').selectionEnd = index + col;
-					get('codebox').focus();
-				}*/
+				}
 			}
 		}
 		get('run').click();
 	});
+	socket.on('log', arr => {
+		console.log(...arr);
+	})
 });
 </script>
 </body>
