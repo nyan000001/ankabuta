@@ -10,34 +10,29 @@ io.on('connection', socket => {
 	if(time > Date.now() - 600000) return; // 10 minutes
 	const rand = arr => arr[~~(Math.random()*arr.length)];
 	const sockets = [...io.sockets.sockets.values()];
-	const socket2 = sockets.find(socket2 => socket2 != socket && socket2.ip == socket.ip);
 	let name;
 	let taken = true;
-	if(socket2) {
-		name = socket2.name.replace(/\d+/, '');
-	} else {
-		for(let i = 0; i < 1000; i++) {
-			name = rand(['b', 'ch', 'f', 'h', 'k', 'l', 'm', 'n', 'ny', 'p', 'r', 's', 'sh', 't', 'w', 'x', 'y']) + rand('aeiou');
-			if(Math.random() < .8) {
-				name = rand([
-					name + rand(['ch', 'ff', 'h', 'ck', 'll', 'm', 'n', 'p', 'r', 'ss', 't', 'w', 'x', 'zz']) + rand(['', '', '', 'a', 'e', 'i', 'o', 'u']),
-					name + rand(['bbo', 'ggo', 'kku', 'll', 'mba', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tty', 'tzy', 'xter']),
-					rand(['ch', 'hu', 'tz', 'c', 'm', 'n', 'p', 't', 'x', 'y']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli'])
-				]);
-			} else {
-				name = rand([
-					name + rand('dnrst') + rand('aei') + rand(['lm', 'nd', 'nk', 'll', 'ss']) + 'a',
-					rand('bkw') + 'a' + rand('hlz') + 'oo',
-					rand(['b', 'h', 'k', 'l', 't', 'w', 'xi', 'y']) + 'ao',
-					rand('bhkltw') + 'ai'
-				]);
-			}
-			if(/^[^cxz]+tl|huo.+tl|x.+x|c.+c/.test(name)) continue;
-			//name = name[0].toUpperCase() + name.slice(1);
-			if(sockets.every(socket2 => socket2.name != name)) {
-				taken = false;
-				break;
-			}
+	for(let i = 0; i < 1000; i++) {
+		name = rand(['b', 'ch', 'f', 'h', 'k', 'l', 'm', 'n', 'ny', 'p', 'r', 's', 'sh', 't', 'w', 'x', 'y']) + rand('aeiou');
+		if(Math.random() < .8) {
+			name = rand([
+				name + rand(['ch', 'ff', 'h', 'ck', 'll', 'm', 'n', 'p', 'r', 'ss', 't', 'w', 'x', 'zz']) + rand(['', '', '', 'a', 'e', 'i', 'o', 'u']),
+				name + rand(['bbo', 'ggo', 'kku', 'll', 'mba', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tty', 'tzy', 'xter']),
+				rand(['ch', 'hu', 'tz', 'c', 'm', 'n', 'p', 't', 'x', 'y']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli'])
+			]);
+		} else {
+			name = rand([
+				name + rand('dnrst') + rand('aei') + rand(['lm', 'nd', 'nk', 'll', 'ss']) + 'a',
+				rand('bkw') + 'a' + rand('hlz') + 'oo',
+				rand(['b', 'h', 'k', 'l', 't', 'w', 'xi', 'y']) + 'ao',
+				rand('bhkltw') + 'ai'
+			]);
+		}
+		if(/^[^cxz]+tl|huo.+tl|x.+x|c.+c/.test(name)) continue;
+		//name = name[0].toUpperCase() + name.slice(1);
+		if(sockets.every(socket2 => socket2.name != name)) {
+			taken = false;
+			break;
 		}
 	}
 	if(taken) {
@@ -49,7 +44,7 @@ io.on('connection', socket => {
 	}
 	socket.name = name;
 	socket.join(socket.name);
-	socket.emit('start', socket.name, Object.keys(admins));
+	socket.emit('start', socket.name, Object.keys(admins).filter(room => !/^#hidden/.test(room)));
 	const leave = async (socket, msg1, msg2) => {
 		socket.emit('leaveroom', msg1);
 		if(admins[socket.room] == socket) {
@@ -64,7 +59,8 @@ io.on('connection', socket => {
 				}
 			}
 			if(/^#hidden/.test(socket.room)) {
-				io.to(socket.room).emit('rmvroom', socket.room);
+				socket.emit('rmvroom', socket.room);
+				socket.to(socket.room).emit('rmvroom', socket.room);
 			} else {
 				io.emit('rmvroom', socket.room);
 			}
@@ -153,7 +149,7 @@ io.on('connection', socket => {
 				}
 			});
 		}
-		socket.on('leave', () => leave(socket));
+		socket.on('leave', () => leave(socket, null, socket.name+' has left'));
 		socket.on('disconnect', () => leave(socket, null, socket.name+' has disconnected'));
 	});
 	socket.onAny((...arr) => {

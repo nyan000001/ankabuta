@@ -186,6 +186,7 @@ socket.once('start', (myname, rooms) => {
 			const arr = msg.split(' ');
 			const cmd = arr.shift();
 			if(msg[0] == '/') addmsg(msg, true);
+			get('msgbox').value = '';
 			if(/^\/(join|j)$/.test(cmd)) {
 				socket.emit('join', arr.join(' '));
 			} else if(/^\/(leave|l)$/.test(cmd)) {
@@ -193,7 +194,9 @@ socket.once('start', (myname, rooms) => {
 			} else if(/^\/(clear|c)$/.test(cmd)) {
 				get('log').textContent = '';
 			} else if(iframe) {
-				if(/^\/(kick|k)$/.test(cmd)) {
+				if(/^\/restore$/.test(cmd) && localStorage.getItem('code')) {
+					get('codebox').value = localStorage.getItem('code');
+				} else if(/^\/(kick|k)$/.test(cmd)) {
 					socket.emit('kick', arr.join(' '));
 				} else {
 					iframe.contentWindow.hear?.(msg, myname);
@@ -201,7 +204,6 @@ socket.once('start', (myname, rooms) => {
 			} else {
 				socket.emit('say', msg);
 			}
-			get('msgbox').value = '';
 		}
 		get('msgbox').onkeydown = e => {
 			if(e.ctrlKey && e.key == 'ArrowUp') {
@@ -291,9 +293,12 @@ socket.once('start', (myname, rooms) => {
 			socket.on('hear', addmsg);
 			return;
 		}
+		if(localStorage.getItem('code')) {
+			get('msgbox').placeholder = '/resume';
+			setTimeout(() => get('msgbox').placeholder = '', 5000);
+		}
 		document.body.classList.add('admin');
 		const persistent = { users:{} };
-		console.log(localStorage.getItem('code'));
 		const defaultcode = get('codebox').value =
 			`const users = persistent.users;
 			const getName = name => users[name].emoji + '[*[#' + users[name].color + (name.replace(/\\d+/, '[#aaa$&#]')) + '#]*]';
@@ -423,7 +428,7 @@ socket.once('start', (myname, rooms) => {
 				socket.off(event);
 			}
 			socket.on('join', name => iframe.contentWindow.join?.(name));
-			socket.on('leave', name => iframe.contentWindow.leave?.(name));
+			socket.on('leave', (msg, name) => iframe.contentWindow.leave?.(msg, name));
 			socket.on('hear', (msg, name) => iframe.contentWindow.hear?.(msg, name));
 			try {
 				iframe.contentWindow.eval(get('codebox').value);
