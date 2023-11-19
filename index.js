@@ -136,7 +136,7 @@ io.on('connection', socket => {
 				if(typeof arr[0] == 'boolean') {
 					const [add, msgs1, names, msgs2] = arr;
 					if(!await send(msgs1, names, msgs2, false, add)) {
-						io.to(socket.room).emit('change', msgs1);
+						io.to(socket.room).emit('change', add, msgs1);
 					}
 				} else {
 					const [msg1, names, msg2] = arr;
