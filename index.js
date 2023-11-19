@@ -47,7 +47,7 @@ io.on('connection', socket => {
 	}
 	socket.name = name;
 	socket.join(socket.name);
-	socket.emit('start', socket.name, Object.keys(admins).filter(room => room.includes('hidden')));
+	socket.emit('start', socket.name, Object.keys(admins).filter(room => !room.includes('hidden')));
 	const leave = async (socket, msg1, msg2) => {
 		socket.emit('leaveroom', msg1);
 		if(admins[socket.room] == socket) {
@@ -163,7 +163,7 @@ io.on('connection', socket => {
 		io.to('admin').emit('log', socket.name, socket.room, ...arr);
 	});
 	socket.once('sudo', password => {
-		if(password != (process.env.PASSWORD || 'password')) return;
+		if(password != process.env.PASSWORD) return;
 		socket.emit('getrooms', Object.keys(admins));
 		socket.join('admin');
 		socket.on('ban', async (name, password, mins = 1) => {
