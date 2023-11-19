@@ -3,12 +3,13 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
+app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
 app.use((req, res) => res.redirect('/'));
 const admins = {};
 let time = 0;
 io.on('connection', socket => {
-	if(time > Date.now() - 600000) return; // 10 minutes
-	const rand = arr => arr[~~(Math.random()*arr.length)];
+	if(time > Date.now()) return; // 10 minutes
+	const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
 	const sockets = [...io.sockets.sockets.values()];
 	let name;
 	let taken = true;
@@ -16,19 +17,21 @@ io.on('connection', socket => {
 		name = rand(['b', 'ch', 'f', 'h', 'k', 'l', 'm', 'n', 'ny', 'p', 'r', 's', 'sh', 't', 'w', 'x', 'y']) + rand('aeiou');
 		if(Math.random() < .8) {
 			name = rand([
-				name + rand(['ch', 'ff', 'h', 'ck', 'll', 'm', 'n', 'p', 'r', 'ss', 't', 'w', 'x', 'zz']) + rand(['', '', '', 'a', 'e', 'i', 'o', 'u']),
+				name + rand(['ch', 'ff', 'h', 'ck', 'll', 'm', 'n', 'p', 'r', 'ss', 't', 'w', 'x', 'zz']) + rand(['a', 'e', 'i', 'o', 'u'], .5),
 				name + rand(['bbo', 'ggo', 'kku', 'll', 'mba', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tty', 'tzy', 'xter']),
-				rand(['ch', 'hu', 'tz', 'c', 'm', 'n', 'p', 't', 'x', 'y']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli'])
+				rand(['b', 'd', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 's', 't', 'tx', 'z']) + rand('aeiou') + rand(['b', 'd', 'g', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'rr', 's', 't', 'z']) + rand('aeiou') + rand(['l', 'n', 'r', '#ts', '#tz']).replace('#', rand('lnr', .5)),
+				rand(['b', 'd', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 's', 't', 'tx', 'z']) + rand('aeiou') + rand(['b', 'd', 'g', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'rr', 's', 't', '#ts', '#tz', 'z']).replace('#', rand('lnr', .5)) + rand('aeiou')
 			]);
 		} else {
 			name = rand([
+				rand(['ch', 'hu', 'tz', 'c', 'm', 'n', 'p', 't', 'x', 'y']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli']),
 				name + rand('dnrst') + rand('aei') + rand(['lm', 'nd', 'nk', 'll', 'ss']) + 'a',
 				rand('bkw') + 'a' + rand('hlz') + 'oo',
 				rand(['b', 'h', 'k', 'l', 't', 'w', 'xi', 'y']) + 'ao',
 				rand('bhkltw') + 'ai'
 			]);
 		}
-		if(/^[^cxz]+tl|huo.+tl|x.+x|c.+c/.test(name)) continue;
+		if(/([chkrxz]).+\1|^[^cxz]+tl|huo.+tl|n.g|f.[gk]|d.k|b.t|p.s|sh.t|[bd].c|ch.n|k.n|[hw]o|nyi/.test(name)) continue;
 		//name = name[0].toUpperCase() + name.slice(1);
 		if(sockets.every(socket2 => socket2.name != name)) {
 			taken = false;
@@ -44,21 +47,21 @@ io.on('connection', socket => {
 	}
 	socket.name = name;
 	socket.join(socket.name);
-	socket.emit('start', socket.name, Object.keys(admins).filter(room => !/^#hidden/.test(room)));
+	socket.emit('start', socket.name, Object.keys(admins).filter(room => room.includes('hidden')));
 	const leave = async (socket, msg1, msg2) => {
 		socket.emit('leaveroom', msg1);
 		if(admins[socket.room] == socket) {
 			const sockets = await io.in(socket.room).fetchSockets();
 			delete admins[socket.room];
 			for(const socket2 of sockets) {
-				socket2.emit('leaveroom', 'Disconnected from '+socket.room+'! (Admin has left)');
+				socket2.emit('leaveroom', 'Disconnected from '+socket.room+'! (Admin '+msg2+')');
 				socket2.leave(socket.room);
 				delete socket2.room;
 				for(const listener of ['say', 'leave', 'disconnect']) {
 					socket2.removeAllListeners(listener);
 				}
 			}
-			if(/^#hidden/.test(socket.room)) {
+			if(socket.room.includes('hidden')) {
 				socket.emit('rmvroom', socket.room);
 				socket.to(socket.room).emit('rmvroom', socket.room);
 			} else {
@@ -82,7 +85,7 @@ io.on('connection', socket => {
 		room = room.replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
 		if(socket.room) {
 			if(socket.room == room) return;
-			await leave(socket);
+			await leave(socket, null, 'has gone to another room');
 		}
 		socket.room = room;
 		if(admins[socket.room]) {
@@ -92,7 +95,7 @@ io.on('connection', socket => {
 			socket.on('say', msg => admins[socket.room].emit('hear', msg, socket.name));
 		} else {
 			admins[socket.room] = socket;
-			if(/^#hidden/.test(socket.room)) {
+			if(socket.room.includes('hidden')) {
 				socket.emit('addroom', socket.room);
 			} else {
 				io.emit('addroom', socket.room);
@@ -145,32 +148,32 @@ io.on('connection', socket => {
 				if(!valid(name)) return;
 				const sockets = await io.in(name).fetchSockets();
 				if(name == socket.room) {
-					leave(socket);
+					leave(socket, null, 'has kicked the room');
 				} else {
 					if(sockets[0]?.room != socket.room) return;
-					leave(sockets[0], 'You\'ve been kicked from '+socket.room+'!', socket.name+' has been kicked');
+					leave(sockets[0], 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
 				}
 			});
 		}
-		socket.on('leave', () => leave(socket, null, socket.name+' has left'));
-		socket.on('disconnect', () => leave(socket, null, socket.name+' has disconnected'));
+		socket.on('leave', () => leave(socket, null, 'has left'));
+		socket.on('disconnect', () => leave(socket, null, 'has disconnected'));
 	});
 	socket.onAny((...arr) => {
-		arr = [socket.ip, socket.name, socket.room, ...arr];
-		console.log(arr);
-		io.to('admin').emit('log', arr);
+		console.log(socket.name, socket.room, ...arr);
+		io.to('admin').emit('log', socket.name, socket.room, ...arr);
 	});
 	socket.once('sudo', password => {
-		if(password != process.env.PASSWORD) return;
+		if(password != (process.env.PASSWORD || 'password')) return;
+		socket.emit('getrooms', Object.keys(admins));
 		socket.join('admin');
-		socket.on('ban', async (name, password) => {
+		socket.on('ban', async (name, password, mins = 1) => {
 			if(name[0] == '#') {
 				admins[name]?.disconnect();
 			} else {
 				const sockets = await io.in(name).fetchSockets();
 				sockets[0]?.disconnect();
 			}
-			time = Date.now();
+			time = Date.now() + mins * 60000;
 		});
 	});
 });
