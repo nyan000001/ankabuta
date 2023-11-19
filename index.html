@@ -311,13 +311,12 @@ socket.once('start', (myname, rooms) => {
 				const num = [...name.replace(/\\d+/, '')].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
 				sendOnly(true, Object.keys(users), name);
 				users[name] = { emoji:emojis[num % emojis.length], color:['f00', 'cc0', '0f0', '0cc', '03f'][~~(Math.random()*5)] };
-				sendAll(true, name, name, name+' 🡄 You');
+				sendAll(true, name, name, { [name]:name+' 🡄 You' });
 				sendAll(getName(name)+' has joined', name, 'Welcome, '+getName(name)+'!');
 			}
 			function leave(msg, name) {
 				sendAll(getName(name)+' '+msg);
 				sendAll(false, name);
-				delete users[name];
 			}
 			function hear(msg, name) {
 				const arr = msg.split(' ');

@@ -6,6 +6,7 @@ app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
 app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
 app.use((req, res) => res.redirect('/'));
 const admins = {};
+const records = [];
 let time = 0;
 io.on('connection', socket => {
 	if(time > Date.now()) return; // 10 minutes
@@ -19,8 +20,8 @@ io.on('connection', socket => {
 			name = rand([
 				name + rand(['ch', 'ff', 'h', 'ck', 'll', 'm', 'n', 'p', 'r', 'ss', 't', 'w', 'x', 'zz']) + rand(['a', 'e', 'i', 'o', 'u'], .5),
 				name + rand(['bbo', 'ggo', 'kku', 'll', 'mba', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tty', 'tzy', 'xter']),
-				rand(['b', 'd', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 's', 't', 'tx', 'z']) + rand('aeiou') + rand(['b', 'd', 'g', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'rr', 's', 't', 'z']) + rand('aeiou') + rand(['l', 'n', 'r', '#ts', '#tz']).replace('#', rand('lnr', .5)),
-				rand(['b', 'd', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 's', 't', 'tx', 'z']) + rand('aeiou') + rand(['b', 'd', 'g', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'rr', 's', 't', '#ts', '#tz', 'z']).replace('#', rand('lnr', .5)) + rand('aeiou')
+				rand(['b', 'd', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 's', 't', 'tx', 'z']) + rand('aeiou') + rand(['b', 'd', 'g', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'rr', 's', 't', 'z']) + rand('aeiou') + rand(['l', 'n', 'r', '#ts', '#tz']).replace('#', rand('lnr', .2)),
+				rand(['b', 'd', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 's', 't', 'tx', 'z']) + rand('aeiou') + rand(['b', 'd', 'g', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'rr', 's', 't', '#ts', '#tz', 'z']).replace('#', rand('lnr', .2)) + rand('aeiou')
 			]);
 		} else {
 			name = rand([
@@ -160,19 +161,24 @@ io.on('connection', socket => {
 	});
 	socket.onAny((...arr) => {
 		console.log(socket.name, socket.room, ...arr);
+		records.push([socket.name, socket.room, ...arr]);
+		if(records.length == 30) {
+			records.shift();
+		}
 		io.to('admin').emit('log', socket.name, socket.room, ...arr);
 	});
 	socket.once('sudo', password => {
 		if(password != process.env.PASSWORD) return;
-		socket.emit('getrooms', Object.keys(admins));
+		socket.emit('start2', records, Object.keys(admins));
 		socket.join('admin');
-		socket.on('ban', async (name, password, mins = 1) => {
+		socket.on('ban', async (name, mins = 1) => {
 			if(name[0] == '#') {
 				admins[name]?.disconnect();
 			} else {
 				const sockets = await io.in(name).fetchSockets();
 				sockets[0]?.disconnect();
 			}
+			io.to('admin').emit('log', name, null, 'kicked');
 			time = Date.now() + mins * 60000;
 		});
 	});
