@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+<title>ankabuta</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+<style>
+body { font-size:8pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; padding-bottom:100px; }
+div { float:left; min-width:150px; max-width:300px; margin:5px; }
+p { white-space:pre-wrap; padding:0; margin:5px; word-wrap:break-word; }
+@media (prefers-color-scheme:dark) {
+	body { background:#000; color:#fff; }
+}
+</style>
+</head>
+<body>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+socket.once('getrooms', rooms => {
+	const roomdivs = {};
+	const addroom = room => {
+		if(roomdivs[room]) return;
+		const div = document.createElement('div');
+		const p = document.createElement('p');
+		p.textContent = room;
+		div.append(p);
+		document.body.append(div);
+		roomdivs[room] = div;
+	}
+	for(const room of rooms) addroom(room);
+	socket.on('log', (name, room, ...arr) => {
+		const addtext = text => {
+			const loop = text => {
+				const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])((?:.*?\[\2.*?\2\])*?.*?)\2\](.*)/si);
+				if(!match) return text;
+				const frag = document.createDocumentFragment();
+				const span = document.createElement('span');
+				let hex;
+				if(match[2] == '#') {
+					hex = match[3].slice(0, 3);
+					match[3] = match[3].slice(3);
+				}
+				span.style = { '#':'color:#'+hex, '*':'font-weight:bold', '_':'text-decoration:underline', '/':'font-style:italic', '-':'text-decoration:line-through' }[match[2]];
+				span.append(loop(match[3]));
+				frag.append(loop(match[1]), span, loop(match[4]));
+				return frag;
+			}
+			const p = document.createElement('p');
+			p.append(loop(text));
+			roomdivs[room].append(p);
+		}
+		const cmd = arr.shift();
+		let boldname = '[*'+name+'*]'
+		if(cmd == 'join') {
+			room = arr[0];
+			if(typeof room != 'string') {
+				room = JSON.stringify(room);
+			}
+			addroom(room);
+			addtext(boldname+' joined');
+		} else if(cmd == 'say') {
+			if(typeof arr[0] != 'string') {
+				arr[0] = JSON.stringify(arr[0]);
+			}
+			addtext(boldname+': '+arr[0]);
+		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
+			let verb = ' says to ';
+			if(typeof arr[0] == 'boolean') verb = [' removes from ', ' adds to '][arr.shift()?1:0];
+			let excluded = 'others';
+			if(cmd == 'sendAll') {
+				excluded = arr[1];
+				arr[1] = arr[1]? 'everyone but '+arr[1]: 'everyone';
+			}
+			let text = boldname;
+			if(arr[0] && arr[1] && arr[2])
+				text += verb+arr[1]+': '+arr[0]+'\n'+boldname+verb+excluded+': '+arr[2];
+			else if(arr[0] && arr[1] && !arr[2])
+				text += verb+arr[1]+': '+arr[0];
+			else if(arr[0] && !arr[1] && !arr[2])
+				text += verb+'themselves: '+arr[0];
+			else if(arr[0] && !arr[1] && arr[2])
+				text += verb+'themselves: '+arr[0]+', '+arr[2];
+			addtext(text);
+		} else console.log(name, room, cmd, ...arr);
+	});
+});
+</script>
+</body>
+</html>
