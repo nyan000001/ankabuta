@@ -111,7 +111,8 @@ socket.once('start', (myname, rooms) => {
 	});
 	const addroom = room => {
 		const a = document.createElement('a');
-		a.textContent = a.id = a.href = room;
+		a.id = a.href = room;
+		a.textContent = room.includes('hidden')? '('+room+')': room;
 		get('rooms').append(a);
 	}
 	for(const room of rooms) {
@@ -360,7 +361,7 @@ socket.once('start', (myname, rooms) => {
 				const emojis = [...'🐱🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐖🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🫏️️'];
 				const num = [...name.replace(/\\d+/, '')].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
 				sendOnly(true, Object.keys(users), name);
-				users[name] = { emoji:emojis[num % emojis.length], color:['f00', 'cc0', '0f0', '0cc', '03f'][~~(Math.random()*5)] };
+				users[name] = { emoji:emojis[num % emojis.length], color:['f00', 'cc0', '0f0', '0cc', '03f'][num % 5] };
 				sendAll(true, name, name, { [name]:name+' 🡄 You' });
 				sendAll(getName(name)+' has joined', name, 'Welcome, '+getName(name)+'!');
 			}
@@ -440,7 +441,6 @@ socket.once('start', (myname, rooms) => {
 		}
 		iframe = document.createElement('iframe');
 		iframe.id = 'iframe';
-		let stablecode;
 		get('run').onclick = e => {
 			e.preventDefault();
 			get('codebox').removeAttribute('class');
@@ -523,24 +523,17 @@ socket.once('start', (myname, rooms) => {
 				delete persistent.users[name];
 			});
 			socket.on('hear', (msg, name) => iframe.contentWindow.hear?.(msg, name));
-			try {
-				iframe.contentWindow.eval(get('codebox').value);
-				stablecode = get('codebox').value;
-			} catch(err) {
-				console.error(err);
-				addmsg(err.name+': '+err.message, true);
-				iframe.contentWindow.eval(stablecode);
+			iframe.contentWindow.eval(get('codebox').value);
+			onerror = (event, source, row, col) => {
+				iframe.contentWindow.eval(defaultcode);
+				addmsg(event, true);
 				const arr = get('codebox').value.split('\n');
-				const match = err.stack.match(/<anonymous>:(\d+):(\d+)/);
-				if(match) {
-					const row = match[1] - 1;
-					const col = match[2] - 1;
-					let index = 0;
-					for(let i = 0; i < row; i++) {
-						index += arr[i].length + 1; // +1 for the linebreak
-					}
-					get('codebox').selectionStart = get('codebox').selectionEnd = index + col;
+				let index = 0;
+				for(let i = 0; i < row - 1; i++) {
+					index += arr[i].length + 1; // +1 for the linebreak
 				}
+				get('codebox').selectionStart = get('codebox').selectionEnd = index + col - 1;
+				get('codebox').focus();
 			}
 		}
 		get('run').click();
