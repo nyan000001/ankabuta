@@ -24,7 +24,8 @@ a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 #wrapper > *:not(#codebox) { white-space:pre-wrap; word-break:break-word; overflow-y:auto; }
 #sidebar { padding:6px; }
 #sidebar:empty { display:none; }
-#youtubediv, #youtube { width:200px; }
+#youtubediv { max-height:200px; width:200px; overflow-x:hidden; }
+#youtube { position:sticky; top:0; width:200px; }
 #youtubediv > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
 #codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
@@ -128,6 +129,7 @@ socket.once('start', (myname, rooms) => {
 			e.preventDefault();
 			if(document.body.classList.contains('admin')) {
 				get('run').click();
+				localStorage.setItem('code', get('codebox').value);
 			}
 		}
 	}
@@ -313,11 +315,12 @@ socket.once('start', (myname, rooms) => {
 					console.error('Invalid url:', arr[key]);
 				} else {
 					const youtube = get('youtube') || document.createElement('iframe');
-					const url = 'https://www.youtube-nocookie.com/embed/'+match[0];
 					const a = document.createElement('a');
-					a.target = 'youtube';
-					a.textContent = a.href = url;
+					a.textContent = a.href = 'https://youtu.be/'+match[0];
+					const embedurl = 'https://www.youtube-nocookie.com/embed/'+match[0];
 					a.onclick = e => {
+						e.preventDefault();
+						youtube.src = embedurl;
 						const links = div.getElementsByTagName('a');
 						for(let i = 0; i < links.length; i++) {
 							links[i].removeAttribute('class');
@@ -325,14 +328,15 @@ socket.once('start', (myname, rooms) => {
 						a.className = 'disabled';
 					}
 					if(!youtube.parentNode) {
-						youtube.id = youtube.name = 'youtube';
+						youtube.id = 'youtube';
 						youtube.allowFullscreen = true;
 						div.append(youtube);
-						youtube.src = url;
+						youtube.src = embedurl;
 						a.className = 'disabled';
 					}
 					div.append(a);
-					fetch('https://noembed.com/embed?url=https://www.youtube.com/watch?v='+match[0]).
+					a.scrollIntoView();
+					fetch('https://noembed.com/embed?url='+a.href).
 						then(x => x.json()).then(x => a.textContent = a.title = x.title);
 				}
 				if(!div.parentNode) {
@@ -391,7 +395,6 @@ socket.once('start', (myname, rooms) => {
 			} else {
 				lastcode = get('codebox').value;
 			}
-			localStorage.setItem('code', get('codebox').value);
 		}
 		get('codebox').onkeydown = e => {
 			if(e.ctrlKey && e.key == 'ArrowUp') {
@@ -402,7 +405,6 @@ socket.once('start', (myname, rooms) => {
 				}
 				get('codebox').value = codehistory[codeindex];
 				get('codebox').className = 'changed';
-				localStorage.setItem('code', get('codebox').value);
 			} else if(e.ctrlKey && e.key == 'ArrowDown') {
 				e.preventDefault();
 				codeindex = Math.min(++codeindex, codehistory.length);
@@ -411,7 +413,6 @@ socket.once('start', (myname, rooms) => {
 				}
 				get('codebox').value = codehistory[codeindex] || lastcode;
 				get('codebox').className = 'changed';
-				localStorage.setItem('code', get('codebox').value);
 			} else if(e.key == 'Tab') {
 				e.preventDefault();
 				const start = get('codebox').selectionStart;
