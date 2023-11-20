@@ -32,7 +32,7 @@ io.on('connection', socket => {
 				rand('bhkltw') + 'ai'
 			]);
 		}
-		if(/([chkrxz]).+\1|^[^cxz]+tl|huo.+tl|n.g|f.[gk]|d.k|b.t|p.s|sh.t|[bd].c|ch.n|k.n|[hw]o|nyi/.test(name)) continue;
+		if(/([chklprtxz]).+\1|^[^cxz]+tl|huo.+tl|n.g|f.[gk]|d.k|b.t|p.s|sh.t|[bd].c|ch.n|k.n|[hw]o|nyi/.test(name)) continue;
 		//name = name[0].toUpperCase() + name.slice(1);
 		if(sockets.every(socket2 => socket2.name != name)) {
 			taken = false;

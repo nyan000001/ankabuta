@@ -8,13 +8,15 @@
 * { font-size:11pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; }
 input::-webkit-input-placeholder { opacity: 0.5; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
-#msgbox:read-only, #room:read-only, input:disabled { border-color:#555; background:#ccc; color:#888; outline:none; }
+textarea:read-only, #room:read-only, input:disabled { border-color:#555; background:#ccc; color:#888; outline:none; }
 textarea, input { border:1px solid #000; border-radius:3px; }
+a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 #log, #sidebar, #leave, #run, #codebox, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave { display:block; }
 .joined #rooms { width:150px; display:none; }
-.joined #roomform { margin:0 0 3px 0; }
-.joined a { display:block; padding:6px; padding-left:6px; text-indent:-6px; }
+.joined #rooms.visible { display:block; }
+.joined #roomform { margin:0 0 6px 0; }
+.joined #rooms > a { padding:6px; padding-left:6px; text-indent:-6px; }
 .admin #codebox, .admin #run { display:block; }
 
 #wrapper { display:flex; padding:1px; position:fixed; width:100%; height:calc(100% - 50px); }
@@ -22,8 +24,10 @@ textarea, input { border:1px solid #000; border-radius:3px; }
 #wrapper > *:not(#codebox) { white-space:pre-wrap; word-break:break-word; overflow-y:auto; }
 #sidebar { padding:6px; }
 #sidebar:empty { display:none; }
-#youtube { width:200px; }
+#youtubediv, #youtube { width:200px; }
+#youtubediv > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
 #codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
+#codebox.changed { border-color:#f00; outline-color:#f00; }
 #log { flex-grow:1; }
 #wrapper > *:not(#log) { flex-shrink:0 }
 .sysmsg { font-weight:bold; }
@@ -33,9 +37,10 @@ textarea, input { border:1px solid #000; border-radius:3px; }
 #roomform { display:flex; margin:15px; justify-content:center; }
 #roomform > input { margin:1px; }
 #room { min-width:10px; padding:0 4px; }
-a { font-weight:bold; color:#09f; text-decoration:none; display:inline-block; margin:2px; line-height:12px; padding:15px; }
+#rooms > a { display:inline-block; margin:2px; line-height:12px; padding:10px 20px; }
 a:hover { color:#f55; }
-a.myroom { color:#000 !important; cursor:default; }
+a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
+#sidebar a.disabled { pointer-events:auto; }
 
 #msgform { padding:1px; bottom:0; position:fixed; width:100%; height:50px; display:flex; }
 #msgform > * { margin:0 1px 1px 1px; }
@@ -45,14 +50,14 @@ a.myroom { color:#000 !important; cursor:default; }
 @media (prefers-color-scheme:dark) {
 	body, input, textarea { background:#000; color:#fff; border-color:#999; }
 	textarea:focus, input:focus { outline-color:#999; background:#111; }
-	#msgbox:read-only, #room:read-only, input:disabled { background:#000; color:#444; }
+	textarea:read-only, #room:read-only, input:disabled { background:#000; color:#444; }
 	::-webkit-scrollbar { width:15px; height:15px; }
 	::-webkit-scrollbar-track { background:#222; }
 	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
 	::-webkit-scrollbar-corner { background:#333; }
 	::-webkit-resizer { border-width: 8px; border-style: solid; border-color: transparent #999 #999 transparent; }
 	textarea { cursor:auto; }
-	a.myroom { color:#fff !important; }
+	a.disabled, #rooms.disabled > a { color:#fff; }
 }
 </style>
 </head>
@@ -65,7 +70,7 @@ a.myroom { color:#000 !important; cursor:default; }
 </div>
 <form id="msgform">
 <input type="button" id="leave" value="Leave">
-<input type="button" id="run" value="Run" disabled>
+<input type="button" id="run" value="Run">
 <textarea id="msgbox" readonly></textarea>
 <input type="submit" id="say" value="Say" disabled>
 </form>
@@ -76,8 +81,9 @@ socket.once('start', (myname, rooms) => {
 	const get = id => document.getElementById(id);
 	let interval;
 	let msgcount = 0;
-	const msgs = [];
+	const msghistory = [];
 	let msgindex = 0;
+	let lastmsg = '';
 	if(location.hash) {
 		socket.emit('join', decodeURI(location.hash));
 	}
@@ -87,17 +93,20 @@ socket.once('start', (myname, rooms) => {
 	}
 	get('room').placeholder = myname+'\'s room';
 	socket.once('disconnect', () => {
-		get('msgbox').readOnly = get('go').disabled = get('leave').disabled = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
+		get('codebox').readOnly = get('go').disabled = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
+		get('leave').onclick = () => location.href = '/';
 		const div = document.createElement('div');
 		div.className = 'sysmsg';
 		div.textContent = 'Connection failed!';
 		if(document.body.classList.contains('joined')) {
 			get('log').appendChild(div);
+			div.scrollIntoView();
 		} else {
 			get('roomform').after(div);
 		}
 		document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
 		socket.removeAllListeners();
+		get('rooms').className = 'disabled';
 	});
 	const addroom = room => {
 		const a = document.createElement('a');
@@ -106,6 +115,21 @@ socket.once('start', (myname, rooms) => {
 	}
 	for(const room of rooms) {
 		addroom(room);
+	}
+	onkeydown = e => {
+		if(e.ctrlKey && e.key == 'o') {
+			e.preventDefault();
+			if(get('rooms').classList.contains('visible')) {
+				get('rooms').removeAttribute('class');
+			} else {
+				get('rooms').className = 'visible';
+			}
+		} else if(e.ctrlKey && e.key == 's') {
+			e.preventDefault();
+			if(document.body.classList.contains('admin')) {
+				get('run').click();
+			}
+		}
 	}
 	get('roomform').onsubmit = e => {
 		e.preventDefault();
@@ -126,7 +150,7 @@ socket.once('start', (myname, rooms) => {
 		let iframe;
 		console.log('hi'); //
 		get('room').placeholder = '';
-		get(room).className = 'myroom';
+		get(room).className = 'disabled';
 		document.title = 'ankabuta'+room;
 		history.replaceState(null, '', room);
 		get('msgbox').readOnly = get('say').disabled = false;
@@ -187,11 +211,11 @@ socket.once('start', (myname, rooms) => {
 			e.preventDefault();
 			const msg = get('msgbox').value;
 			if(!msg) return;
-			msgs.splice(msgindex++, Infinity, msg);
+			msghistory.splice(msgindex++, Infinity, msg);
 			const arr = msg.split(' ');
 			const cmd = arr.shift();
 			if(msg[0] == '/') addmsg(msg, true);
-			get('msgbox').value = '';
+			get('msgbox').value = lastmsg = '';
 			if(/^\/(join|j)$/.test(cmd)) {
 				socket.emit('join', arr.join(' '));
 			} else if(/^\/(leave|l)$/.test(cmd)) {
@@ -199,9 +223,7 @@ socket.once('start', (myname, rooms) => {
 			} else if(/^\/(clear|c)$/.test(cmd)) {
 				get('log').textContent = '';
 			} else if(iframe) {
-				if(/^\/restore$/.test(cmd) && localStorage.getItem('code')) {
-					get('codebox').value = localStorage.getItem('code');
-				} else if(/^\/(kick|k)$/.test(cmd)) {
+				if(/^\/(kick|k)$/.test(cmd)) {
 					socket.emit('kick', arr.join(' '));
 				} else {
 					iframe.contentWindow.hear?.(msg, myname);
@@ -210,13 +232,22 @@ socket.once('start', (myname, rooms) => {
 				socket.emit('say', msg);
 			}
 		}
+		get('msgbox').oninput = () => {
+			if(msgindex < msghistory.length) {
+				msghistory[msgindex] = get('msgbox').value;
+			} else {
+				lastmsg = get('msgbox').value;
+			}
+		}
 		get('msgbox').onkeydown = e => {
 			if(e.ctrlKey && e.key == 'ArrowUp') {
+				e.preventDefault();
 				msgindex = Math.max(--msgindex, 0);
-				get('msgbox').value = msgs[msgindex];
+				get('msgbox').value = msghistory[msgindex];
 			} else if(e.ctrlKey && e.key == 'ArrowDown') {
-				msgindex = Math.min(++msgindex, msgs.length);
-				get('msgbox').value = msgs[msgindex] || '';
+				e.preventDefault();
+				msgindex = Math.min(++msgindex, msghistory.length);
+				get('msgbox').value = msghistory[msgindex] || lastmsg;
 			} else if(!e.shiftKey && e.key == 'Enter') {
 				e.preventDefault();
 				get('say').click();
@@ -230,7 +261,7 @@ socket.once('start', (myname, rooms) => {
 				msgcount = 0;
 			}
 			document.removeEventListener('visibilitychange', stopanimation);
-			get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
+			get('msgbox').readOnly = get('say').disabled = true;
 			const leave = () => {
 				history.replaceState(null, '', document.location.pathname);
 				document.body.removeAttribute('class');
@@ -265,31 +296,48 @@ socket.once('start', (myname, rooms) => {
 			}
 			const isarr = Array.isArray(arr);
 			for(const key in arr) {
-				let id = 'div' + (isarr? arr[key]: key);
+				let id = (isarr? arr[key]: key) + 'div';
 				if(typeof id != 'string') continue;
 				id = id.replace(/\s.*/, '');
-				if(add) {
-					if(typeof arr[key] != 'string') continue;
-					const div = get(id) || document.createElement('div');
-					if(!div.parentNode) {
-						div.id = id;
-					} else {
-						div.textContent = '';
-					}
-					const match = arr[key].match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9a-z_-]{11}/i);
-					if(key == 'youtube' && match) {
-						const youtube = document.createElement('iframe');
-						youtube.id = 'youtube';
-						youtube.allowFullscreen = true;
-						youtube.src = 'https://www.youtube-nocookie.com/embed/'+match[0];
-						div.append(youtube);
-						get('sidebar').prepend(div);
-					} else {
-						div.append(loop(arr[key]));
-						get('sidebar').append(div);
-					}
-				} else {
+				if(!add) {
 					get(id)?.remove();
+					return;
+				}
+				if(typeof arr[key] != 'string') continue;
+				const div = get(id) || document.createElement('div');
+				const match = arr[key].match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9a-z_-]{11}/i);
+				if(key != 'youtube') {
+					div.textContent = '';
+					div.append(loop(arr[key]));
+				} else if(!match) {
+					console.error('Invalid url:', arr[key]);
+				} else {
+					const youtube = get('youtube') || document.createElement('iframe');
+					const url = 'https://www.youtube-nocookie.com/embed/'+match[0];
+					const a = document.createElement('a');
+					a.target = 'youtube';
+					a.textContent = a.href = url;
+					a.onclick = e => {
+						const links = div.getElementsByTagName('a');
+						for(let i = 0; i < links.length; i++) {
+							links[i].removeAttribute('class');
+						}
+						a.className = 'disabled';
+					}
+					if(!youtube.parentNode) {
+						youtube.id = youtube.name = 'youtube';
+						youtube.allowFullscreen = true;
+						div.append(youtube);
+						youtube.src = url;
+						a.className = 'disabled';
+					}
+					div.append(a);
+					fetch('https://noembed.com/embed?url=https://www.youtube.com/watch?v='+match[0]).
+						then(x => x.json()).then(x => a.textContent = a.title = x.title);
+				}
+				if(!div.parentNode) {
+					div.id = id;
+					get('sidebar')[key == 'youtube'? 'prepend': 'append'](div);
 				}
 			}
 		}
@@ -298,8 +346,6 @@ socket.once('start', (myname, rooms) => {
 			socket.on('hear', addmsg);
 			return;
 		}
-		document.body.classList.add('admin');
-		persistent = { users:{ [myname]:{} } };
 		const defaultcode = get('codebox').value =
 			`const users = persistent.users;
 			const getName = name => users[name].emoji + '[*[#' + users[name].color + (name.replace(/\\d+/, '[#aaa$&#]')) + '#]*]';
@@ -329,12 +375,43 @@ socket.once('start', (myname, rooms) => {
 					sendAll(getName(name)+': '+msg);
 				}
 			}`.replace(/^\t\t\t/gm, '');
-		get('run').disabled = false;
-		get('codebox').oninput = () => get('run').disabled = false;
+		let lastcode = defaultcode;
+		const codehistory = [];
+		let codeindex = 0;
+		if(localStorage.getItem('code')) {
+			codehistory.push(localStorage.getItem('code'));
+			codeindex = 1;
+		}
+		document.body.classList.add('admin');
+		persistent = { users:{ [myname]:{} } };
+		get('codebox').oninput = () => {
+			get('codebox').className = 'changed';
+			if(codeindex < codehistory.length) {
+				codehistory[codeindex] = get('codebox').value;
+			} else {
+				lastcode = get('codebox').value;
+			}
+			localStorage.setItem('code', get('codebox').value);
+		}
 		get('codebox').onkeydown = e => {
-			if(e.ctrlKey && e.key == 's') {
+			if(e.ctrlKey && e.key == 'ArrowUp') {
 				e.preventDefault();
-				get('run').click();
+				codeindex = Math.max(--codeindex, 0);
+				if(get('codebox').value == codehistory[codeindex]) {
+					codeindex = Math.max(--codeindex, 0);
+				}
+				get('codebox').value = codehistory[codeindex];
+				get('codebox').className = 'changed';
+				localStorage.setItem('code', get('codebox').value);
+			} else if(e.ctrlKey && e.key == 'ArrowDown') {
+				e.preventDefault();
+				codeindex = Math.min(++codeindex, codehistory.length);
+				if(get('codebox').value == codehistory[codeindex]) {
+					codeindex = Math.min(++codeindex, codehistory.length);
+				}
+				get('codebox').value = codehistory[codeindex] || lastcode;
+				get('codebox').className = 'changed';
+				localStorage.setItem('code', get('codebox').value);
 			} else if(e.key == 'Tab') {
 				e.preventDefault();
 				const start = get('codebox').selectionStart;
@@ -357,18 +434,18 @@ socket.once('start', (myname, rooms) => {
 				get('codebox').value = arr.join('');
 				get('codebox').selectionStart = arr[0].length + num;
 				get('codebox').selectionEnd = arr[0].length + arr[1].length;
-				get('run').disabled = false;
+				get('codebox').className = 'changed';
 			}
 		}
 		iframe = document.createElement('iframe');
 		iframe.id = 'iframe';
-		let code;
+		let stablecode;
 		get('run').onclick = e => {
 			e.preventDefault();
-			if(get('codebox').value.length > defaultcode.length) {
-				localStorage.setItem('code', get('codebox').value);
+			get('codebox').removeAttribute('class');
+			if(get('codebox').value != codehistory[codeindex-1]) {
+				codehistory.splice(codeindex++, Infinity, get('codebox').value);
 			}
-			get('run').disabled = true;
 			iframe.src = 'about:blank';
 			document.body.append(iframe);
 			iframe.contentWindow.persistent = persistent;
@@ -433,7 +510,7 @@ socket.once('start', (myname, rooms) => {
 				}
 			}
 			for(const event of ['join', 'leave', 'hear']) {
-//				iframe.contentWindow[event] = (...arr) => console.log({ 'join':arr[0]+' has joined', 'leave':arr[0]+' has left', 'hear':arr[1]+': '+arr[0] }[event]);
+				iframe.contentWindow[event] = (...arr) => console.log({ 'join':arr[0]+' has joined', 'leave':arr[0]+' has left', 'hear':arr[1]+': '+arr[0] }[event]);
 				socket.off(event);
 			}
 			socket.on('join', name => {
@@ -447,11 +524,11 @@ socket.once('start', (myname, rooms) => {
 			socket.on('hear', (msg, name) => iframe.contentWindow.hear?.(msg, name));
 			try {
 				iframe.contentWindow.eval(get('codebox').value);
-				code = get('codebox').value;
+				stablecode = get('codebox').value;
 			} catch(err) {
 				console.error(err);
 				addmsg(err.name+': '+err.message, true);
-				iframe.contentWindow.eval(code);
+				iframe.contentWindow.eval(stablecode);
 				const arr = get('codebox').value.split('\n');
 				const match = err.stack.match(/<anonymous>:(\d+):(\d+)/);
 				if(match) {
