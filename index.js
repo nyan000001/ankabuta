@@ -14,36 +14,45 @@ io.on('connection', socket => {
 	const sockets = [...io.sockets.sockets.values()];
 	let name;
 	let taken = true;
+	const issimilar = (name1, name2) => {
+		if(name1 == name2) return true;
+		if(name1.length == 3) return false;
+		let i = 0;
+		while(i < name1.length && i < name2.length && name1[i] == name2[i]) {
+			i++;
+		}
+		return name1.slice(i + (name1.length >= name2.length)) == name2.slice(i + (name2.length >= name1.length))
+	}
 	for(let i = 0; i < 1000; i++) {
-		name = rand(['b', 'ch', 'f', 'h', 'k', 'l', 'm', 'n', 'ny', 'p', 'r', 's', 'sh', 't', 'w', 'x', 'y']) + rand('aeiou');
+		name = rand([...'bfhklmnpstwxy', 'ch', 'sh', 'ny']) + rand('aeiou');
 		if(Math.random() < .8) {
 			name = rand([
-				name + rand(['ch', 'ff', 'h', 'ck', 'll', 'm', 'n', 'p', 'r', 'ss', 't', 'w', 'x', 'zz']) + rand(['a', 'e', 'i', 'o', 'u'], .5),
-				name + rand(['bbo', 'ggo', 'kku', 'll', 'mba', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tty', 'tzy', 'xter']),
-				rand(['b', 'd', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 's', 't', 'tx', 'z']) + rand('aeiou') + rand(['b', 'd', 'g', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'rr', 's', 't', 'z']) + rand('aeiou') + rand(['l', 'n', 'r', '#ts', '#tz']).replace('#', rand('lnr', .2)),
-				rand(['b', 'd', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 's', 't', 'tx', 'z']) + rand('aeiou') + rand(['b', 'd', 'g', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 'rr', 's', 't', '#ts', '#tz', 'z']).replace('#', rand('lnr', .2)) + rand('aeiou')
+				name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
+				name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiu'),
+				name + rand([rand('dlnrst') + rand('aeiou')], .5) + rand([...'bklmnprstx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
+				rand('bhklmnptwxy') + rand([...'aeiou', 'ai']) + rand('klmntw') + rand('aeiou')
 			]);
 		} else {
 			name = rand([
-				rand(['ch', 'hu', 'tz', 'c', 'm', 'n', 'p', 't', 'x', 'y']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli']),
-				name + rand('dnrst') + rand('aei') + rand(['lm', 'nd', 'nk', 'll', 'ss']) + 'a',
+				rand([...'bdghjklnstz', 'tx'], .9) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklnrstz', 'rr']) + rand('aeiou') + rand([...'lnr', '#ts', '#tz']).replace('#', rand('lnr', .2)),
+				rand([...'bdghjklnstz', 'tx'], .9) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklnrstz', 'rr', '#ts', '#tz']).replace('#', rand('lnr', .2)) + rand('aeiou'),
+				rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli']),
 				rand('bkw') + 'a' + rand('hlz') + 'oo',
-				rand(['b', 'h', 'k', 'l', 't', 'w', 'xi', 'y']) + 'ao',
+				rand([...'bhkltwy', 'xi']) + 'ao',
 				rand('bhkltw') + 'ai'
 			]);
 		}
-		if(/([chklprtxz]).+\1|^[^cxz]+tl|huo.+tl|n.g|f.[gk]|d.k|b.t|p.s|sh.t|[bd].c|ch.n|k.n|[hw]o|nyi/.test(name)) continue;
+		if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.g|f.[gk]|d.k|b.t|p.s|h.t|[bd].c|ch.n|[kp].n|ank|[hw]o|yi|nye/.test(name)) continue;
 		//name = name[0].toUpperCase() + name.slice(1);
-		if(sockets.every(socket2 => socket2.name != name)) {
+		if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 			taken = false;
 			break;
 		}
 	}
 	if(taken) {
-		let i = 1;
-		while(sockets.some(socket2 => socket2 != socket && socket2.name == name+i)) {
-			i++;
-		}
+		let i;
+		do i = ~~(Math.random()*1000);
+		while(sockets.some(socket2 => socket2 != socket && socket2.name == name+i));
 		name += i;
 	}
 	socket.name = name;
@@ -103,25 +112,24 @@ io.on('connection', socket => {
 			}
 			socket.emit('joinroom', socket.room, true);
 			const send = async (msg1, names, msg2, only, add) => {
-				if(Array.isArray(names)) {
-					const sockets = await io.in(socket.room).fetchSockets();
-					for(const socket2 of sockets) {
-						if(add != null) {
-							if(names.includes(socket2.name) == only) {
-								socket2.emit('change', add, msg1);
-							} else if(msg2) {
-								socket2.emit('change', add, msg2);
-							}
-						} else {
-							if(names.includes(socket2.name) == only) {
-								socket2.emit('hear', msg1);
-							} else if(msg2) {
-								socket2.emit('hear', msg2);
-							}
+				if(!Array.isArray(names)) return;
+				const sockets = await io.in(socket.room).fetchSockets();
+				for(const socket2 of sockets) {
+					if(add != null) {
+						if(names.includes(socket2.name) == only) {
+							socket2.emit('change', add, msg1);
+						} else if(msg2) {
+							socket2.emit('change', add, msg2);
+						}
+					} else {
+						if(names.includes(socket2.name) == only) {
+							socket2.emit('hear', msg1);
+						} else if(msg2) {
+							socket2.emit('hear', msg2);
 						}
 					}
-					return true;
 				}
+				return true;
 			}
 			socket.on('sendOnly', (...arr) => {
 				if(typeof arr[0] == 'boolean') {

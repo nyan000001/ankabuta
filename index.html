@@ -8,7 +8,7 @@
 * { font-size:11pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; }
 input::-webkit-input-placeholder { opacity: 0.5; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
-textarea:read-only, #room:read-only, input:disabled { border-color:#555; background:#ccc; color:#888; outline:none; }
+textarea:read-only, #room:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 textarea, input { border:1px solid #000; border-radius:3px; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 #log, #sidebar, #leave, #run, #codebox, #iframe { display:none; }
@@ -24,9 +24,9 @@ a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 #wrapper > *:not(#codebox) { white-space:pre-wrap; word-break:break-word; overflow-y:auto; }
 #sidebar { padding:6px; }
 #sidebar:empty { display:none; }
-#youtubediv { max-height:200px; width:200px; overflow-x:hidden; }
+#divyoutube { max-height:200px; width:200px; overflow-x:hidden; }
 #youtube { position:sticky; top:0; width:200px; }
-#youtubediv > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
+#divyoutube > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
 #codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 #log { flex-grow:1; }
@@ -49,8 +49,8 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #msgbox { flex-grow:1; resize:none; padding:5px; }
 
 @media (prefers-color-scheme:dark) {
-	body, input, textarea { background:#000; color:#fff; border-color:#999; }
-	textarea:focus, input:focus { outline-color:#999; background:#111; }
+	body, input, textarea { background:#000; color:#fff; border-color:#ccc; }
+	textarea:focus, input:focus { outline-color:#ccc; background:#111; }
 	textarea:read-only, #room:read-only, input:disabled { background:#000; color:#444; }
 	::-webkit-scrollbar { width:15px; height:15px; }
 	::-webkit-scrollbar-track { background:#222; }
@@ -294,26 +294,31 @@ socket.once('start', (myname, rooms) => {
 		});
 		const change = (add, arr) => {
 			if(!arr) {
-				get('sidebar').textContent = '';
+				if(!add) {
+					get('sidebar').textContent = '';
+				}
 				return;
 			}
-			const isarr = Array.isArray(arr);
-			for(const key in arr) {
-				let id = (isarr? arr[key]: key) + 'div';
-				if(typeof id != 'string') continue;
-				id = id.replace(/\s.*/, '');
+			for(let text of arr) {
+				let id = 'div';
+				if(typeof text != 'string') {
+					id += 'null';
+					text = JSON.stringify(text);
+				} else {
+					id += text.replace(/\s.*/, '');
+					text = text.replace(/.*?\s/, '');
+				}
 				if(!add) {
 					get(id)?.remove();
-					return;
+					continue;
 				}
-				if(typeof arr[key] != 'string') continue;
 				const div = get(id) || document.createElement('div');
-				const match = arr[key].match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9a-z_-]{11}/i);
-				if(key != 'youtube') {
+				const match = text.match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9a-z_-]{11}/i);
+				if(id != 'divyoutube') {
 					div.textContent = '';
-					div.append(loop(arr[key]));
+					div.append(loop(text));
 				} else if(!match) {
-					console.error('Invalid url:', arr[key]);
+					console.error('Invalid url:', text);
 				} else {
 					const youtube = get('youtube') || document.createElement('iframe');
 					const a = document.createElement('a');
@@ -342,7 +347,7 @@ socket.once('start', (myname, rooms) => {
 				}
 				if(!div.parentNode) {
 					div.id = id;
-					get('sidebar')[key == 'youtube'? 'prepend': 'append'](div);
+					get('sidebar')[id == 'divyoutube'? 'prepend': 'append'](div);
 				}
 			}
 		}
@@ -351,19 +356,18 @@ socket.once('start', (myname, rooms) => {
 			socket.on('hear', addmsg);
 			return;
 		}
-		const defaultcode = get('codebox').value =
+		let lastcode = get('codebox').value =
 			`const users = persistent.users;
-			const getName = name => users[name].emoji + '[*[#' + users[name].color + (name.replace(/\\d+/, '[#aaa$&#]')) + '#]*]';
+			const getName = name => users[name].emoji + '[*[#' + users[name].color + name + '#]*]';
 			for(const name in users) {
 				join(name);
 			}
 			function join(name) {
 				const emojis = [...'🐱🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐖🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🫏️️'];
 				const num = [...name.replace(/\\d+/, '')].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
-				sendOnly(true, Object.keys(users), name);
 				users[name] = { emoji:emojis[num % emojis.length], color:['f00', 'cc0', '0f0', '0cc', '03f'][num % 5] };
-				sendAll(true, name, name, { [name]:name+' 🡄 You' });
-				sendAll(getName(name)+' has joined', name, 'Welcome, '+getName(name)+'!');
+				sendOnly(true, Object.keys(users).concat(name+' '+name+' 🡄 You'), name, name);
+				sendOnly('Welcome, '+getName(name)+'!', name, getName(name)+' has joined');
 			}
 			function leave(msg, name) {
 				sendAll(getName(name)+' '+msg);
@@ -380,7 +384,6 @@ socket.once('start', (myname, rooms) => {
 					sendAll(getName(name)+': '+msg);
 				}
 			}`.replace(/^\t\t\t/gm, '');
-		let lastcode = defaultcode;
 		const codehistory = [];
 		let codeindex = 0;
 		if(localStorage.getItem('code')) {
@@ -451,7 +454,7 @@ socket.once('start', (myname, rooms) => {
 			document.body.append(iframe);
 			iframe.contentWindow.persistent = persistent;
 			iframe.contentWindow.kick = name => socket.emit('kick', name);
-			const convert = x => !x || Array.isArray(x) || Object(x) === x? x: [x];
+			const convert = x => !x || Array.isArray(x)? x: [x];
 			iframe.contentWindow.sendOnly = (...arr) => {
 				if(arr[0] === 1) {
 					arr[0] = true;
@@ -525,7 +528,6 @@ socket.once('start', (myname, rooms) => {
 			socket.on('hear', (msg, name) => iframe.contentWindow.hear?.(msg, name));
 			iframe.contentWindow.eval(get('codebox').value);
 			onerror = (event, source, row, col) => {
-				iframe.contentWindow.eval(defaultcode);
 				addmsg(event, true);
 				const arr = get('codebox').value.split('\n');
 				let index = 0;
