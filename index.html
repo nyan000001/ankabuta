@@ -107,7 +107,7 @@ socket.once('start', (myname, rooms) => {
 		}
 		document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
 		socket.removeAllListeners();
-		get('rooms').className = 'disabled';
+		get('rooms').classList.add('disabled');
 	});
 	const addroom = room => {
 		const a = document.createElement('a');
@@ -121,16 +121,11 @@ socket.once('start', (myname, rooms) => {
 	onkeydown = e => {
 		if(e.ctrlKey && e.key == 'o') {
 			e.preventDefault();
-			if(get('rooms').classList.contains('visible')) {
-				get('rooms').removeAttribute('class');
-			} else {
-				get('rooms').className = 'visible';
-			}
+			get('rooms').classList.toggle('visible');
 		} else if(e.ctrlKey && e.key == 's') {
 			e.preventDefault();
 			if(document.body.classList.contains('admin')) {
 				get('run').click();
-				localStorage.setItem('code', get('codebox').value);
 			}
 		}
 	}
@@ -153,7 +148,7 @@ socket.once('start', (myname, rooms) => {
 		let iframe;
 		console.log('hi'); //
 		get('room').placeholder = '';
-		get(room).className = 'disabled';
+		get(room).classList.add('disabled');
 		document.title = 'ankabuta'+room;
 		history.replaceState(null, '', room);
 		get('msgbox').readOnly = get('say').disabled = false;
@@ -178,7 +173,7 @@ socket.once('start', (myname, rooms) => {
 		const addmsg = (msg, sys) => {
 			const div = document.createElement('div');
 			if(sys) {
-				div.className = 'sysmsg';
+				diclassName = 'sysmsg';
 				div.textContent = msg;
 			} else {
 				if(!msg || typeof msg != 'string') return;
@@ -267,8 +262,8 @@ socket.once('start', (myname, rooms) => {
 			get('msgbox').readOnly = get('say').disabled = true;
 			const leave = () => {
 				history.replaceState(null, '', document.location.pathname);
-				document.body.removeAttribute('class');
-				get(room)?.removeAttribute('class');
+				document.body.classList.remove('joined', 'admin');
+				get(room)?.classList.remove('disabled');
 				get('log').textContent = get('sidebar').textContent = '';
 				get('room').focus();
 				if(!admin) {
@@ -327,18 +322,15 @@ socket.once('start', (myname, rooms) => {
 					a.onclick = e => {
 						e.preventDefault();
 						youtube.src = embedurl;
-						const links = div.getElementsByTagName('a');
-						for(let i = 0; i < links.length; i++) {
-							links[i].removeAttribute('class');
-						}
-						a.className = 'disabled';
+						document.querySelector('#divyoutube > a.disabled')?.classList.remove('disabled');
+						a.classList.add('disabled');
 					}
 					if(!youtube.parentNode) {
 						youtube.id = 'youtube';
 						youtube.allowFullscreen = true;
 						div.append(youtube);
 						youtube.src = embedurl;
-						a.className = 'disabled';
+						a.classList.add('disabled');
 					}
 					div.append(a);
 					a.scrollIntoView();
@@ -390,15 +382,17 @@ socket.once('start', (myname, rooms) => {
 			codehistory.push(localStorage.getItem('code'));
 			codeindex = 1;
 		}
+		let runningcode;
 		document.body.classList.add('admin');
 		persistent = { users:{ [myname]:{} } };
 		get('codebox').oninput = () => {
-			get('codebox').className = 'changed';
+			get('codebox').classList.add('changed');
 			if(codeindex < codehistory.length) {
 				codehistory[codeindex] = get('codebox').value;
 			} else {
 				lastcode = get('codebox').value;
 			}
+			get('codebox').classList[get('codebox').value == runningcode? 'remove': 'add']('changed');
 		}
 		get('codebox').onkeydown = e => {
 			if(e.ctrlKey && e.key == 'ArrowUp') {
@@ -408,7 +402,6 @@ socket.once('start', (myname, rooms) => {
 					codeindex = Math.max(--codeindex, 0);
 				}
 				get('codebox').value = codehistory[codeindex];
-				get('codebox').className = 'changed';
 			} else if(e.ctrlKey && e.key == 'ArrowDown') {
 				e.preventDefault();
 				codeindex = Math.min(++codeindex, codehistory.length);
@@ -416,7 +409,6 @@ socket.once('start', (myname, rooms) => {
 					codeindex = Math.min(++codeindex, codehistory.length);
 				}
 				get('codebox').value = codehistory[codeindex] || lastcode;
-				get('codebox').className = 'changed';
 			} else if(e.key == 'Tab') {
 				e.preventDefault();
 				const start = get('codebox').selectionStart;
@@ -439,17 +431,19 @@ socket.once('start', (myname, rooms) => {
 				get('codebox').value = arr.join('');
 				get('codebox').selectionStart = arr[0].length + num;
 				get('codebox').selectionEnd = arr[0].length + arr[1].length;
-				get('codebox').className = 'changed';
 			}
+			get('codebox').classList[get('codebox').value == runningcode? 'remove': 'add']('changed');
 		}
 		iframe = document.createElement('iframe');
 		iframe.id = 'iframe';
 		get('run').onclick = e => {
 			e.preventDefault();
-			get('codebox').removeAttribute('class');
-			if(get('codebox').value != codehistory[codeindex-1]) {
-				codehistory.splice(codeindex++, Infinity, get('codebox').value);
+			get('codebox').classList.remove('changed');
+			runningcode = get('codebox').value;
+			if(runningcode != codehistory[codeindex-1]) {
+				codehistory.splice(codeindex++, Infinity, runningcode);
 			}
+			localStorage.setItem('code', runningcode);
 			iframe.src = 'about:blank';
 			document.body.append(iframe);
 			iframe.contentWindow.persistent = persistent;
@@ -526,10 +520,10 @@ socket.once('start', (myname, rooms) => {
 				delete persistent.users[name];
 			});
 			socket.on('hear', (msg, name) => iframe.contentWindow.hear?.(msg, name));
-			iframe.contentWindow.eval(get('codebox').value);
+			iframe.contentWindow.eval(runningcode);
 			onerror = (event, source, row, col) => {
 				addmsg(event, true);
-				const arr = get('codebox').value.split('\n');
+				const arr = runningcode.split('\n');
 				let index = 0;
 				for(let i = 0; i < row - 1; i++) {
 					index += arr[i].length + 1; // +1 for the linebreak

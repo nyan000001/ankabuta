@@ -28,8 +28,8 @@ io.on('connection', socket => {
 		if(Math.random() < .8) {
 			name = rand([
 				name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
-				name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiu'),
-				name + rand([rand('dlnrst') + rand('aeiou')], .5) + rand([...'bklmnprstx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
+				name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
+				name + rand([rand('dlnrst') + rand('aeiou')], .2) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
 				rand('bhklmnptwxy') + rand([...'aeiou', 'ai']) + rand('klmntw') + rand('aeiou')
 			]);
 		} else {
@@ -39,10 +39,10 @@ io.on('connection', socket => {
 				rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli']),
 				rand('bkw') + 'a' + rand('hlz') + 'oo',
 				rand([...'bhkltwy', 'xi']) + 'ao',
-				rand('bhkltw') + 'ai'
+				rand('bhkltw') + rand(['ai', 'ei'])
 			]);
 		}
-		if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.g|f.[gk]|d.k|b.t|p.s|h.t|[bd].c|ch.n|[kp].n|ank|[hw]o|yi|nye/.test(name)) continue;
+		if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.g|f.[gk]|d.k|b.t|p.s|h.t|[bd].c|ch.n|[kp].n|ank|[hw]o|yi|nye|.w[ei]/.test(name)) continue;
 		//name = name[0].toUpperCase() + name.slice(1);
 		if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 			taken = false;
@@ -175,20 +175,28 @@ io.on('connection', socket => {
 		}
 		io.to('admin').emit('log', socket.name, socket.room, ...arr);
 	});
-	socket.once('sudo', password => {
+	socket.on('ban', async (password, name, mins = 1) => {
+		if(password != process.env.PASSWORD) return;
+		if(name) {
+			if(name[0] == '#') {
+				if(admins[name]) {
+					admins[name].disconnect();
+					io.to('admin').emit('log', name, null, 'kicked');
+				}
+			} else {
+				const sockets = await io.in(name).fetchSockets();
+				if(sockets[0]) {
+					sockets[0].disconnect();
+					io.to('admin').emit('log', name, null, 'kicked');
+				}
+			}
+		}
+		time = Date.now() + mins * 60000;
+	});
+	socket.once('login', password => {
 		if(password != process.env.PASSWORD) return;
 		socket.emit('start2', records, Object.keys(admins));
 		socket.join('admin');
-		socket.on('ban', async (name, mins = 1) => {
-			if(name[0] == '#') {
-				admins[name]?.disconnect();
-			} else {
-				const sockets = await io.in(name).fetchSockets();
-				sockets[0]?.disconnect();
-			}
-			io.to('admin').emit('log', name, null, 'kicked');
-			time = Date.now() + mins * 60000;
-		});
 	});
 });
 http.listen(process.env.PORT ?? 3000);
