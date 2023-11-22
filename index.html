@@ -7,33 +7,19 @@
 <style>
 * { font-size:11pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; }
 input::-webkit-input-placeholder { opacity: 0.5; }
+textarea, input { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
 textarea:read-only, #room:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
-textarea, input { border:1px solid #000; border-radius:3px; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
-#log, #sidebar, #leave, #run, #codebox, #iframe { display:none; }
+#help, #log, #sidebar, #leave, #run, #codebox, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave { display:block; }
-.joined #rooms { width:150px; display:none; }
-.joined #rooms.visible { display:block; }
+.joined #rooms { display:none; }
+.joined #rooms.visible { width:150px; display:block; }
 .joined #roomform { margin:0 0 6px 0; }
 .joined #rooms > a { padding:6px; padding-left:6px; text-indent:-6px; }
 .admin #codebox, .admin #run { display:block; }
 
-#wrapper { display:flex; padding:1px; position:fixed; width:100%; height:calc(100% - 50px); }
-#wrapper > *:not(#sidebar) { padding:5px; margin:1px 1px 0 1px; }
-#wrapper > *:not(#codebox) { white-space:pre-wrap; word-break:break-word; overflow-y:auto; }
-#sidebar { padding:6px; }
-#sidebar:empty { display:none; }
-#divyoutube { max-height:200px; width:200px; overflow-x:hidden; }
-#youtube { position:sticky; top:0; width:200px; }
-#divyoutube > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
-#codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
-#codebox.changed { border-color:#f00; outline-color:#f00; }
-#log { flex-grow:1; }
-#wrapper > *:not(#log) { flex-shrink:0 }
-.sysmsg { font-weight:bold; }
-
-#rooms { width:100%; }
+#rooms { flex-grow:1; flex-shrink:1; }
 #rooms .sysmsg { text-align:center; }
 #roomform { display:flex; margin:15px; justify-content:center; }
 #roomform > input { margin:1px; }
@@ -41,6 +27,22 @@ a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 #rooms > a { display:inline-block; margin:2px; line-height:12px; padding:10px 20px; }
 a:hover { color:#f55; }
 a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
+
+#wrapper { display:flex; padding:1px; position:fixed; width:100%; height:calc(100% - 50px); }
+#wrapper > *:not(#sidebar) { padding:5px; margin:1px 1px 0 1px; }
+#wrapper > *:not(#codebox) { white-space:pre-wrap; word-break:break-word; overflow-y:auto; }
+#help.visible { display:block; }
+#codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
+#codebox.changed { border-color:#f00; outline-color:#f00; }
+.joined #wrapper > *, #help { flex-grow:0; flex-shrink:0; }
+.joined #log { flex-grow:1; flex-shrink:1; }
+.sysmsg { font-weight:bold; }
+
+#sidebar { padding:6px; }
+#sidebar:empty { display:none; }
+#divyoutube { max-height:200px; width:200px; overflow-x:hidden; }
+#youtube { position:sticky; top:0; width:200px; }
+#divyoutube > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
 #sidebar a.disabled { pointer-events:auto; }
 
 #msgform { padding:1px; bottom:0; position:fixed; width:100%; height:50px; display:flex; }
@@ -65,6 +67,19 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 <body>
 <div id="wrapper">
 <div id="rooms"><form id="roomform"><input type="text" id="room" autofocus><input type="submit" id="go" value="Go"></form></div>
+<div id="help">/clear
+/join ROOM
+/leave
+/kick USER
+
+ctrl+up
+	Previus message or code
+ctrl+down
+	Next message or code
+ctrl+o
+	Show or hide the rooms
+ctrl+s
+	Save and run the code</div>
 <textarea id="codebox" spellcheck="false"></textarea>
 <div id="log" role="log"></div>
 <div id="sidebar" role="log"></div>
@@ -120,14 +135,15 @@ socket.once('start', (myname, rooms) => {
 	}
 	onkeydown = e => {
 		if(e.ctrlKey && e.key == 'o') {
-			e.preventDefault();
 			get('rooms').classList.toggle('visible');
+		} else if(e.ctrlKey && e.key == 'h') {
+			get('help').classList.toggle('visible');
 		} else if(e.ctrlKey && e.key == 's') {
-			e.preventDefault();
 			if(document.body.classList.contains('admin')) {
 				get('run').click();
 			}
-		}
+		} else return;
+		e.preventDefault();
 	}
 	get('roomform').onsubmit = e => {
 		e.preventDefault();
@@ -173,7 +189,7 @@ socket.once('start', (myname, rooms) => {
 		const addmsg = (msg, sys) => {
 			const div = document.createElement('div');
 			if(sys) {
-				diclassName = 'sysmsg';
+				div.className = 'sysmsg';
 				div.textContent = msg;
 			} else {
 				if(!msg || typeof msg != 'string') return;
@@ -209,7 +225,10 @@ socket.once('start', (myname, rooms) => {
 			e.preventDefault();
 			const msg = get('msgbox').value;
 			if(!msg) return;
-			msghistory.splice(msgindex++, Infinity, msg);
+			if(msghistory.at(-1) != msg) {
+				msghistory.push(msg);
+				msgindex++;
+			}
 			const arr = msg.split(' ');
 			const cmd = arr.shift();
 			if(msg[0] == '/') addmsg(msg, true);
@@ -231,10 +250,9 @@ socket.once('start', (myname, rooms) => {
 			}
 		}
 		get('msgbox').oninput = () => {
+			lastmsg = get('msgbox').value;
 			if(msgindex < msghistory.length) {
-				msghistory[msgindex] = get('msgbox').value;
-			} else {
-				lastmsg = get('msgbox').value;
+				msghistory.splice(++msgindex, Infinity);
 			}
 		}
 		get('msgbox').onkeydown = e => {
@@ -348,7 +366,7 @@ socket.once('start', (myname, rooms) => {
 			socket.on('hear', addmsg);
 			return;
 		}
-		let lastcode = get('codebox').value =
+		get('codebox').value =
 			`const users = persistent.users;
 			const getName = name => users[name].emoji + '[*[#' + users[name].color + name + '#]*]';
 			for(const name in users) {
@@ -378,39 +396,32 @@ socket.once('start', (myname, rooms) => {
 			}`.replace(/^\t\t\t/gm, '');
 		const codehistory = [];
 		let codeindex = 0;
-		if(localStorage.getItem('code')) {
-			codehistory.push(localStorage.getItem('code'));
-			codeindex = 1;
-		}
 		let runningcode;
+		let lastcode;
 		document.body.classList.add('admin');
 		persistent = { users:{ [myname]:{} } };
 		get('codebox').oninput = () => {
 			get('codebox').classList.add('changed');
+			lastcode = get('codebox').value;
 			if(codeindex < codehistory.length) {
-				codehistory[codeindex] = get('codebox').value;
-			} else {
-				lastcode = get('codebox').value;
+				codehistory.splice(++codeindex, Infinity);
 			}
 			get('codebox').classList[get('codebox').value == runningcode? 'remove': 'add']('changed');
 		}
 		get('codebox').onkeydown = e => {
 			if(e.ctrlKey && e.key == 'ArrowUp') {
-				e.preventDefault();
 				codeindex = Math.max(--codeindex, 0);
 				if(get('codebox').value == codehistory[codeindex]) {
 					codeindex = Math.max(--codeindex, 0);
 				}
 				get('codebox').value = codehistory[codeindex];
 			} else if(e.ctrlKey && e.key == 'ArrowDown') {
-				e.preventDefault();
 				codeindex = Math.min(++codeindex, codehistory.length);
 				if(get('codebox').value == codehistory[codeindex]) {
 					codeindex = Math.min(++codeindex, codehistory.length);
 				}
 				get('codebox').value = codehistory[codeindex] || lastcode;
 			} else if(e.key == 'Tab') {
-				e.preventDefault();
 				const start = get('codebox').selectionStart;
 				const end = get('codebox').selectionEnd;
 				const text = get('codebox').value;
@@ -431,7 +442,8 @@ socket.once('start', (myname, rooms) => {
 				get('codebox').value = arr.join('');
 				get('codebox').selectionStart = arr[0].length + num;
 				get('codebox').selectionEnd = arr[0].length + arr[1].length;
-			}
+			} else return;
+			e.preventDefault();
 			get('codebox').classList[get('codebox').value == runningcode? 'remove': 'add']('changed');
 		}
 		iframe = document.createElement('iframe');
@@ -440,10 +452,13 @@ socket.once('start', (myname, rooms) => {
 			e.preventDefault();
 			get('codebox').classList.remove('changed');
 			runningcode = get('codebox').value;
-			if(runningcode != codehistory[codeindex-1]) {
-				codehistory.splice(codeindex++, Infinity, runningcode);
+			if(!iframe.src || codehistory.at(-1) != runningcode) {
+				codehistory.push(runningcode);
+				codeindex++;
 			}
-			localStorage.setItem('code', runningcode);
+			if(iframe.src) {
+				localStorage.setItem('code', runningcode);
+			}
 			iframe.src = 'about:blank';
 			document.body.append(iframe);
 			iframe.contentWindow.persistent = persistent;
@@ -533,7 +548,14 @@ socket.once('start', (myname, rooms) => {
 			}
 		}
 		get('run').click();
+		const pastcode = localStorage.getItem('code');
+		if(pastcode) {
+			lastcode = get('codebox').value = pastcode;
+			codehistory.push(pastcode);
+			codeindex++;
+		}
 	});
+	socket.on('log', (...arr) => console.log(...arr));
 });
 </script>
 </body>

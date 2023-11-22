@@ -9,6 +9,45 @@ const admins = {};
 const records = [];
 let time = 0;
 io.on('connection', socket => {
+	let login = false;
+	socket.on('ban', async (password, name, mins = 1) => {
+		if(password != process.env.PASSWORD) return;
+		if(!login) {
+			socket.emit('log', records, Object.keys(admins));
+			login = true;
+			socket.join('admin');
+			socket.removeAllListeners('login');
+		}
+		if(name) {
+			if(name[0] == '#') {
+				if(admins[name]) {
+					admins[name].disconnect();
+					io.to('admin').emit('log', name, null, 'kicked');
+				}
+			} else {
+				const sockets = await io.in(name).fetchSockets();
+				if(sockets[0]) {
+					sockets[0].disconnect();
+					io.to('admin').emit('log', name, null, 'kicked');
+				}
+			}
+		}
+		time = Date.now() + mins * 60000;
+	});
+	socket.once('login', password => {
+		if(password != process.env.PASSWORD) return;
+		socket.emit('log', records, Object.keys(admins));
+		login = true;
+		socket.join('admin');
+	});
+	socket.onAny((...arr) => {
+		console.log(socket.name, socket.room, ...arr);
+		records.push([socket.name, socket.room, ...arr]);
+		if(records.length == 30) {
+			records.shift();
+		}
+		io.to('admin').emit('log', socket.name, socket.room, ...arr);
+	});
 	if(time > Date.now()) return; // 10 minutes
 	const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
 	const sockets = [...io.sockets.sockets.values()];
@@ -166,37 +205,6 @@ io.on('connection', socket => {
 		}
 		socket.on('leave', () => leave(socket, null, 'has left'));
 		socket.on('disconnect', () => leave(socket, null, 'has disconnected'));
-	});
-	socket.onAny((...arr) => {
-		console.log(socket.name, socket.room, ...arr);
-		records.push([socket.name, socket.room, ...arr]);
-		if(records.length == 30) {
-			records.shift();
-		}
-		io.to('admin').emit('log', socket.name, socket.room, ...arr);
-	});
-	socket.on('ban', async (password, name, mins = 1) => {
-		if(password != process.env.PASSWORD) return;
-		if(name) {
-			if(name[0] == '#') {
-				if(admins[name]) {
-					admins[name].disconnect();
-					io.to('admin').emit('log', name, null, 'kicked');
-				}
-			} else {
-				const sockets = await io.in(name).fetchSockets();
-				if(sockets[0]) {
-					sockets[0].disconnect();
-					io.to('admin').emit('log', name, null, 'kicked');
-				}
-			}
-		}
-		time = Date.now() + mins * 60000;
-	});
-	socket.once('login', password => {
-		if(password != process.env.PASSWORD) return;
-		socket.emit('start2', records, Object.keys(admins));
-		socket.join('admin');
 	});
 });
 http.listen(process.env.PORT ?? 3000);
