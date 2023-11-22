@@ -11,13 +11,14 @@ textarea, input { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
 textarea:read-only, #room:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
-#help, #log, #sidebar, #leave, #run, #codebox, #iframe { display:none; }
+#codebox, #log, #sidebar, #help, #help .hidden, #leave, #run, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave { display:block; }
 .joined #rooms { display:none; }
 .joined #rooms.visible { width:150px; display:block; }
 .joined #roomform { margin:0 0 6px 0; }
 .joined #rooms > a { padding:6px; padding-left:6px; text-indent:-6px; }
-.admin #codebox, .admin #run { display:block; }
+.admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
+.admin #help span.hidden { display:inline; }
 
 #rooms { flex-grow:1; flex-shrink:1; }
 #rooms .sysmsg { text-align:center; }
@@ -29,9 +30,10 @@ a:hover { color:#f55; }
 a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
 #wrapper { display:flex; padding:1px; position:fixed; width:100%; height:calc(100% - 50px); }
-#wrapper > *:not(#sidebar) { padding:5px; margin:1px 1px 0 1px; }
-#wrapper > *:not(#codebox) { white-space:pre-wrap; word-break:break-word; overflow-y:auto; }
-#help.visible { display:block; }
+#wrapper > * { margin:1px 1px 0 1px; }
+#wrapper > *:not(#sidebar, #help) { padding:5px; }
+#wrapper > *:not(#codebox, #help), #help div { white-space:pre-wrap; word-break:break-word; }
+#wrapper > *:not(#codebox) { overflow-y:auto; }
 #codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 .joined #wrapper > *, #help { flex-grow:0; flex-shrink:0; }
@@ -44,6 +46,11 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #youtube { position:sticky; top:0; width:200px; }
 #divyoutube > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
 #sidebar a.disabled { pointer-events:auto; }
+
+#help.visible { display:block; }
+#help p { padding:1px 0; }
+#help div { margin:5px 0; }
+#help b { opacity:.5; font-weight:normal; }
 
 #msgform { padding:1px; bottom:0; position:fixed; width:100%; height:50px; display:flex; }
 #msgform > * { margin:0 1px 1px 1px; }
@@ -67,22 +74,39 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 <body>
 <div id="wrapper">
 <div id="rooms"><form id="roomform"><input type="text" id="room" autofocus><input type="submit" id="go" value="Go"></form></div>
-<div id="help">/clear
-/join ROOM
-/leave
-/kick USER
-
-ctrl+up
-	Previus message or code
-ctrl+down
-	Next message or code
-ctrl+o
-	Show or hide the rooms
-ctrl+s
-	Save and run the code</div>
 <textarea id="codebox" spellcheck="false"></textarea>
 <div id="log" role="log"></div>
 <div id="sidebar" role="log"></div>
+<div id="help">
+<p>
+<div>/clear
+/join <b>ROOM</b>
+/leave
+<span class="hidden">/kick <b>USER</b></span></div>
+</p><p>
+<div>ctrl+h
+	<i>Toggle this help menu</i></div>
+<div>ctrl+o
+	<i>Show or hide the rooms</i></div>
+<div>ctrl+up
+	<i>Previous message<span class="hidden"> or code</span></i></div>
+<div>ctrl+down
+	<i>Next message<span class="hidden"> or code</span></i></div>
+<div class="hidden">ctrl+s
+	<i>Save and run the code</i></span></div>
+</p><p>
+<div class="hidden">sendOnly(<b>message1, users, message2</b>)
+	<i>Sends <b>message1</b> to <b>users</b>
+	and sends <b>message2</b> to everyone else</i></div>
+<div class="hidden">sendAll(<b>message1, users, message2</b>)
+	<i>Sends <b>message1</b> to everyone but <b>users</b>
+	and sends <b>message2</b> to <b>users</b></i></div>
+<div class="hidden">sendAll(true, <b>word</b>)
+	<i>Adds <b>word</b> to everyone's sidebar</i></div>
+<div class="hidden">sendAll(false, <b>word</b>)
+	<i>Removes <b>word</b> from everyone's sidebar</i></div>
+</p>
+</div>
 </div>
 <form id="msgform">
 <input type="button" id="leave" value="Leave">
