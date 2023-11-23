@@ -42,9 +42,9 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
 #sidebar { padding:6px; }
 #sidebar:empty { display:none; }
-#divyoutube { max-height:200px; width:200px; overflow-x:hidden; }
-#youtube { position:sticky; top:0; width:200px; }
-#divyoutube > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
+#divvideo { max-height:200px; width:200px; overflow-x:hidden; }
+#video { position:sticky; top:0; width:200px; }
+#divvideo > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
 #sidebar a.disabled { pointer-events:auto; }
 
 #help.visible { display:block; }
@@ -276,18 +276,18 @@ socket.once('start', (myname, rooms) => {
 		get('msgbox').oninput = () => {
 			lastmsg = get('msgbox').value;
 			if(msgindex < msghistory.length) {
-				msghistory.splice(++msgindex, Infinity);
+				msghistory.length = ++msgindex;
 			}
 		}
 		get('msgbox').onkeydown = e => {
 			if(e.ctrlKey && e.key == 'ArrowUp') {
 				e.preventDefault();
-				msgindex = Math.max(--msgindex, 0);
+				msgindex = Math.max(msgindex-1, 0);
 				get('msgbox').value = msghistory[msgindex];
 			} else if(e.ctrlKey && e.key == 'ArrowDown') {
 				e.preventDefault();
-				msgindex = Math.min(++msgindex, msghistory.length);
-				get('msgbox').value = msghistory[msgindex] || lastmsg;
+				msgindex = Math.min(msgindex+1, msghistory.length);
+				get('msgbox').value = msghistory[msgindex] ?? lastmsg;
 			} else if(!e.shiftKey && e.key == 'Enter') {
 				e.preventDefault();
 				get('say').click();
@@ -337,51 +337,65 @@ socket.once('start', (myname, rooms) => {
 				return;
 			}
 			for(let text of arr) {
-				let id = 'div';
+				let id;
 				if(typeof text != 'string') {
-					id += 'null';
+					id = '';
 					text = JSON.stringify(text);
 				} else {
-					id += text.replace(/\s.*/, '');
+					id = text.replace(/\s.*/, '');
 					text = text.replace(/.*?\s/, '');
 				}
+				let divid = 'div'+(['youtube', 'dailymotion', 'vimeo'].includes(id)? 'video': id);
 				if(!add) {
-					get(id)?.remove();
+					get(divid)?.remove();
 					continue;
 				}
-				const div = get(id) || document.createElement('div');
-				const match = text.match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9a-z_-]{11}/i);
-				if(id != 'divyoutube') {
-					div.textContent = '';
-					div.append(loop(text));
-				} else if(!match) {
-					console.error('Invalid url:', text);
-				} else {
-					const youtube = get('youtube') || document.createElement('iframe');
+				const div = get(divid) || document.createElement('div');
+				const match = {
+					'youtube':text.match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9a-z_-]{11}/i),
+					'dailymotion':text.match(/(?<=\/video\/)[0-9a-z_-]+/i),
+					'vimeo':text.match(/\d+/),
+//					'niconico':text.match(/(?<=\/watch\/)[0-9a-z_-]+/i)
+				}[id];
+				if(divid == 'divvideo' && match) {
+					const video = get('video') || document.createElement('iframe');
 					const a = document.createElement('a');
-					a.textContent = a.href = 'https://youtu.be/'+match[0];
-					const embedurl = 'https://www.youtube-nocookie.com/embed/'+match[0];
+					a.textContent = a.href = {
+						'youtube':'https://youtu.be/'+match[0],
+						'dailymotion':'https://www.dailymotion.com/video/'+match[0],
+						'vimeo':'https://vimeo.com/'+match[0],
+//						'niconico':'https://www.nicovideo.jp/watch/'+match[0]
+					}[id];
+					const embedurl = {
+						'youtube':'https://www.youtube-nocookie.com/embed/'+match[0],
+						'dailymotion':'https://www.dailymotion.com/embed/video/'+match[0],
+						'vimeo':'https://player.vimeo.com/video/'+match[0],
+//						'niconico':'https://embed.nicovideo.jp/watch/'+match[0]+'?autoplay=0'
+					}[id];
 					a.onclick = e => {
 						e.preventDefault();
-						youtube.src = embedurl;
-						document.querySelector('#divyoutube > a.disabled')?.classList.remove('disabled');
+						video.src = embedurl;
+						document.querySelector('#divvideo > a.disabled')?.classList.remove('disabled');
 						a.classList.add('disabled');
 					}
-					if(!youtube.parentNode) {
-						youtube.id = 'youtube';
-						youtube.allowFullscreen = true;
-						div.append(youtube);
-						youtube.src = embedurl;
+					if(!video.parentNode) {
+						video.id = 'video';
+						video.allowFullscreen = true;
+						div.append(video);
+						video.src = embedurl;
 						a.classList.add('disabled');
 					}
 					div.append(a);
 					a.scrollIntoView();
 					fetch('https://noembed.com/embed?url='+a.href).
 						then(x => x.json()).then(x => a.textContent = a.title = x.title);
+				} else {
+					div.textContent = '';
+					div.append(loop(text));
 				}
 				if(!div.parentNode) {
-					div.id = id;
-					get('sidebar')[id == 'divyoutube'? 'prepend': 'append'](div);
+					div.id = divid;
+					get('sidebar')[divid == 'divvideo'? 'prepend': 'append'](div);
 				}
 			}
 		}
@@ -425,26 +439,25 @@ socket.once('start', (myname, rooms) => {
 		document.body.classList.add('admin');
 		persistent = { users:{ [myname]:{} } };
 		get('codebox').oninput = () => {
-			get('codebox').classList.add('changed');
-			lastcode = get('codebox').value;
 			if(codeindex < codehistory.length) {
-				codehistory.splice(++codeindex, Infinity);
+				codehistory.length = ++codeindex;
 			}
+			lastcode = get('codebox').value;
 			get('codebox').classList[get('codebox').value == runningcode? 'remove': 'add']('changed');
 		}
 		get('codebox').onkeydown = e => {
 			if(e.ctrlKey && e.key == 'ArrowUp') {
-				codeindex = Math.max(--codeindex, 0);
+				codeindex = Math.max(codeindex-1, 0);
 				if(get('codebox').value == codehistory[codeindex]) {
-					codeindex = Math.max(--codeindex, 0);
+					codeindex = Math.max(codeindex-1, 0);
 				}
 				get('codebox').value = codehistory[codeindex];
 			} else if(e.ctrlKey && e.key == 'ArrowDown') {
-				codeindex = Math.min(++codeindex, codehistory.length);
+				codeindex = Math.min(codeindex+1, codehistory.length);
 				if(get('codebox').value == codehistory[codeindex]) {
-					codeindex = Math.min(++codeindex, codehistory.length);
+					codeindex = Math.min(codeindex+1, codehistory.length);
 				}
-				get('codebox').value = codehistory[codeindex] || lastcode;
+				get('codebox').value = codehistory[codeindex] ?? lastcode;
 			} else if(e.key == 'Tab') {
 				const start = get('codebox').selectionStart;
 				const end = get('codebox').selectionEnd;
@@ -466,6 +479,7 @@ socket.once('start', (myname, rooms) => {
 				get('codebox').value = arr.join('');
 				get('codebox').selectionStart = arr[0].length + num;
 				get('codebox').selectionEnd = arr[0].length + arr[1].length;
+				lastcode = get('codebox').value;
 			} else return;
 			e.preventDefault();
 			get('codebox').classList[get('codebox').value == runningcode? 'remove': 'add']('changed');
