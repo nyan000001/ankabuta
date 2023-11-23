@@ -30,8 +30,7 @@ a:hover { color:#f55; }
 a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
 #wrapper { display:flex; padding:1px; position:fixed; width:100%; height:calc(100% - 50px); }
-#wrapper > * { margin:1px 1px 0 1px; }
-#wrapper > *:not(#sidebar, #help) { padding:5px; }
+#wrapper > * { margin:1px 1px 0 1px; padding:5px; }
 #wrapper > *:not(#codebox, #help), #help div { white-space:pre-wrap; word-break:break-word; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
 #codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
@@ -40,13 +39,13 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .joined #log { flex-grow:1; flex-shrink:1; }
 .sysmsg { font-weight:bold; }
 
-#sidebar { padding:6px; }
 #sidebar:empty { display:none; }
 #divvideo { max-height:200px; width:200px; overflow-x:hidden; }
 #video { position:sticky; top:0; width:200px; }
 #divvideo > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
 #sidebar a.disabled { pointer-events:auto; }
 
+#help { padding-top:0; padding-bottom:0; line-height:13pt; }
 #help.visible { display:block; }
 #help p { padding:1px 0; }
 #help div { margin:5px 0; }
