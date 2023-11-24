@@ -149,10 +149,8 @@ io.on('connection', socket => {
 			socket.on('say', msg => rooms[socket.room].admin.emit('hear', msg, socket.name));
 		} else {
 			rooms[socket.room] = { 'admin':socket, };
-			if(socket.room.includes('hidden')) {
-				socket.emit('addroom', socket.room);
-			} else {
-				io.emit('addroom', socket.room);
+			if(!socket.room.includes('hidden')) {
+				socket.broadcast.emit('addroom', socket.room);
 			}
 			socket.emit('joinroom', socket.room, true);
 			const send = async (msg1, names, msg2, only, add) => {

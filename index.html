@@ -195,6 +195,9 @@ socket.once('start', (myname, rooms) => {
 		socket.on('showroom', () => get(room).textContent = room);
 		let iframe;
 		get('room').placeholder = '';
+		if(!get(room)) {
+			addroom(room);
+		}
 		get(room).classList.add('disabled');
 		document.title = 'ankabuta'+room;
 		history.replaceState(null, '', document.location.pathname+room);
