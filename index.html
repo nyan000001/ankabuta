@@ -285,7 +285,7 @@ socket.once('start', (myname, rooms) => {
 			if(e.ctrlKey && e.key == 'ArrowUp') {
 				e.preventDefault();
 				msgindex = Math.max(msgindex-1, 0);
-				get('msgbox').value = msghistory[msgindex];
+				get('msgbox').value = msghistory[msgindex] ?? '';
 			} else if(e.ctrlKey && e.key == 'ArrowDown') {
 				e.preventDefault();
 				msgindex = Math.min(msgindex+1, msghistory.length);
@@ -503,6 +503,7 @@ socket.once('start', (myname, rooms) => {
 			document.body.append(iframe);
 			iframe.contentWindow.persistent = persistent;
 			iframe.contentWindow.kick = name => socket.emit('kick', name);
+			iframe.contentWindow.print = addmsg;
 			const convert = x => !x || Array.isArray(x)? x: [x];
 			iframe.contentWindow.sendOnly = (...arr) => {
 				if(arr[0] === 1) {
