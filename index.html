@@ -186,7 +186,16 @@ socket.once('start', (myname, rooms) => {
 	}
 	socket.on('addroom', addroom);
 	socket.on('rmvroom', room => get(room).remove());
+	const leave = () => {
+		history.replaceState(null, '', document.location.pathname);
+		document.body.classList.remove('joined', 'admin');
+		get('log').textContent = get('sidebar').textContent = '';
+		get('room').focus();
+	}
 	socket.on('joinroom', (room, admin, unavailable) => {
+		if(document.body.classList.contains('joined')) {
+			leave();
+		}
 		if(unavailable) {
 			addsysmsg(room+' is unavailable');
 			return;
@@ -303,23 +312,17 @@ socket.once('start', (myname, rooms) => {
 			}
 			document.removeEventListener('visibilitychange', stopanimation);
 			get('msgbox').readOnly = get('say').disabled = true;
-			const leave = () => {
-				history.replaceState(null, '', document.location.pathname);
-				document.body.classList.remove('joined', 'admin');
-				get(room)?.classList.remove('disabled');
-				get('log').textContent = get('sidebar').textContent = '';
-				get('room').focus();
-				for(const event of ['showroom', 'hideroom', 'hear']) {
-					socket.off(event);
-				}
-				if(admin) {
-					socket.off('join');
-					socket.off('leave');
-					iframe.remove();
-					iframe = null;
-				} else {
-					socket.off('change');
-				}
+			get(room)?.classList.remove('disabled');
+			for(const event of ['showroom', 'hideroom', 'hear']) {
+				socket.off(event);
+			}
+			if(admin) {
+				socket.off('join');
+				socket.off('leave');
+				iframe.remove();
+				iframe = null;
+			} else {
+				socket.off('change');
 			}
 			if(msg) {
 				document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
