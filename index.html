@@ -15,17 +15,17 @@ a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 .joined #log, .joined #sidebar, .joined #leave { display:block; }
 .joined #rooms { display:none; }
 .joined #rooms.visible { width:150px; display:block; }
-.joined #roomform { margin:0 0 6px 0; }
-.joined #rooms > a { padding:6px; padding-left:6px; text-indent:-6px; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
 .admin #help span.hidden { display:inline; }
 
 #rooms { flex-grow:1; flex-shrink:1; }
 #rooms .sysmsg { text-align:center; }
-#roomform { display:flex; margin:15px; justify-content:center; }
+#roomform { display:flex; margin:6px; justify-content:center; }
+.joined #roomform { margin:0; }
 #roomform > input { margin:1px; }
 #room { min-width:10px; padding:0 4px; }
-#rooms > a { display:inline-block; margin:2px; line-height:12px; padding:10px 20px; }
+#rooms > a { display:inline-block; padding:10px 20px; margin:2px; line-height:12px; }
+.joined #rooms > a { display:block; padding:6px; padding-left:6px; text-indent:-6px; }
 a:hover { color:#f55; }
 a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
@@ -81,7 +81,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 <div>/clear
 /join <b>ROOM</b>
 /leave
-<span class="hidden">/kick <b>USER</b></span></div>
+<span class="hidden">/kick <b>USER</b> <b>MINUTES</b></span></div>
 </p><p>
 <div>ctrl+h
 	<i>Toggle this help menu</i></div>
@@ -127,22 +127,25 @@ socket.once('start', (myname, rooms) => {
 		socket.emit('join', decodeURI(location.hash));
 	}
 	onhashchange = () => {
-		console.log(decodeURI(location.hash)); //
 		socket.emit('join', decodeURI(location.hash));
 	}
 	get('room').placeholder = myname+'\'s room';
-	socket.once('disconnect', () => {
-		get('codebox').readOnly = get('go').disabled = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
-		get('leave').onclick = () => location.href = '/';
+	const addsysmsg = msg => {
 		const div = document.createElement('div');
 		div.className = 'sysmsg';
-		div.textContent = 'Connection failed!';
+		div.textContent = msg;
 		if(document.body.classList.contains('joined')) {
 			get('log').appendChild(div);
 			div.scrollIntoView();
 		} else {
+			document.querySelector('#rooms > div')?.remove();
 			get('roomform').after(div);
 		}
+	}
+	socket.once('disconnect', () => {
+		get('codebox').readOnly = get('go').disabled = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
+		get('leave').onclick = () => location.href = '/';
+		addsysmsg('Connection failed!');
 		document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
 		socket.removeAllListeners();
 		get('rooms').classList.add('disabled');
@@ -183,13 +186,18 @@ socket.once('start', (myname, rooms) => {
 	}
 	socket.on('addroom', addroom);
 	socket.on('rmvroom', room => get(room).remove());
-	socket.on('joinroom', (room, admin) => {
+	socket.on('joinroom', (room, admin, unavailable) => {
+		if(unavailable) {
+			addsysmsg(room+' is unavailable');
+			return;
+		}
+		socket.on('hideroom', () => get(room).textContent = '('+room+')');
+		socket.on('showroom', () => get(room).textContent = room);
 		let iframe;
-		console.log('hi'); //
 		get('room').placeholder = '';
 		get(room).classList.add('disabled');
 		document.title = 'ankabuta'+room;
-		history.replaceState(null, '', room);
+		history.replaceState(null, '', document.location.pathname+room);
 		get('msgbox').readOnly = get('say').disabled = false;
 		get('msgbox').focus();
 		document.body.classList.add('joined');
@@ -209,33 +217,25 @@ socket.once('start', (myname, rooms) => {
 			frag.append(loop(match[1]), span, loop(match[4]));
 			return frag;
 		}
-		const addmsg = (msg, sys) => {
+		const addmsg = msg => {
 			const div = document.createElement('div');
-			if(sys) {
-				div.className = 'sysmsg';
-				div.textContent = msg;
-			} else {
-				if(!msg || typeof msg != 'string') return;
-				if(document.visibilityState == 'hidden') {
-					msgcount++;
-					if(!interval) {
-						let i = 0;
-						const animate = () => {
-							let title = [...('ankabuta'+room)];
-							title[i] = title[i].toUpperCase();
-							do {
-								i = (i + 1) % title.length;
-							} while(title[i] == title[i].toUpperCase());
-							document.title = '('+msgcount+') '+title.join('');
-						};
-						document.title = '('+msgcount+') ankabuta'+room;
-						interval = setInterval(animate, 400);
-					}
-				}
-				div.append(loop(msg));
-			}
+			if(!msg || typeof msg != 'string') return;
+			div.append(loop(msg));
 			get('log').appendChild(div);
 			div.scrollIntoView();
+			if(document.visibilityState == 'visible') return;
+			msgcount++;
+			if(interval) return;
+			document.title = '('+msgcount+') ankabuta'+room;
+			let i = 0;
+			interval = setInterval(() => {
+				let title = [...('ankabuta'+room)];
+				title[i] = title[i].toUpperCase();
+				do {
+					i = (i + 1) % title.length;
+				} while(title[i] == title[i].toUpperCase());
+				document.title = '('+msgcount+') '+title.join('');
+			}, 400);
 		}
 		const stopanimation = () => {
 			if(document.visibilityState == 'hidden' || !interval) return;
@@ -254,7 +254,7 @@ socket.once('start', (myname, rooms) => {
 			}
 			const arr = msg.split(' ');
 			const cmd = arr.shift();
-			if(msg[0] == '/') addmsg(msg, true);
+			if(msg[0] == '/') addsysmsg(msg);
 			get('msgbox').value = lastmsg = '';
 			if(/^\/(join|j)$/.test(cmd)) {
 				socket.emit('join', arr.join(' '));
@@ -264,7 +264,7 @@ socket.once('start', (myname, rooms) => {
 				get('log').textContent = '';
 			} else if(iframe) {
 				if(/^\/(kick|k)$/.test(cmd)) {
-					socket.emit('kick', arr.join(' '));
+					socket.emit('kick', arr[0], arr[1]);
 				} else {
 					iframe.contentWindow.hear?.(msg, myname);
 				}
@@ -292,9 +292,8 @@ socket.once('start', (myname, rooms) => {
 				get('say').click();
 			}
 		}
-		addmsg('You have joined '+room, true);
+		addsysmsg('You have joined '+room);
 		socket.once('leaveroom', msg => {
-			console.log('bye'); //
 			if(interval) {
 				interval = clearInterval(interval);
 				msgcount = 0;
@@ -307,20 +306,21 @@ socket.once('start', (myname, rooms) => {
 				get(room)?.classList.remove('disabled');
 				get('log').textContent = get('sidebar').textContent = '';
 				get('room').focus();
-				if(!admin) {
-					socket.off('change');
-					socket.off('hear');
-					return;
-				}
-				for(const event of ['join', 'leave', 'hear']) {
+				for(const event of ['showroom', 'hideroom', 'hear']) {
 					socket.off(event);
 				}
-				iframe.remove();
-				iframe = null;
+				if(admin) {
+					socket.off('join');
+					socket.off('leave');
+					iframe.remove();
+					iframe = null;
+				} else {
+					socket.off('change');
+				}
 			}
 			if(msg) {
 				document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
-				addmsg(msg, true);
+				addsysmsg(msg);
 				get('leave').onclick = () => leave();
 				get('leave').focus();
 			} else {
@@ -574,7 +574,7 @@ socket.once('start', (myname, rooms) => {
 			socket.on('hear', (msg, name) => iframe.contentWindow.hear?.(msg, name));
 			iframe.contentWindow.eval(runningcode);
 			onerror = (event, source, row, col) => {
-				addmsg(event, true);
+				addsysmsg(event);
 				const arr = runningcode.split('\n');
 				let index = 0;
 				for(let i = 0; i < row - 1; i++) {

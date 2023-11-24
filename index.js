@@ -5,23 +5,23 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
 app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
 app.use((req, res) => res.redirect('/'));
-const admins = {};
+const rooms = {};
 const records = [];
 let time = 0;
 io.on('connection', socket => {
 	let login = false;
-	socket.on('ban', async (password, name, mins = 1) => {
+	socket.on('ban', async (password, name, mins = 0) => {
 		if(password != process.env.PASSWORD) return;
 		if(!login) {
-			socket.emit('log', records, Object.keys(admins));
+			socket.emit('log', records, Object.keys(rooms));
 			login = true;
 			socket.join('admin');
 			socket.removeAllListeners('login');
 		}
 		if(name) {
 			if(name[0] == '#') {
-				if(admins[name]) {
-					admins[name].disconnect();
+				if(rooms[name]) {
+					rooms[name].admin.disconnect();
 					io.to('admin').emit('log', name, null, 'kicked');
 				}
 			} else {
@@ -36,7 +36,7 @@ io.on('connection', socket => {
 	});
 	socket.once('login', password => {
 		if(password != process.env.PASSWORD) return;
-		socket.emit('log', records, Object.keys(admins));
+		socket.emit('log', records, Object.keys(rooms));
 		login = true;
 		socket.join('admin');
 	});
@@ -48,7 +48,7 @@ io.on('connection', socket => {
 		}
 		io.to('admin').emit('log', socket.name, socket.room, ...arr);
 	});
-	if(time > Date.now()) return; // 10 minutes
+	if(time > Date.now()) return;
 	const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
 	const sockets = [...io.sockets.sockets.values()];
 	let name;
@@ -96,12 +96,13 @@ io.on('connection', socket => {
 	}
 	socket.name = name;
 	socket.join(socket.name);
-	socket.emit('start', socket.name, Object.keys(admins).filter(room => !room.includes('hidden')));
+	socket.emit('start', socket.name, Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == null));
 	const leave = async (socket, msg1, msg2) => {
 		socket.emit('leaveroom', msg1);
-		if(admins[socket.room] == socket) {
+		if(rooms[socket.room].admin == socket) {
+			clearTimeout(rooms[socket.room].timeout);
 			const sockets = await io.in(socket.room).fetchSockets();
-			delete admins[socket.room];
+			delete rooms[socket.room];
 			for(const socket2 of sockets) {
 				socket2.emit('leaveroom', 'Disconnected from '+socket.room+'! (Admin '+msg2+')');
 				socket2.leave(socket.room);
@@ -120,7 +121,7 @@ io.on('connection', socket => {
 				socket.removeAllListeners(listener);
 			}
 		} else {
-			admins[socket.room].emit('leave', msg2, socket.name);
+			rooms[socket.room].admin.emit('leave', msg2, socket.name);
 			for(const listener of ['say', 'leave', 'disconnect']) {
 				socket.removeAllListeners(listener);
 			}
@@ -134,16 +135,20 @@ io.on('connection', socket => {
 		room = room.replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
 		if(socket.room) {
 			if(socket.room == room) return;
-			await leave(socket, null, 'has gone to another room');
+			await leave(socket, '', 'has gone to another room');
+		}
+		if(rooms[room]?.timeout != null) {
+			socket.emit('joinroom', room, false, true);
+			return;
 		}
 		socket.room = room;
-		if(admins[socket.room]) {
+		if(rooms[socket.room]) {
 			socket.join(socket.room);
 			socket.emit('joinroom', socket.room);
-			admins[socket.room].emit('join', socket.name);
-			socket.on('say', msg => admins[socket.room].emit('hear', msg, socket.name));
+			rooms[socket.room].admin.emit('join', socket.name);
+			socket.on('say', msg => rooms[socket.room].admin.emit('hear', msg, socket.name));
 		} else {
-			admins[socket.room] = socket;
+			rooms[socket.room] = { 'admin':socket, };
 			if(socket.room.includes('hidden')) {
 				socket.emit('addroom', socket.room);
 			} else {
@@ -192,19 +197,43 @@ io.on('connection', socket => {
 					}
 				}
 			});
-			socket.on('kick', async name => {
+			socket.on('kick', async (name, mins = 0) => {
 				if(!valid(name)) return;
 				const sockets = await io.in(name).fetchSockets();
 				if(name == socket.room) {
-					leave(socket, null, 'has kicked the room');
+					await leave(socket, '', 'has kicked the room');
 				} else {
 					if(sockets[0]?.room != socket.room) return;
-					leave(sockets[0], 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
+					await leave(sockets[0], 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
 				}
+				if(!rooms[socket.room] || !mins) return;
+				clearTimeout(rooms[socket.room].timeout);
+				if(rooms[socket.room].timeout == null && !socket.room.includes('hidden')) {
+					socket.emit('hideroom');
+					for(const socket2 of [...io.sockets.sockets.values()]) {
+						if(socket2.room == socket.room) {
+							socket2.emit('hideroom');
+						} else {
+							socket2.emit('rmvroom', socket.room);
+						}
+					}
+				}
+				rooms[socket.room].timeout = setTimeout(() => {
+					rooms[socket.room].timeout = null;
+					if(socket.room.includes('hidden')) return;
+					socket.emit('showroom');
+					for(const socket2 of [...io.sockets.sockets.values()]) {
+						if(socket2.room == socket.room) {
+							socket2.emit('showroom');
+						} else {
+							socket2.emit('addroom', socket.room);
+						}
+					}
+				}, mins * 60000);
 			});
 		}
-		socket.on('leave', () => leave(socket, null, 'has left'));
-		socket.on('disconnect', () => leave(socket, null, 'has disconnected'));
+		socket.on('leave', () => leave(socket, '', 'has left'));
+		socket.on('disconnect', () => leave(socket, '', 'has disconnected'));
 	});
 });
 http.listen(process.env.PORT ?? 3000);
