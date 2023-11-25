@@ -2,6 +2,7 @@
 <html>
 <head>
 <title>ankabuta</title>
+<meta name="robots" content="noindex">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
 <style>
@@ -17,7 +18,8 @@ p { white-space:pre-wrap; padding:0; margin:5px; word-wrap:break-word; }
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-socket.once('getrooms', rooms => {
+socket.once('disconnect', () => console.log('Connection lost!'));
+socket.once('log', (records, rooms) => {
 	const roomdivs = {};
 	const addroom = room => {
 		if(roomdivs[room]) return;
@@ -27,9 +29,11 @@ socket.once('getrooms', rooms => {
 		div.append(p);
 		document.body.append(div);
 		roomdivs[room] = div;
+		rooms.push(room);
 	}
 	for(const room of rooms) addroom(room);
-	socket.on('log', (name, room, ...arr) => {
+	const addrecord = (name, room, ...arr) => {
+		if(room && !rooms[room]) addroom(room);
 		const addtext = text => {
 			const loop = text => {
 				const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])((?:.*?\[\2.*?\2\])*?.*?)\2\](.*)/si);
@@ -54,11 +58,11 @@ socket.once('getrooms', rooms => {
 		let boldname = '[*'+name+'*]'
 		if(cmd == 'join') {
 			room = arr[0];
-			if(typeof room != 'string') {
-				room = JSON.stringify(room);
-			}
-			addroom(room);
-			addtext(boldname+' joined');
+			if(typeof room == 'string') {
+				room = room.replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
+				addroom(room);
+				addtext(boldname+' joined');
+			} else console.log(name, room, 'join');
 		} else if(cmd == 'say') {
 			if(typeof arr[0] != 'string') {
 				arr[0] = JSON.stringify(arr[0]);
@@ -72,18 +76,18 @@ socket.once('getrooms', rooms => {
 				excluded = arr[1];
 				arr[1] = arr[1]? 'everyone but '+arr[1]: 'everyone';
 			}
+			if(arr[0] && typeof arr[0] == 'object') arr[0] = JSON.stringify(arr[0]);
+			if(arr[2] && typeof arr[2] == 'object') arr[2] = JSON.stringify(arr[2]);
 			let text = boldname;
 			if(arr[0] && arr[1] && arr[2])
 				text += verb+arr[1]+': '+arr[0]+'\n'+boldname+verb+excluded+': '+arr[2];
 			else if(arr[0] && arr[1] && !arr[2])
 				text += verb+arr[1]+': '+arr[0];
-			else if(arr[0] && !arr[1] && !arr[2])
-				text += verb+'themselves: '+arr[0];
-			else if(arr[0] && !arr[1] && arr[2])
-				text += verb+'themselves: '+arr[0]+', '+arr[2];
 			addtext(text);
 		} else console.log(name, room, cmd, ...arr);
-	});
+	}
+	for(const record of records) addrecord(...record);
+	socket.on('log', addrecord);
 });
 </script>
 </body>

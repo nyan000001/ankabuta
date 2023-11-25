@@ -9,7 +9,7 @@
 input::-webkit-input-placeholder { opacity: 0.5; }
 textarea, input { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
-textarea:read-only, #room:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
+textarea:read-only, input:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 #codebox, #log, #sidebar, #help, #help .hidden, #leave, #run, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave { display:block; }
@@ -143,7 +143,7 @@ socket.once('start', (myname, rooms) => {
 		}
 	}
 	socket.once('disconnect', () => {
-		get('codebox').readOnly = get('go').disabled = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
+		get('room').readOnly = get('go').disabled = get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 		get('leave').onclick = () => location.href = '/';
 		addsysmsg('Connection failed!');
 		document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
