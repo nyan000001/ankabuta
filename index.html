@@ -502,6 +502,7 @@ socket.once('start', (myname, rooms) => {
 			if(iframe.src) {
 				localStorage.setItem('code', runningcode);
 			}
+			get('divvideo')?.remove();
 			iframe.src = 'about:blank';
 			document.body.append(iframe);
 			iframe.contentWindow.persistent = persistent;
