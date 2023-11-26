@@ -11,10 +11,9 @@ textarea, input { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
 textarea:read-only, input[type=text]:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
-#codebox, #log, #sidebar, #help, #help .hidden, #leave, #run, #iframe { display:none; }
+.joined #rooms.hidden, #codebox, #log, #sidebar, #help.hidden, #help .hidden, #leave, #run, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave { display:block; }
-.joined #rooms { display:none; }
-.joined #rooms.visible { width:150px; display:block; }
+.joined #rooms { width:150px; display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
 .admin #help span.hidden { display:inline; }
 
@@ -30,14 +29,18 @@ a:hover { color:#f55; }
 a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
 #wrapper { display:flex; padding:1px; position:fixed; width:100%; height:calc(100% - 50px); }
-#wrapper > * { margin:1px 1px 0 1px; padding:5px; }
+#wrapper > * { margin:1px 1px 0 1px; }
+#wrapper > *:not(#log, #help) { padding:5px; }
 #wrapper > *:not(#codebox, #help), #help div { white-space:pre-wrap; word-break:break-word; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
 #codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 .joined #wrapper > *, #help { flex-grow:0; flex-shrink:0; }
 .joined #log { flex-grow:1; flex-shrink:1; }
+#log > div { margin:2px; }
 .sysmsg { font-weight:bold; }
+#arrow { width:100%; bottom:0; position:sticky; }
+#arrow.hidden { display:none; }
 
 #sidebar:empty { display:none; }
 #divvideo { max-height:200px; width:200px; overflow-x:hidden; }
@@ -45,8 +48,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #divvideo > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
 #sidebar a.disabled { pointer-events:auto; }
 
-#help { padding-top:0; padding-bottom:0; line-height:13pt; }
-#help.visible { display:block; }
+#help { padding:0 5px; line-height:13pt; }
 #help p { padding:1px 0; }
 #help div { margin:5px 0; }
 #help b { opacity:.5; font-weight:normal; }
@@ -72,11 +74,11 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 </head>
 <body>
 <div id="wrapper">
-<div id="rooms"><form id="roomform"><input type="text" id="room" maxlength="29" autofocus><input type="submit" id="go" value="Go"></form></div>
+<div id="rooms" class="hidden"><form id="roomform"><input type="text" id="room" maxlength="29" autofocus><input type="submit" id="go" value="Go"></form></div>
 <textarea id="codebox" spellcheck="false"></textarea>
-<div id="log" role="log"></div>
+<div id="log" role="log"><input type="button" id="arrow" value="⮟" class="hidden"></div>
 <div id="sidebar" role="log"></div>
-<div id="help">
+<div id="help" class="hidden">
 <p>
 <div>/clear
 /join <b>ROOM</b>
@@ -135,8 +137,10 @@ socket.once('start', (myname, rooms) => {
 		div.className = 'sysmsg';
 		div.textContent = msg;
 		if(document.body.classList.contains('joined')) {
-			get('log').appendChild(div);
-			div.scrollIntoView();
+			get('arrow').before(div);
+			if(get('arrow').classList.contains('hidden')) {
+				div.scrollIntoView();
+			}
 		} else {
 			document.querySelector('#rooms > div')?.remove();
 			get('roomform').after(div);
@@ -161,9 +165,9 @@ socket.once('start', (myname, rooms) => {
 	}
 	onkeydown = e => {
 		if(e.ctrlKey && e.key == 'o') {
-			get('rooms').classList.toggle('visible');
+			get('rooms').classList.toggle('hidden');
 		} else if(e.ctrlKey && e.key == 'h') {
-			get('help').classList.toggle('visible');
+			get('help').classList.toggle('hidden');
 		} else if(e.ctrlKey && e.key == 's') {
 			if(document.body.classList.contains('admin')) {
 				get('run').click();
@@ -189,7 +193,9 @@ socket.once('start', (myname, rooms) => {
 	const leave = () => {
 		history.replaceState(null, '', document.location.pathname);
 		document.body.classList.remove('joined', 'admin');
+		const arrow = get('arrow');
 		get('log').textContent = get('sidebar').textContent = '';
+		get('log').append(arrow);
 		get('room').focus();
 	}
 	socket.on('joinroom', (room, admin, unavailable) => {
@@ -210,9 +216,15 @@ socket.once('start', (myname, rooms) => {
 		get(room).classList.add('disabled');
 		document.title = 'ankabuta'+room;
 		history.replaceState(null, '', document.location.pathname+room);
-		get('msgbox').readOnly = get('say').disabled = false;
-		get('msgbox').focus();
 		document.body.classList.add('joined');
+		get('msgbox').readOnly = get('say').disabled = false;
+		get('log').onscroll = (e) => {
+			get('arrow').classList[get('log').scrollTop + get('log').clientHeight > get('arrow').previousSibling.offsetTop? 'add': 'remove']('hidden');
+		}
+		get('arrow').onclick = () => {
+			get('arrow').previousSibling.scrollIntoView();
+			get('msgbox').focus();
+		}
 		get('leave').onclick = () => socket.emit('leave');
 		const loop = text => {
 			const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])((?:.*?\[\2.*?\2\])*?.*?)\2\](.*)/si);
@@ -233,8 +245,10 @@ socket.once('start', (myname, rooms) => {
 			const div = document.createElement('div');
 			if(!msg || typeof msg != 'string') return;
 			div.append(loop(msg));
-			get('log').appendChild(div);
-			div.scrollIntoView();
+			get('arrow').before(div);
+			if(get('arrow').classList.contains('hidden')) {
+				div.scrollIntoView();
+			}
 			if(document.visibilityState == 'visible') return;
 			msgcount++;
 			if(interval) return;
@@ -273,7 +287,9 @@ socket.once('start', (myname, rooms) => {
 			} else if(/^\/(leave|l)$/.test(cmd)) {
 				socket.emit('leave');
 			} else if(/^\/(clear|c)$/.test(cmd)) {
+				const arrow = get('arrow');
 				get('log').textContent = '';
+				get('log').append(arrow);
 			} else if(iframe) {
 				if(/^\/(kick|k)$/.test(cmd)) {
 					socket.emit('kick', arr[0], arr[1]);
@@ -328,7 +344,6 @@ socket.once('start', (myname, rooms) => {
 				document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
 				addsysmsg(msg);
 				get('leave').onclick = () => leave();
-				get('leave').focus();
 			} else {
 				document.title = 'ankabuta';
 				leave();
@@ -405,14 +420,17 @@ socket.once('start', (myname, rooms) => {
 			}
 		}
 		if(!admin) {
+			get('msgbox').focus();
 			socket.on('change', change);
 			socket.on('hear', addmsg);
 			return;
 		}
+		get('codebox').focus();
 		get('codebox').value =
 			`const users = persistent.users;
 			const getName = name => users[name].emoji + '[*[#' + users[name].color + name + '#]*]';
 			for(const name in users) {
+				sendAll(false);
 				join(name);
 			}
 			function join(name) {
@@ -502,7 +520,6 @@ socket.once('start', (myname, rooms) => {
 			if(iframe.src) {
 				localStorage.setItem('code', runningcode);
 			}
-			get('divvideo')?.remove();
 			iframe.src = 'about:blank';
 			document.body.append(iframe);
 			iframe.contentWindow.persistent = persistent;

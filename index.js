@@ -43,7 +43,7 @@ io.on('connection', socket => {
 	socket.onAny((...arr) => {
 		console.log(socket.name, socket.room, ...arr);
 		records.push([socket.name, socket.room, ...arr]);
-		if(records.length == 30) {
+		if(records.length == 60) {
 			records.shift();
 		}
 		io.to('admin').emit('log', socket.name, socket.room, ...arr);
