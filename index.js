@@ -8,37 +8,40 @@ app.use((req, res) => res.redirect('/'));
 const rooms = {};
 const records = [];
 let time = 0;
+let regexstring;
 io.on('connection', socket => {
-	let login = false;
-	socket.on('ban', async (password, name, mins = 0) => {
+	socket.on('ban', async (password, name, regex, mins = 0) => {
 		if(password != process.env.PASSWORD) return;
-		if(!login) {
-			socket.emit('log', records, Object.keys(rooms));
-			login = true;
+		if(!socket.rooms.has('admin')) {
+			socket.emit('log', records, Object.keys(rooms), regexstring);
 			socket.join('admin');
-			socket.removeAllListeners('login');
 		}
 		if(name) {
 			if(name[0] == '#') {
 				if(rooms[name]) {
+					io.to('admin').emit('log', rooms[name].admin.name, name, 'kicked');
 					rooms[name].admin.disconnect();
-					io.to('admin').emit('log', name, null, 'kicked');
 				}
 			} else {
 				const sockets = await io.in(name).fetchSockets();
 				if(sockets[0]) {
+					io.to('admin').emit('log', name, sockets[0].room || '(not in a room)', 'kicked');
 					sockets[0].disconnect();
-					io.to('admin').emit('log', name, null, 'kicked');
+				}
+			}
+		}
+		if(regex) {
+			regexstring = regex;
+			regex = new RegExp(regex);
+			io.to('admin').emit('log', regexstring, 'regex');
+			for(const room in rooms) {
+				if(regex.test(room)) {
+					io.to('admin').emit('log', rooms[room].admin.name, room, 'kicked');
+					rooms[room].admin.disconnect();
 				}
 			}
 		}
 		time = Date.now() + mins * 60000;
-	});
-	socket.once('login', password => {
-		if(password != process.env.PASSWORD) return;
-		socket.emit('log', records, Object.keys(rooms));
-		login = true;
-		socket.join('admin');
 	});
 	socket.onAny((...arr) => {
 		console.log(socket.name, socket.room, ...arr);
@@ -69,7 +72,7 @@ io.on('connection', socket => {
 				name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
 				name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
 				name + rand([rand('dlnrst') + rand('aeiou')], .2) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
-				rand('bhklmnptwxy') + rand([...'aeiou', 'ai']) + rand('klmntw') + rand('aeiou')
+				rand('bhklmnptwxy') + rand([...'aeiou', 'ai']) + rand('bklmntwx') + rand('aeiou')
 			]);
 		} else {
 			name = rand([
@@ -81,7 +84,7 @@ io.on('connection', socket => {
 				rand('bhkltw') + rand(['ai', 'ei'])
 			]);
 		}
-		if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.g|f.[gk]|d.k|b.t|p.s|h.t|[bd].c|ch.n|[kp].n|ank|[hw]o|yi|nye|.w[ei]/.test(name)) continue;
+		if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[gk]|d.+k|b.+t|p.+s|h.+t|[bd].+c|ch.+n|[kp].+n|ank|[hw]o|yi|nye|.w[ei]/.test(name)) continue;
 		//name = name[0].toUpperCase() + name.slice(1);
 		if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 			taken = false;
@@ -133,6 +136,11 @@ io.on('connection', socket => {
 	socket.on('join', async room => {
 		if(!valid(room)) return;
 		room = room.replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
+		if(regexstring && new RegExp(regexstring).test(room)) {
+			io.to('admin').emit('log', socket.name, room, 'kicked');
+			socket.disconnect();
+			return;
+		}
 		if(socket.room) {
 			if(socket.room == room) return;
 			await leave(socket, '', 'has gone to another room');
@@ -199,9 +207,11 @@ io.on('connection', socket => {
 				if(!valid(name)) return;
 				const sockets = await io.in(name).fetchSockets();
 				if(name == socket.room) {
+					io.to('admin').emit('log', socket.name, socket.room, 'kicked');
 					await leave(socket, '', 'has kicked the room');
 				} else {
 					if(sockets[0]?.room != socket.room) return;
+					io.to('admin').emit('log', name, socket.room, 'kicked');
 					await leave(sockets[0], 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
 				}
 				if(!rooms[socket.room] || !mins) return;

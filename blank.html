@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
 <style>
-body { font-size:8pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; padding-bottom:100px; }
-div { float:left; min-width:150px; max-width:300px; margin:5px; }
+body { font-size:8pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; padding:0; margin:0; line-height:13px; }
+div { float:left; min-width:150px; max-width:300px; margin:8px; }
 p { white-space:pre-wrap; padding:0; margin:5px; word-wrap:break-word; }
 @media (prefers-color-scheme:dark) {
 	body { background:#000; color:#fff; }
@@ -19,7 +19,10 @@ p { white-space:pre-wrap; padding:0; margin:5px; word-wrap:break-word; }
 <script>
 const socket = io();
 socket.once('disconnect', () => console.log('Connection lost!'));
-socket.once('log', (records, rooms) => {
+socket.once('log', (records, rooms, regex) => {
+	const regexdiv = document.createElement('div');
+	regexdiv.textContent = 'regex: '+regex;
+	document.body.append(regexdiv);
 	const roomdivs = {};
 	const addroom = room => {
 		if(roomdivs[room]) return;
@@ -33,7 +36,6 @@ socket.once('log', (records, rooms) => {
 	}
 	for(const room of rooms) addroom(room);
 	const addrecord = (name, room, ...arr) => {
-		if(room && !rooms[room]) addroom(room);
 		const addtext = text => {
 			const loop = text => {
 				const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])((?:.*?\[\2.*?\2\])*?.*?)\2\](.*)/si);
@@ -55,7 +57,18 @@ socket.once('log', (records, rooms) => {
 			roomdivs[room].append(p);
 		}
 		const cmd = arr.shift();
-		let boldname = '[*'+name+'*]'
+		if(!cmd) {
+			if(room == 'regex') {
+				regexdiv.textContent = 'regex: '+name;
+			} else console.log(name, room);
+			return;
+		}
+		if(cmd == 'ban') {
+			console.log(name, room, cmd, ...arr);
+			return;
+		}
+		if(room && !rooms[room]) addroom(room);
+		let boldname = '[*'+name+'*]';
 		if(cmd == 'join') {
 			room = arr[0];
 			if(typeof room == 'string') {
@@ -69,21 +82,27 @@ socket.once('log', (records, rooms) => {
 			}
 			addtext(boldname+': '+arr[0]);
 		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
-			let verb = ' says to ';
-			if(typeof arr[0] == 'boolean') verb = [' removes from ', ' adds to '][arr.shift()?1:0];
+			let verb = 'says to';
+			if(typeof arr[0] == 'boolean') verb = ['removes from', 'adds to'][arr.shift()?1:0];
+			if(!arr[0]) return;
 			let excluded = 'others';
+			let included = arr[1];
 			if(cmd == 'sendAll') {
 				excluded = arr[1];
-				arr[1] = arr[1]? 'everyone but '+arr[1]: 'everyone';
+				included = arr[1]? 'everyone but '+arr[1]: 'everyone';
 			}
-			if(arr[0] && typeof arr[0] == 'object') arr[0] = JSON.stringify(arr[0]);
-			if(arr[2] && typeof arr[2] == 'object') arr[2] = JSON.stringify(arr[2]);
-			let text = boldname;
-			if(arr[0] && arr[1] && arr[2])
-				text += verb+arr[1]+': '+arr[0]+'\n'+boldname+verb+excluded+': '+arr[2];
-			else if(arr[0] && arr[1] && !arr[2])
-				text += verb+arr[1]+': '+arr[0];
+			if(!included) return;
+			if(typeof arr[0] == 'object')
+				arr[0] = JSON.stringify(arr[0]);
+			let text = boldname+' '+verb+' '+included+': '+arr[0];
+			if(arr[2]) {
+				if(typeof arr[2] == 'object')
+					arr[2] = JSON.stringify(arr[2]);
+				text += '\n'+boldname+' '+verb+' '+excluded+': '+arr[2];
+			}
 			addtext(text);
+		} else if(cmd == 'kicked') {
+			addtext(boldname+' has been kicked');
 		} else console.log(name, room, cmd, ...arr);
 	}
 	for(const record of records) addrecord(...record);
