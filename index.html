@@ -29,7 +29,6 @@ a:hover { color:#f55; }
 a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
 #wrapper { display:flex; padding:1px; position:fixed; width:100%; height:calc(100% - 50px); }
-#wrapper > * { margin:1px 1px 0 1px; }
 #wrapper > *:not(#log, #help) { padding:5px; }
 #wrapper > *:not(#codebox, #help), #help div { white-space:pre-wrap; word-break:break-word; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
@@ -53,8 +52,8 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #help div { margin:5px 0; }
 #help b { opacity:.5; font-weight:normal; }
 
-#msgform { padding:1px; bottom:0; position:fixed; width:100%; height:50px; display:flex; }
-#msgform > * { margin:0 1px 1px 1px; }
+#msgform { bottom:0; position:fixed; width:100%; height:50px; display:flex; }
+#msgform > * { margin:1px; }
 #msgform > input { width:80px; }
 #msgbox { flex-grow:1; resize:none; padding:5px; }
 

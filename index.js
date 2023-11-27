@@ -25,7 +25,7 @@ io.on('connection', socket => {
 			} else {
 				const sockets = await io.in(name).fetchSockets();
 				if(sockets[0]) {
-					io.to('admin').emit('log', name, sockets[0].room || '(not in a room)', 'kicked');
+					io.to('admin').emit('log', name, sockets[0].room, 'kicked');
 					sockets[0].disconnect();
 				}
 			}

@@ -67,7 +67,7 @@ socket.once('log', (records, rooms, regex) => {
 			console.log(name, room, cmd, ...arr);
 			return;
 		}
-		if(room && !rooms[room]) addroom(room);
+		if(!rooms[room]) addroom(room || '(not in a room)');
 		let boldname = '[*'+name+'*]';
 		if(cmd == 'join') {
 			room = arr[0];
