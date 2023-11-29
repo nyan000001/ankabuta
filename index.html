@@ -445,12 +445,12 @@ socket.once('start', (myname, rooms) => {
 		get('codebox').value =
 			`const users = persistent.users;
 			const getName = name => users[name].emoji + '[*[#' + users[name].color + name + '#]*]';
+			sendAll(false);
 			for(const name in users) {
-				sendAll(false);
 				join(name);
 			}
 			function join(name) {
-				const emojis = [...'🐱🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐖🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🫏️️'];
+				const emojis = [...'🐱🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐖🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🫏'];
 				const num = [...name.replace(/\\d+/, '')].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
 				users[name] = { emoji:emojis[num % emojis.length], color:['f00', 'cc0', '0f0', '0cc', '03f'][num % 5] };
 				sendOnly(true, Object.keys(users).concat(name+' '+name+' 🡄 You'), name, name);
