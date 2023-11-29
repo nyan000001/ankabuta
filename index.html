@@ -43,7 +43,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #arrow { width:100%; bottom:0; position:sticky; }
 #arrow.hidden { display:none; }
 @keyframes move { to { background-position:100px 0; } }
-.rainbow { animation:move 5s linear infinite; background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.rainbow { animation:move 3s linear 10; background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
 #sidebar { width:200px; max-width:35%; }
 #sidebar:empty { display:none; }
@@ -73,16 +73,20 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 	::-webkit-scrollbar-track { background:#222; }
 	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
 	::-webkit-scrollbar-corner { background:#333; }
-	::-webkit-resizer { border-width: 8px; border-style: solid; border-color: transparent #999 #999 transparent; }
+	::-webkit-resizer { border-width:8px; border-style:solid; border-color:transparent #999 #999 transparent; }
 	textarea { cursor:auto; }
 	a.disabled, #rooms.disabled > a { color:#fff; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+	.rainbow { animation:none; }
 }
 </style>
 <meta description="Create a chatroom with your own code or join other people's rooms">
 </head>
 <body>
 <div id="wrapper">
-<div id="rooms" class="hidden"><form id="roomform"><input type="text" id="room" maxlength="29" autofocus><input type="submit" id="go" value="Go"></form></div>
+<div id="rooms" class="hidden"><form id="roomform"><input type="text" id="room" maxlength="29" aria-label="Room" autofocus><input type="submit" id="go" value="Go"></form></div>
 <textarea id="codebox" spellcheck="false"></textarea>
 <div id="log" role="log"><input type="button" id="arrow" value="⮟" class="hidden"></div>
 <div id="sidebar" role="log"></div>
@@ -120,7 +124,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 <form id="msgform">
 <input type="button" id="leave" value="Leave">
 <input type="button" id="run" value="Run">
-<textarea id="msgbox" readonly></textarea>
+<textarea id="msgbox" aria-label="Message" readonly></textarea>
 <input type="submit" id="say" value="Say" disabled>
 </form>
 <script src="/socket.io/socket.io.js"></script>
