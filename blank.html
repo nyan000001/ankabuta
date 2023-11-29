@@ -32,7 +32,6 @@ socket.once('log', (records, rooms, regex) => {
 		div.append(p);
 		document.body.append(div);
 		roomdivs[room] = div;
-		rooms.push(room);
 	}
 	for(const room of rooms) addroom(room);
 	const addrecord = (name, room, ...arr) => {
@@ -67,7 +66,7 @@ socket.once('log', (records, rooms, regex) => {
 			console.log(name, room, cmd, ...arr);
 			return;
 		}
-		if(!rooms[room]) addroom(room || '(not in a room)');
+		if(cmd != 'join') addroom(room || '(not in a room)');
 		let boldname = '[*'+name+'*]';
 		if(cmd == 'join') {
 			room = arr[0];

@@ -44,12 +44,29 @@ io.on('connection', socket => {
 		time = Date.now() + mins * 60000;
 	});
 	socket.onAny((...arr) => {
-		console.log(socket.name, socket.room, ...arr);
-		records.push([socket.name, socket.room, ...arr]);
-		if(records.length == 60) {
-			records.shift();
+		arr = [socket.name, socket.room, ...arr];
+		io.to('admin').emit('log', ...arr);
+		if(!records.length) {
+			records.push(arr);
+			console.log(...arr);
+		} else {
+			if(records.length == 100) {
+				records.shift();
+			}
+			let index = -1;
+			for(let i = 0; i < arr.length; i++) {
+				if(JSON.stringify(arr[i]) != JSON.stringify(records.at(-1)[i])) {
+					index = index > -1? -2: i;
+				}
+			}
+			if(index == -1) return;
+			if(index != -2 && Array.isArray(records.at(-1)[index]) && Array.isArray(arr[index])) {
+				records.at(-1)[index].push(...arr[index]);
+			} else {
+				records.push(arr);
+			}
+			console.log(...arr);
 		}
-		io.to('admin').emit('log', socket.name, socket.room, ...arr);
 	});
 	if(time > Date.now()) return;
 	const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';

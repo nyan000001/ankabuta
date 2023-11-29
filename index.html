@@ -37,10 +37,13 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 .joined #wrapper > *, #help { flex-grow:0; flex-shrink:0; }
 .joined #log { flex-grow:1; flex-shrink:1; }
+
 #log > div { margin:5px; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; }
 #arrow.hidden { display:none; }
+@keyframes move { to { background-position:100px 0; } }
+.rainbow { animation:move 5s linear infinite; background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
 #sidebar { width:200px; max-width:35%; }
 #sidebar:empty { display:none; }
@@ -232,16 +235,20 @@ socket.once('start', (myname, rooms) => {
 		}
 		get('leave').onclick = () => socket.emit('leave');
 		const loop = text => {
-			const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])((?:.*?\[\2.*?\2\])*?.*?)\2\](.*)/si);
+			const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|°(?=[0-9]{3})|[!*_/-])((?:.*?\[\2.*?\2\])*?.*?)\2\](.*)/si);
 			if(!match) return text;
 			const frag = document.createDocumentFragment();
 			const span = document.createElement('span');
-			let hex;
-			if(match[2] == '#') {
-				hex = match[3].slice(0, 3);
+			let color;
+			if(match[2] == '#' || match[2] == '°') {
+				color = match[3].slice(0, 3);
 				match[3] = match[3].slice(3);
 			}
-			span.style = { '#':'color:#'+hex, '*':'font-weight:bold', '_':'text-decoration:underline', '/':'font-style:italic', '-':'text-decoration:line-through' }[match[2]];
+			if(match[2] == '!') {
+				span.className = 'rainbow';
+			} else {
+				span.style = { '#':'color:#'+color, '°':'color:hsl('+color+', 100%, 50%)', '*':'font-weight:bold', '_':'text-decoration:underline', '/':'font-style:italic', '-':'text-decoration:line-through' }[match[2]];
+			}
 			span.append(loop(match[3]));
 			frag.append(loop(match[1]), span, loop(match[4]));
 			return frag;
