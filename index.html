@@ -604,15 +604,15 @@ socket.once('start', (myname, rooms) => {
 				iframe.contentWindow[event] = (...arr) => console.log({ 'join':arr[0]+' has joined', 'leave':arr[0]+' has left', 'hear':arr[1]+': '+arr[0] }[event]);
 				socket.off(event);
 			}
-			socket.on('join', name => {
+			socket.on('join', (name, hash) => {
 				persistent.users[name] = {};
-				iframe.contentWindow.join?.(name);
+				iframe.contentWindow.join?.(name, hash);
 			});
-			socket.on('leave', (msg, name) => {
-				iframe.contentWindow.leave?.(msg, name);
+			socket.on('leave', (msg, name, hash) => {
+				iframe.contentWindow.leave?.(msg, name, hash);
 				delete persistent.users[name];
 			});
-			socket.on('hear', (msg, name) => iframe.contentWindow.hear?.(msg, name));
+			socket.on('hear', (msg, name, hash) => iframe.contentWindow.hear?.(msg, name, hash));
 			iframe.contentWindow.eval(runningcode);
 			onerror = (event, source, row, col) => {
 				addsysmsg(event);
