@@ -243,11 +243,15 @@ io.on('connection', socket => {
 					io.to('admin').emit('log', socket.name, socket.room, 'kicked');
 					await leave(socket, '', 'has kicked the room');
 				} else {
-					const sockets = await io.in(name).fetchSockets();
-					for(const socket2 of sockets) {
-						if(socket2.room != socket.room) continue;
-						io.to('admin').emit('log', name, socket2.hash, socket2.room, 'kicked');
-						await leave(socket2, 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
+					if(name == socket.name || name == socket.hash) {
+						await leave(socket, 'You\'ve been kicked from '+socket.room+'!', 'has kicked themselves');
+					} else {
+						const sockets = await io.in(name).fetchSockets();
+						for(const socket2 of sockets) {
+							if(socket2.room != socket.room) continue;
+							io.to('admin').emit('log', name, socket2.hash, socket2.room, 'kicked');
+							await leave(socket2, 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
+						}
 					}
 				}
 				if(!rooms[socket.room] || !mins) return;
