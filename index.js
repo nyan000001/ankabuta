@@ -171,7 +171,7 @@ io.on('connection', socket => {
 		if(!valid(room)) return;
 		room = room.replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
 		if(regexstring && new RegExp(regexstring).test(room)) {
-			io.to('admin').emit('log', socket.name, room, 'kicked');
+			io.to('admin').emit('log', socket.name, socket.hash, room, 'kicked');
 			socket.disconnect();
 			return;
 		}
@@ -240,18 +240,17 @@ io.on('connection', socket => {
 			socket.on('kick', async (name, mins = 0) => {
 				if(!valid(name)) return;
 				if(name == socket.room) {
-					io.to('admin').emit('log', socket.name, socket.room, 'kicked');
+					io.to('admin').emit('log', socket.room, socket.hash, socket.room, 'kicked');
 					await leave(socket, '', 'has kicked the room');
+				} else if(name == socket.name || name == socket.hash) {
+					io.to('admin').emit('log', socket.room, socket.hash, socket.room, 'kicked');
+					await leave(socket, 'You\'ve been kicked from '+socket.room+'!', 'has kicked themself');
 				} else {
-					if(name == socket.name || name == socket.hash) {
-						await leave(socket, 'You\'ve been kicked from '+socket.room+'!', 'has kicked themselves');
-					} else {
-						const sockets = await io.in(name).fetchSockets();
-						for(const socket2 of sockets) {
-							if(socket2.room != socket.room) continue;
-							io.to('admin').emit('log', name, socket2.hash, socket2.room, 'kicked');
-							await leave(socket2, 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
-						}
+					const sockets = await io.in(name).fetchSockets();
+					for(const socket2 of sockets) {
+						if(socket2.room != socket.room) continue;
+						io.to('admin').emit('log', name, socket2.hash, socket2.room, 'kicked');
+						await leave(socket2, 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
 					}
 				}
 				if(!rooms[socket.room] || !mins) return;
