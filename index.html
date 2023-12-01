@@ -45,7 +45,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 @keyframes move { to { background-position:1000px 0; } }
 .rainbow { animation:move 30s ease-out 1; background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
-#sidebar { width:200px; max-width:35%; }
+#sidebar { max-width:min(35%, 200px); }
 #sidebar:empty { display:none; }
 #divvideo { aspect-ratio:1; overflow-y:auto; }
 #video { position:sticky; top:0; width:100%; aspect-ratio:16 / 9; }
@@ -202,18 +202,7 @@ socket.once('start', (myname, rooms) => {
 	}
 	socket.on('addroom', addroom);
 	socket.on('rmvroom', room => get(room).remove());
-	const leave = () => {
-		history.replaceState(null, '', document.location.pathname);
-		document.body.classList.remove('joined', 'admin');
-		const arrow = get('arrow');
-		get('log').textContent = get('sidebar').textContent = '';
-		get('log').append(arrow);
-		get('room').focus();
-	}
-	socket.on('joinroom', (room, admin, unavailable) => {
-		if(document.body.classList.contains('joined')) {
-			leave();
-		}
+	const join = (room, admin, unavailable) => {
 		if(unavailable) {
 			addsysmsg(room+' is unavailable');
 			return;
@@ -356,13 +345,27 @@ socket.once('start', (myname, rooms) => {
 			} else {
 				socket.off('change');
 			}
+			let leave = () => {
+				history.replaceState(null, '', document.location.pathname);
+				document.body.classList.remove('joined', 'admin');
+				const arrow = get('arrow');
+				get('log').textContent = get('sidebar').textContent = '';
+				get('log').append(arrow);
+				get('room').focus();
+				leave = () => {};
+			}
 			if(msg) {
 				document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
 				addsysmsg(msg);
 				get('leave').onclick = () => leave();
+				socket.once('joinroom', (...arr) => {
+					leave();
+					join(...arr);
+				});
 			} else {
 				document.title = 'ankabuta';
 				leave();
+				socket.once('joinroom', join);
 			}
 		});
 		const change = (add, arr) => {
@@ -632,7 +635,8 @@ socket.once('start', (myname, rooms) => {
 			codehistory.push(pastcode);
 			codeindex++;
 		}
-	});
+	}
+	socket.once('joinroom', join);
 	socket.on('log', (...arr) => console.log(...arr));
 });
 </script>

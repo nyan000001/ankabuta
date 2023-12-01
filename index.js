@@ -20,6 +20,7 @@ io.engine.on('initial_headers', (headers, request) => {
 	headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:604800, sameSite:'strict' });
 	hashes.push(hash);
 });
+const banned = {};
 const rooms = {};
 const records = [];
 let time = 0;
@@ -27,41 +28,71 @@ let regexstring;
 io.on('connection', socket => {
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 	socket.join(socket.hash);
-	socket.on('ban', async (password, name, regex, mins = 0) => {
-		if(password != process.env.PASSWORD) return;
+	const validstring = string => string && typeof string == 'string';
+	const validnumber = num => num > 0;
+	const login = password => {
+		if(password != process.env.PASSWORD) {
+			io.to('admin').emit('log', socket.room, 'Invalid password');
+			return false;
+		}
 		if(!socket.rooms.has('admin')) {
 			socket.emit('log', records, Object.keys(rooms), regexstring);
 			socket.join('admin');
 		}
-		if(name) {
-			if(name[0] == '#') {
-				if(rooms[name]) {
-					io.to('admin').emit('log', rooms[name].admin.name, rooms[name].admin.hash, name, 'kicked');
-					rooms[name].admin.disconnect();
-				}
-			} else {
-				const sockets = await io.in(name).fetchSockets();
-				for(const socket2 of sockets) {
-					io.to('admin').emit('log', name, socket2.hash, socket2.room, 'kicked');
-					socket2.disconnect();
-				}
+		return true;
+	}
+	socket.on('LOGIN', login);
+	socket.on('KICK', async (password, name, mins) => {
+		if(!login(password)) return;
+		if(!validstring(name)) {
+			io.to('admin').emit('log', socket.room, 'Invalid name');
+			return;
+		}
+		if(name[0] == '#') {
+			if(rooms[name]) {
+				io.to('admin').emit('log', socket.room, 'Kicked', name);
+				rooms[name].admin.disconnect();
+			}
+		} else {
+			const sockets = await io.in(name).fetchSockets();
+			for(const socket2 of sockets) {
+				io.to('admin').emit('log', socket.room, 'Kicked', socket2.name);
+				await socket2.disconnect();
 			}
 		}
-		if(regex) {
-			regexstring = regex;
-			regex = new RegExp(regex);
-			io.to('admin').emit('log', regexstring, 'regex');
-			for(const room in rooms) {
-				if(regex.test(room)) {
-					io.to('admin').emit('log', rooms[room].admin.name, rooms[room].admin.hash, room, 'kicked');
-					rooms[room].admin.disconnect();
-				}
-			}
+		if(validnumber(mins)) {
+			clearTimeout(banned[name]);
+			banned[name] = setTimeout(() => delete banned[name], mins * 60000);
+		}
+	});
+	socket.on('LOCK', (password, mins) => {
+		if(!login(password)) return;
+		if(!validnumber(mins)) {
+			io.to('admin').emit('log', socket.room, 'Invalid time');
+			return;
 		}
 		time = Date.now() + mins * 60000;
 	});
+	socket.on('REGEX', (password, regex) => {
+		if(!login(password)) return;
+		try {
+			new RegExp(regex);
+		} catch(error) {
+			io.to('admin').emit('log', socket.room, error);
+			return;
+		}
+		regexstring = regex;
+		regex = new RegExp(regex);
+		io.to('admin').emit('log', socket.room, 'New regex', regexstring);
+		for(const room in rooms) {
+			if(regex.test(room)) {
+				io.to('admin').emit('log', socket.room, 'Kicked', rooms[room].admin.name);
+				rooms[room].admin.disconnect();
+			}
+		}
+	});
 	socket.onAny((...arr) => {
-		arr = [socket.name, socket.hash, socket.room, ...arr];
+		arr = [socket.room, socket.name, socket.hash, ...arr];
 		io.to('admin').emit('log', ...arr);
 		if(!records.length) {
 			records.push(arr);
@@ -85,9 +116,10 @@ io.on('connection', socket => {
 			console.log(...arr);
 		}
 	});
-	if(time > Date.now()) return;
+	if(time > Date.now() || banned[socket.hash]) return;
 	const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
-	const sockets = [...io.sockets.sockets.values()];
+	const getallsockets = () => [...io.sockets.sockets.values()];
+	const sockets = getallsockets();
 	let name;
 	let taken = true;
 	const issimilar = (name1, name2) => {
@@ -133,18 +165,22 @@ io.on('connection', socket => {
 	}
 	socket.name = name;
 	socket.join(socket.name);
-	socket.emit('start', socket.name, Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == null));
+	socket.emit('start', socket.name, Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == undefined && !rooms[room].banned[socket.hash]));
 	const leave = async (socket, msg1, msg2) => {
+		if(!socket.room) return;
 		socket.emit('leaveroom', msg1);
 		if(rooms[socket.room].admin == socket) {
 			clearTimeout(rooms[socket.room].timeout);
+			for(const timeout in rooms[socket.room].banned) {
+				clearTimeout(rooms[socket.room].banned[i]);
+			}
 			const sockets = await io.in(socket.room).fetchSockets();
 			delete rooms[socket.room];
 			for(const socket2 of sockets) {
 				socket2.emit('leaveroom', 'Disconnected from '+socket.room+'! (Admin '+msg2+')');
 				socket2.leave(socket.room);
 				delete socket2.room;
-				for(const listener of ['say', 'leave', 'disconnect']) {
+				for(const listener of ['say', 'leave']) {
 					socket2.removeAllListeners(listener);
 				}
 			}
@@ -154,24 +190,23 @@ io.on('connection', socket => {
 			} else {
 				io.emit('rmvroom', socket.room);
 			}
-			for(const listener of ['say', 'sendOnly', 'sendAll', 'kick', 'leave', 'disconnect']) {
+			for(const listener of ['say', 'sendOnly', 'sendAll', 'kick', 'lock', 'leave']) {
 				socket.removeAllListeners(listener);
 			}
 		} else {
 			rooms[socket.room].admin.emit('leave', msg2, socket.name, socket.hash);
-			for(const listener of ['say', 'leave', 'disconnect']) {
+			for(const listener of ['say', 'leave']) {
 				socket.removeAllListeners(listener);
 			}
 		}
 		socket.leave(socket.room);
 		delete socket.room;
 	}
-	const valid = (...arr) => arr.every(x => x && typeof x == 'string');
 	socket.on('join', async room => {
-		if(!valid(room)) return;
+		if(!validstring(room)) return;
 		room = room.replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
 		if(regexstring && new RegExp(regexstring).test(room)) {
-			io.to('admin').emit('log', socket.name, socket.hash, room, 'kicked');
+			io.to('admin').emit('log', room, 'Kicked', socket.name);
 			socket.disconnect();
 			return;
 		}
@@ -179,7 +214,7 @@ io.on('connection', socket => {
 			if(socket.room == room) return;
 			await leave(socket, '', 'has left');
 		}
-		if(rooms[room]?.timeout != null) {
+		if(rooms[room] && (rooms[room].timeout != undefined || rooms[room].banned[socket.name] || rooms[room].banned[socket.hash])) {
 			socket.emit('joinroom', room, false, true);
 			return;
 		}
@@ -190,7 +225,7 @@ io.on('connection', socket => {
 			rooms[socket.room].admin.emit('join', socket.name, socket.hash);
 			socket.on('say', msg => rooms[socket.room].admin.emit('hear', msg, socket.name, socket.hash));
 		} else {
-			rooms[socket.room] = { 'admin':socket, };
+			rooms[socket.room] = { 'admin':socket, banned:{} };
 			if(!socket.room.includes('hidden')) {
 				socket.broadcast.emit('addroom', socket.room);
 			}
@@ -199,7 +234,7 @@ io.on('connection', socket => {
 				if(!Array.isArray(names)) return;
 				const sockets = await io.in(socket.room).fetchSockets();
 				for(const socket2 of sockets) {
-					if(add != null) {
+					if(add != undefined) {
 						if(names.includes(socket2.name) == only) {
 							socket2.emit('change', add, msg1);
 						} else if(msg2) {
@@ -238,26 +273,38 @@ io.on('connection', socket => {
 				}
 			});
 			socket.on('kick', async (name, mins = 0) => {
-				if(!valid(name)) return;
+				if(!validstring(name)) return;
 				if(name == socket.room) {
-					io.to('admin').emit('log', socket.room, socket.hash, socket.room, 'kicked');
+					io.to('admin').emit('log', socket.room, 'Kicked', name);
 					await leave(socket, '', 'has kicked the room');
 				} else if(name == socket.name || name == socket.hash) {
-					io.to('admin').emit('log', socket.room, socket.hash, socket.room, 'kicked');
+					io.to('admin').emit('log', socket.room, 'Kicked', name);
 					await leave(socket, 'You\'ve been kicked from '+socket.room+'!', 'has kicked themself');
 				} else {
-					const sockets = await io.in(name).fetchSockets();
-					for(const socket2 of sockets) {
-						if(socket2.room != socket.room) continue;
-						io.to('admin').emit('log', name, socket2.hash, socket2.room, 'kicked');
+					const getsockets = () => getallsockets().filter(socket2 => socket2.room == socket.room && (socket2.name == name || socket2.hash == hash));
+					for(const socket2 of getsockets()) {
+						io.to('admin').emit('log', socket.room, 'Kicked', socket2.name);
 						await leave(socket2, 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
 					}
+					if(!validnumber(mins)) return;
+					clearTimeout(rooms[socket.room].banned[name]);
+					for(const socket2 of sockets) {
+						socket2.emit('rmvroom', socket.room);
+					}
+					rooms[socket.room].banned[name] = setTimeout(() => {
+						for(const socket2 of getsockets()) {
+							socket2.emit('addroom', socket.room);
+						}
+						delete rooms[socket.room].banned[name];
+					});
 				}
-				if(!rooms[socket.room] || !mins) return;
+			});
+			socket.on('lock', async mins => {
+				if(!validnumber(mins)) return;
 				clearTimeout(rooms[socket.room].timeout);
-				if(rooms[socket.room].timeout == null && !socket.room.includes('hidden')) {
+				if(rooms[socket.room].timeout == undefined && !socket.room.includes('hidden')) {
 					socket.emit('hideroom');
-					for(const socket2 of [...io.sockets.sockets.values()]) {
+					for(const socket2 of getallsockets()) {
 						if(socket2.room == socket.room) {
 							socket2.emit('hideroom');
 						} else {
@@ -266,10 +313,10 @@ io.on('connection', socket => {
 					}
 				}
 				rooms[socket.room].timeout = setTimeout(() => {
-					rooms[socket.room].timeout = null;
+					delete rooms[socket.room].timeout;
 					if(socket.room.includes('hidden')) return;
 					socket.emit('showroom');
-					for(const socket2 of [...io.sockets.sockets.values()]) {
+					for(const socket2 of getallsockets()) {
 						if(socket2.room == socket.room) {
 							socket2.emit('showroom');
 						} else {
@@ -280,7 +327,12 @@ io.on('connection', socket => {
 			});
 		}
 		socket.on('leave', () => leave(socket, '', 'has left'));
-		socket.on('disconnect', () => leave(socket, '', 'has disconnected'));
+	});
+	socket.on('disconnect', () => {
+		const arr = [socket.room, socket.name, socket.hash, 'disconnect'];
+		records.push(arr);
+		io.to('admin').emit('log', ...arr);
+		leave(socket, '', 'has disconnected');
 	});
 });
 http.listen(process.env.PORT ?? 3000);

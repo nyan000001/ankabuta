@@ -6,36 +6,86 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
 <style>
+html, body, #top { height:100%; }
 body { font-size:7pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; padding:0; margin:0; line-height:13px; }
-div { float:left; min-width:150px; max-width:400px; margin:8px; }
-p { white-space:pre-wrap; padding:0; margin:5px; word-wrap:break-word; }
+body.blank * { display:none; }
+#top { display:flex; }
+#top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
+p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; cursor:default; }
+h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; }
+p.disconnected { opacity:.5; text-decoration:line-through; }
+#bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
+form { display:inline-block; margin:8px; }
+input[type=number] { width:40px; }
 @media (prefers-color-scheme:dark) {
-	body { background:#000; color:#fff; }
+	body, h1 { background:#000; color:#fff; }
+	::-webkit-scrollbar { width:15px; height:15px; }
+	::-webkit-scrollbar-track { background:#222; }
+	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
+	::-webkit-scrollbar-corner { background:#333; }
 }
 </style>
 </head>
-<body>
+<body class="blank">
+<div id="top"></div>
+<div id="bottom">
+<form id="kickform">
+<input id="name" spellcheck="false">
+<input type="number" id="kicktime" value="0">
+<input type="submit" value="Kick">
+</form>
+<form id="regexform">
+<input id="regex">
+<output id="currentregex"></output>
+<input type="submit" value="Regex">
+</form>
+<form id="lockform">
+<input type="number" id="locktime" value="0">
+<input type="submit" value="Lock">
+</form>
+</div>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
+const get = id => document.getElementById(id);
+const login = password => {
+	socket.emit('LOGIN', password);
+	get('name').oninput = () => {
+		const name = get('name').value;
+		const ps = document.getElementsByTagName('p');
+		for(let i = 0; i < ps.length; i++) {
+			ps[i].style.background = ps[i].classList.contains(name)? '#f00': 'transparent';
+		}
+	}
+	get('kickform').onsubmit = e => {
+		e.preventDefault();
+		socket.emit('KICK', password, get('name').value, get('kicktime').value);
+	}
+	get('regexform').onsubmit = e => {
+		e.preventDefault();
+		socket.emit('REGEX', password, get('regex').value);
+	}
+	get('lockform').onsubmit = e => {
+		e.preventDefault();
+		socket.emit('LOCK', password, get('locktime').value);
+	}
+}
 socket.once('disconnect', () => console.log('Connection lost!'));
 socket.once('log', (records, rooms, regex) => {
-	const regexdiv = document.createElement('div');
-	regexdiv.textContent = 'regex: '+regex;
-	document.body.append(regexdiv);
+	document.body.classList.remove('blank');
 	const roomdivs = {};
 	const addroom = room => {
 		if(roomdivs[room]) return;
 		const div = document.createElement('div');
-		const p = document.createElement('p');
-		p.textContent = room;
-		div.append(p);
-		document.body.append(div);
+		const h1 = document.createElement('h1');
+		h1.textContent = room;
+		div.append(h1);
+		get('top').append(div);
 		roomdivs[room] = div;
 	}
 	for(const room of rooms) addroom(room);
-	const addrecord = (name, hash, room, ...arr) => {
-		const addtext = text => {
+	const addrecord = (room, name, hash, ...arr) => {
+		const addtext = (text, bool) => {
 			const loop = text => {
 				const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])((?:.*?\[\2.*?\2\])*?.*?)\2\](.*)/si);
 				if(!match) return text;
@@ -53,28 +103,49 @@ socket.once('log', (records, rooms, regex) => {
 			}
 			const p = document.createElement('p');
 			p.append(loop(text));
+			if(!room) room = '(not in a room)';
+			if(!roomdivs[room]) addroom(room);
 			roomdivs[room].append(p);
+			if(bool) {
+				p.classList.add(name, hash);
+				if([name, hash].includes(get('name').value)) {
+					p.style.background = '#f00';
+				}
+				const highlight = name => {
+					get('name').value = name;
+					const ps = document.getElementsByTagName('p');
+					for(let i = 0; i < ps.length; i++) {
+						ps[i].style.background = ps[i].classList.contains(name)? '#f00': 'transparent';
+					}
+					get('name').focus();
+				}
+				p.onclick = e => highlight(p.classList.contains(name)? name: '');
+				p.oncontextmenu = e => {
+					e.preventDefault();
+					highlight(hash);
+				}
+			}
+			roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0, behavior:'smooth' });
 		}
 		const cmd = arr.shift();
+		let boldname = '[*'+name+'*]';
 		if(!cmd) {
-			if(room == 'regex') {
-				regexdiv.textContent = 'regex: '+name;
-			} else console.log(name, hash, room);
-			return;
-		}
-		if(cmd == 'ban') {
-			console.log(name, hash, room, cmd, ...arr);
-			return;
-		}
-		if(cmd != 'join') addroom(room || '(not in a room)');
-		let boldname = '[*'+name+'*][#999('+hash+')#]';
-		if(cmd == 'join' && typeof arr[0] == 'string') {
+			if(name == 'New regex') get('currentregex').textContent = hash;
+			addtext([name, hash].reduce((acc, curr) => acc+' '+(typeof curr == 'string'? curr: '[/'+curr+'/]')));
+		} else if(cmd == 'join' && typeof arr[0] == 'string') {
 			room = arr[0].replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
 			addroom(room);
-			addtext(boldname+' joined');
+			addtext(boldname+' joined', true);
 		} else if(cmd == 'say') {
 			if(typeof arr[0] != 'string') arr[0] = JSON.stringify(arr[0]);
-			addtext(boldname+': '+arr[0]);
+			addtext(boldname+': '+arr[0], true);
+		} else if(cmd == 'disconnect') {
+			addtext(boldname+' has disconnected', true)
+			const ps = document.getElementsByClassName(name);
+			while(ps.length) {
+				ps[0].classList.add('disconnected');
+				ps[0].classList.remove(name);
+			}
 		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
 			let verb = 'says to';
 			if(typeof arr[0] == 'boolean') verb = ['removes from', 'adds to'][arr.shift()?1:0];
@@ -92,10 +163,10 @@ socket.once('log', (records, rooms, regex) => {
 				if(typeof arr[2] == 'object') arr[2] = JSON.stringify(arr[2]);
 				text += '\n'+boldname+' '+verb+' '+excluded+': '+arr[2];
 			}
-			addtext(text);
-		} else if(cmd == 'kicked') {
-			addtext(boldname+' has been kicked');
-		} else console.log(name, hash, room, cmd, ...arr);
+			addtext(text, true);
+		} else {
+			addtext(boldname+' '+[cmd, ...arr].reduce((acc, curr) => acc+' '+(typeof curr == 'string'? curr: '[/'+curr+'/]')), true);
+		}
 	}
 	for(const record of records) addrecord(...record);
 	socket.on('log', addrecord);
