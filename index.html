@@ -3,7 +3,7 @@
 <head>
 <title>ankabuta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@600;750&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@600;750&family=Noto+Color+Emoji&family=Noto+Emoji&display=swap" rel="stylesheet">
 <style>
 * { font-size:11pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
 input::-webkit-input-placeholder { opacity: 0.5; }
@@ -31,7 +31,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #wrapper { display:flex; position:fixed; width:100%; height:calc(100% - 50px); padding:1px 1px 0 1px; }
 #wrapper > * { margin:1px; }
 #wrapper > *:not(#log, #help) { padding:5px; }
-#wrapper > *:not(#codebox, #help), #help div { white-space:pre-wrap; word-break:break-word; }
+#wrapper > *:not(#codebox, #help), #help > div > div { white-space:pre-wrap; word-break:break-word; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
 #codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
@@ -43,7 +43,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #arrow { width:100%; bottom:0; position:sticky; }
 #arrow.hidden { display:none; }
 @keyframes move { to { background-position:1000px 0; } }
-.rainbow { animation:move 30s ease-out 1; background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.rainbow { font-family:'Open Sans', 'Noto Emoji', sans-serif; animation:move 30s ease-out 1; background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
 #sidebar { max-width:min(35%, 200px); }
 #sidebar:empty { display:none; }
@@ -53,8 +53,8 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #sidebar a.disabled { pointer-events:auto; }
 
 #help { padding:0 5px; line-height:13pt; }
-#help p { padding:1px 0; }
-#help div { margin:5px 0; }
+#help > div { padding:1px 0; }
+#help > div > div { margin:5px 0; }
 #help b { opacity:.5; font-weight:normal; }
 
 #msgform { bottom:0; position:fixed; width:100%; height:50px; display:flex; padding:0 1px 1px 1px; }
@@ -91,13 +91,13 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 <div id="log" role="log"><input type="button" id="arrow" value="⮟" class="hidden"></div>
 <div id="sidebar" role="log"></div>
 <div id="help" class="hidden">
-<p>
-<div>/clear
-/join <b>ROOM</b>
-/leave
-<span class="hidden">/kick <b>USER</b> <b>MINUTES</b></span>
-<span class="hidden">/lock <b>MINUTES</b></span></div>
-</p><p>
+<div>
+<div>/clear</div>
+<div>/join <b>ROOM</b></div>
+<div>/leave</div>
+<div class="hidden">/kick <b>USER</b> <b>MINUTES</b></div>
+<div class="hidden">/lock <b>MINUTES</b></div>
+</div><div>
 <div>ctrl+h
 	<i>Toggle this help menu</i></div>
 <div>ctrl+o
@@ -108,7 +108,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 	<i>Next message<span class="hidden"> or code</span></i></div>
 <div class="hidden">ctrl+s
 	<i>Save and run the code</i></span></div>
-</p><p>
+</div><div>
 <div class="hidden">sendOnly(<b>message1, users, message2</b>)
 	<i>Sends <b>message1</b> to <b>users</b>
 	and sends <b>message2</b> to everyone else</i></div>
@@ -119,7 +119,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 	<i>Adds <b>word</b> to everyone's sidebar</i></div>
 <div class="hidden">sendAll(false, <b>word</b>)
 	<i>Removes <b>word</b> from everyone's sidebar</i></div>
-</p>
+</div>
 </div>
 </div>
 <form id="msgform">
@@ -221,6 +221,7 @@ socket.once('start', (myname, rooms) => {
 		document.body.classList.add('joined');
 		get('msgbox').readOnly = get('say').disabled = false;
 		get('log').onscroll = get('codebox').onmousemove = onresize = () => {
+			if(!document.body.classList.contains('joined')) return;
 			get('arrow').classList[get('log').scrollTop + get('log').clientHeight > get('arrow').previousSibling.offsetTop? 'add': 'remove']('hidden');
 		}
 		get('arrow').onclick = () => {
@@ -334,6 +335,7 @@ socket.once('start', (myname, rooms) => {
 			}
 			document.removeEventListener('visibilitychange', stopanimation);
 			get('msgbox').readOnly = get('say').disabled = true;
+			history.replaceState(null, '', document.location.pathname);
 			get(room)?.classList.remove('disabled');
 			for(const event of ['showroom', 'hideroom', 'hear']) {
 				socket.off(event);
@@ -347,7 +349,6 @@ socket.once('start', (myname, rooms) => {
 				socket.off('change');
 			}
 			let leave = () => {
-				history.replaceState(null, '', document.location.pathname);
 				document.body.classList.remove('joined', 'admin');
 				const arrow = get('arrow');
 				get('log').textContent = get('sidebar').textContent = '';
