@@ -5,25 +5,42 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
 app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
 app.use((req, res) => res.redirect('/'));
+require('dotenv').config();
+const { MongoClient, ServerApiVersion } = require('mongodb');
+const client = new MongoClient(process.env.URI, { serverApi:{ version:ServerApiVersion.v1, strict:true, deprecationErrors:true } });
+const collection = client.db('Cluster0').collection('hashes');
+//collection.createIndex( { createdAt:1 }, { expireAfterSeconds:604800 } );
 const crypto = require('crypto');
 const cookie = require('cookie');
+const bannedUntil = {};
+const start = async () => {
+	const docs = await collection.find({}).toArray();
+	for(const doc of docs) {
+		bannedUntil[doc._id] = doc.bannedUntil;
+	}
+}
+start();
 const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
-const hashes = [];
 io.engine.on('initial_headers', (headers, request) => {
-	if(request.headers.cookie && cookie.parse(request.headers.cookie).uid) return;
 	let uid;
 	let hash;
-	do {
-		uid = crypto.randomBytes(32).toString('base64');
+	if(request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
+		uid = cookie.parse(request.headers.cookie).uid;
 		hash = makehash(uid);
-	} while(hashes.includes(hash));
-	headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:604800, sameSite:'strict' });
-	hashes.push(hash);
+		if(bannedUntil[hash] != undefined) return;
+	} else {
+		do {
+			uid = crypto.randomBytes(32).toString('base64');
+			hash = makehash(uid);
+		} while(bannedUntil[hash] != undefined);
+		headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:604800, sameSite:'strict' });
+	}
+	collection.insertOne({ _id:hash, createdAt:new Date(), bannedUntil:0 });
+	bannedUntil[hash] = 0;
 });
-const banned = {};
 const rooms = {};
 const records = [];
-let time = 0;
+let lockedUntil = 0;
 let regexstring;
 io.on('connection', socket => {
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
@@ -48,21 +65,29 @@ io.on('connection', socket => {
 			io.to('admin').emit('log', socket.room, 'Invalid name');
 			return;
 		}
+		let hash;
 		if(name[0] == '#') {
 			if(rooms[name]) {
+				hash = rooms[name].admin.hash;
 				io.to('admin').emit('log', socket.room, 'Kicked', name);
 				rooms[name].admin.disconnect();
 			}
 		} else {
 			const sockets = await io.in(name).fetchSockets();
+			hash = sockets[0]?.hash;
 			for(const socket2 of sockets) {
 				io.to('admin').emit('log', socket.room, 'Kicked', socket2.name);
 				await socket2.disconnect();
 			}
 		}
 		if(validnumber(mins)) {
-			clearTimeout(banned[name]);
-			banned[name] = setTimeout(() => delete banned[name], mins * 60000);
+			if(bannedUntil[hash] == undefined) {
+				io.to('admin').emit('log', socket.room, 'Invalid hash');
+				return;
+			}
+			const time = Date.now() + mins * 60000;
+			bannedUntil[hash] = time;
+			collection.updateOne({ _id:hash }, { $set: { bannedUntil:time } });
 		}
 	});
 	socket.on('LOCK', (password, mins) => {
@@ -71,7 +96,7 @@ io.on('connection', socket => {
 			io.to('admin').emit('log', socket.room, 'Invalid time');
 			return;
 		}
-		time = Date.now() + mins * 60000;
+		lockedUntil = Date.now() + mins * 60000;
 	});
 	socket.on('REGEX', (password, regex) => {
 		if(!login(password)) return;
@@ -116,7 +141,7 @@ io.on('connection', socket => {
 			console.log(...arr);
 		}
 	});
-	if(time > Date.now() || banned[socket.hash]) return;
+	if(lockedUntil > Date.now() || bannedUntil[socket.hash] > Date.now()) return;
 	const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
 	const getallsockets = () => [...io.sockets.sockets.values()];
 	const sockets = getallsockets();
@@ -167,7 +192,6 @@ io.on('connection', socket => {
 	socket.join(socket.name);
 	socket.emit('start', socket.name, Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == undefined && !rooms[room].banned[socket.hash]));
 	const leave = async (socket, msg1, msg2) => {
-		if(!socket.room) return;
 		socket.emit('leaveroom', msg1);
 		if(rooms[socket.room].admin == socket) {
 			clearTimeout(rooms[socket.room].timeout);
@@ -332,7 +356,9 @@ io.on('connection', socket => {
 		const arr = [socket.room, socket.name, socket.hash, 'disconnect'];
 		records.push(arr);
 		io.to('admin').emit('log', ...arr);
-		leave(socket, '', 'has disconnected');
+		if(socket.room) {
+			leave(socket, '', 'has disconnected');
+		}
 	});
 });
 http.listen(process.env.PORT ?? 3000);
