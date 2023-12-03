@@ -33,7 +33,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #wrapper > *:not(#log, #help) { padding:5px; }
 #wrapper > *:not(#codebox, #help), #help > div > div { white-space:pre-wrap; word-break:break-word; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
-#codebox { font:9pt monospace; width:300px; resize:horizontal; white-space:pre; }
+#codebox { font-size:9pt; font-family:monospace, 'Noto Color Emoji'; width:300px; resize:horizontal; white-space:pre; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 .joined #wrapper > *, #help { flex-grow:0; flex-shrink:0; }
 .joined #log { flex-grow:1; flex-shrink:1; }
@@ -133,11 +133,12 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 const socket = io();
 socket.once('start', (myname, rooms) => {
 	const get = id => document.getElementById(id);
-	let interval;
+	let animation;
 	let msgcount = 0;
 	const msghistory = [];
 	let msgindex = 0;
 	let lastmsg = '';
+	let myroom = '';
 	if(location.hash) {
 		socket.emit('join', decodeURI(location.hash));
 	}
@@ -159,13 +160,24 @@ socket.once('start', (myname, rooms) => {
 			get('roomform').after(div);
 		}
 	}
+	const stopanimation = () => {
+		animation = clearInterval(animation);
+		msgcount = 0;
+		document.removeEventListener('visibilitychange', visibilitychange);
+	}
+	const visibilitychange = () => {
+		if(document.visibilityState == 'hidden') return;
+		stopanimation();
+		document.title = 'ankabuta#'+myroom;
+	}
 	socket.once('disconnect', () => {
+		stopanimation();
+		document.title = 'ankabuta☠️'+myroom;
 		get('room').readOnly = get('go').disabled = get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 		get('leave').onclick = () => location.href = '/';
 		addsysmsg('Connection failed!');
-		document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
-		socket.removeAllListeners();
 		get('rooms').classList.add('disabled');
+		socket.disconnect();
 	});
 	const addroom = room => {
 		const a = document.createElement('a');
@@ -208,6 +220,7 @@ socket.once('start', (myname, rooms) => {
 			addsysmsg(room+' is unavailable');
 			return;
 		}
+		myroom = room.slice(1);
 		socket.on('hideroom', () => get(room).textContent = '('+room+')');
 		socket.on('showroom', () => get(room).textContent = room);
 		let iframe;
@@ -219,7 +232,7 @@ socket.once('start', (myname, rooms) => {
 		document.title = 'ankabuta'+room;
 		history.replaceState(null, '', document.location.pathname+room);
 		document.body.classList.add('joined');
-		get('msgbox').readOnly = get('say').disabled = false;
+		get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = false;
 		get('log').onscroll = get('codebox').onmousemove = onresize = () => {
 			if(!document.body.classList.contains('joined')) return;
 			get('arrow').classList[get('log').scrollTop + get('log').clientHeight > get('arrow').previousSibling.offsetTop? 'add': 'remove']('hidden');
@@ -258,10 +271,10 @@ socket.once('start', (myname, rooms) => {
 			}
 			if(document.visibilityState == 'visible') return;
 			msgcount++;
-			if(interval) return;
+			if(animation) return;
 			document.title = '('+msgcount+') ankabuta'+room;
 			let i = 0;
-			interval = setInterval(() => {
+			animation = setInterval(() => {
 				let title = [...('ankabuta'+room)];
 				title[i] = title[i].toUpperCase();
 				do {
@@ -269,14 +282,8 @@ socket.once('start', (myname, rooms) => {
 				} while(title[i] == title[i].toUpperCase());
 				document.title = '('+msgcount+') '+title.join('');
 			}, 400);
+			document.addEventListener('visibilitychange', visibilitychange);
 		}
-		const stopanimation = () => {
-			if(document.visibilityState == 'hidden' || !interval) return;
-			interval = clearInterval(interval);
-			document.title = 'ankabuta'+room;
-			msgcount = 0;
-		}
-		document.addEventListener('visibilitychange', stopanimation);
 		get('msgform').onsubmit = e => {
 			e.preventDefault();
 			const msg = get('msgbox').value;
@@ -329,12 +336,9 @@ socket.once('start', (myname, rooms) => {
 		}
 		addsysmsg('You have joined '+room);
 		socket.once('leaveroom', msg => {
-			if(interval) {
-				interval = clearInterval(interval);
-				msgcount = 0;
-			}
-			document.removeEventListener('visibilitychange', stopanimation);
-			get('msgbox').readOnly = get('say').disabled = true;
+			stopanimation();
+			document.title = 'ankabuta☠️'+myroom;
+			get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 			history.replaceState(null, '', document.location.pathname);
 			get(room)?.classList.remove('disabled');
 			for(const event of ['showroom', 'hideroom', 'hear']) {
@@ -349,6 +353,8 @@ socket.once('start', (myname, rooms) => {
 				socket.off('change');
 			}
 			let leave = () => {
+				myroom = '';
+				document.title = 'ankabuta';
 				document.body.classList.remove('joined', 'admin');
 				const arrow = get('arrow');
 				get('log').textContent = get('sidebar').textContent = '';
@@ -357,7 +363,6 @@ socket.once('start', (myname, rooms) => {
 				leave = () => {};
 			}
 			if(msg) {
-				document.title = document.title.replace(/^ankabuta#?(.*)$/, 'ankabuta☠️$1');
 				addsysmsg(msg);
 				get('leave').onclick = () => leave();
 				socket.once('joinroom', (...arr) => {
@@ -365,7 +370,6 @@ socket.once('start', (myname, rooms) => {
 					join(...arr);
 				});
 			} else {
-				document.title = 'ankabuta';
 				leave();
 				socket.once('joinroom', join);
 			}
