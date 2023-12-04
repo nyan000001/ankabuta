@@ -252,6 +252,7 @@ socket.once('start', (myname, rooms) => {
 		document.body.classList.add('joined');
 		get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = false;
 		get('arrow').onclick = () => {
+			get('arrow').classList.add('hidden');
 			scrolldown();
 			get('msgbox').focus();
 		}
