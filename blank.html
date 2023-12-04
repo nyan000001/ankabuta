@@ -86,23 +86,25 @@ socket.once('log', (records, rooms, regex) => {
 	for(const room of rooms) addroom(room);
 	const addrecord = (room, name, hash, ...arr) => {
 		const addtext = (text, bool) => {
-			const loop = text => {
-				const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|[*_/-])((?:.*?\[\2.*?\2\])*?.*?)\2\](.*)/si);
-				if(!match) return text;
-				const frag = document.createDocumentFragment();
-				const span = document.createElement('span');
-				let hex;
-				if(match[2] == '#') {
-					hex = match[3].slice(0, 3);
-					match[3] = match[3].slice(3);
-				}
-				span.style = { '#':'color:#'+hex, '*':'font-weight:bold', '_':'text-decoration:underline', '/':'font-style:italic', '-':'text-decoration:line-through' }[match[2]];
-				span.append(loop(match[3]));
-				frag.append(loop(match[1]), span, loop(match[4]));
-				return frag;
-			}
 			const p = document.createElement('p');
-			p.append(loop(text));
+			let html = '';
+			const arr = text.split(/\[\{(.*?)\}\]/s);
+			for(let i = 0; i < arr.length; i++) {
+				text = arr[i].replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				if(i % 2) {
+					html += '<pre>'+text+'</pre>';
+				} else {
+					html += text.
+						replace(/\[!(.*?)!\]/g, '<span class="rainbow">$1</span>').
+						replace(/\[#([0-9a-f]{3})(.*?)#\]/gi, '<span style="color:#$1">$2</span>').
+						replace(/\[°([0-9a-f]{3})(.*?)°\]/gi, '<span style="color:hsl($1, 100%, 50%)">$2</span>').
+						replace(/\[\*(.*?)\*\]/g, '<b>$1</b>').
+						replace(/\[\/(.*?)\/\]/g, '<i>$1</i>').
+						replace(/\[_(.*?)_\]/g, '<span style="text-decoration:underline">$1</span>').
+						replace(/\[-(.*?)-\]/g, '<span style="text-decoration:line-through">$1</span>');
+				}
+			}
+			p.innerHTML = html;
 			if(!room) room = '(not in a room)';
 			if(!roomdivs[room]) addroom(room);
 			roomdivs[room].append(p);

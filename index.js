@@ -65,22 +65,27 @@ const start = async () => {
 			}
 			let hash;
 			if(name[0] == '#') {
-				if(rooms[name]) {
-					hash = rooms[name].admin.hash;
-					io.to('admin').emit('log', socket.room, 'Kicked', name);
-					rooms[name].admin.disconnect();
+				if(!rooms[name]) {
+					io.to('admin').emit('log', socket.room, 'Room not found');
+					return;
 				}
+				hash = rooms[name].admin.hash;
 			} else {
-				const sockets = await io.in(name).fetchSockets();
-				hash = sockets[0]?.hash;
-				for(const socket2 of sockets) {
-					io.to('admin').emit('log', socket.room, 'Kicked', socket2.name);
-					await socket2.disconnect();
+				let sockets = await io.in(name).fetchSockets();
+				if(!sockets[0]) {
+					io.to('admin').emit('log', socket.room, 'Name not found');
+					return;
 				}
+				hash = sockets[0].hash;
+			}
+			sockets = await io.in(hash).fetchSockets();
+			for(const socket2 of sockets) {
+				io.to('admin').emit('log', socket.room, 'Kicked', socket2.name);
+				await socket2.disconnect();
 			}
 			if(validnumber(mins)) {
 				if(bannedUntil[hash] == undefined) {
-					io.to('admin').emit('log', socket.room, 'Invalid hash');
+					io.to('admin').emit('log', socket.room, 'Hash not found');
 					return;
 				}
 				const time = Date.now() + mins * 60000;
@@ -173,7 +178,7 @@ const start = async () => {
 					rand('bhkltw') + rand(['ai', 'ei'])
 				]);
 			}
-			if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[gk]|d.+k|b.+t|p.+s|h.+t|[bd].+c|ch.+n|[kp].+n|ank|[hw]o|yi|nye|.w[ei]/.test(name)) continue;
+			if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[gk]|d.+k|b.+t|p.+s|h.+t|[bd].+c|s.+x|ch.+n|[kp].+n|ank|[hw]o|yi|nye|.w[ei]/.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
 			if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 				taken = false;
@@ -193,7 +198,7 @@ const start = async () => {
 			socket.emit('leaveroom', msg1);
 			if(rooms[socket.room].admin == socket) {
 				clearTimeout(rooms[socket.room].timeout);
-				for(const timeout in rooms[socket.room].banned) {
+				for(const i in rooms[socket.room].banned) {
 					clearTimeout(rooms[socket.room].banned[i]);
 				}
 				const sockets = await io.in(socket.room).fetchSockets();
@@ -299,25 +304,33 @@ const start = async () => {
 					if(name == socket.room) {
 						io.to('admin').emit('log', socket.room, 'Kicked', name);
 						await leave(socket, '', 'has kicked the room');
-					} else if(name == socket.name || name == socket.hash) {
-						io.to('admin').emit('log', socket.room, 'Kicked', name);
-						await leave(socket, 'You\'ve been kicked from '+socket.room+'!', 'has kicked themself');
 					} else {
-						const getsockets = () => getallsockets().filter(socket2 => socket2.room == socket.room && (socket2.name == name || socket2.hash == hash));
-						for(const socket2 of getsockets()) {
+						let sockets = await io.in(name).fetchSockets();
+						const socket2 = sockets.find(socket2 => socket2.room == socket.room);
+						if(!socket2) return;
+						const hash = socket2.hash;
+						sockets = await io.in(hash).fetchSockets();
+						for(const socket2 of sockets) {
+							if(socket2.room != socket.room) continue;
 							io.to('admin').emit('log', socket.room, 'Kicked', socket2.name);
-							await leave(socket2, 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
+							if(socket2 == socket) {
+								await leave(socket, 'You\'ve been kicked from '+socket.room+'!', 'has kicked themself');
+								return;
+							} else {
+								await leave(socket2, 'You\'ve been kicked from '+socket.room+'!', 'has been kicked');
+							}
 						}
 						if(!validnumber(mins)) return;
-						clearTimeout(rooms[socket.room].banned[name]);
+						clearTimeout(rooms[socket.room].banned[hash]);
 						for(const socket2 of sockets) {
 							socket2.emit('rmvroom', socket.room);
 						}
-						rooms[socket.room].banned[name] = setTimeout(() => {
-							for(const socket2 of getsockets()) {
+						rooms[socket.room].banned[hash] = setTimeout(async () => {
+							sockets = await io.in(hash).fetchSockets();
+							for(const socket2 of sockets) {
 								socket2.emit('addroom', socket.room);
 							}
-							delete rooms[socket.room].banned[name];
+							delete rooms[socket.room].banned[hash];
 						});
 					}
 				});

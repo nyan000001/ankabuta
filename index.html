@@ -33,7 +33,8 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #wrapper > *:not(#log, #help) { padding:5px; }
 #wrapper > *:not(#codebox, #help), #help > div > div { white-space:pre-wrap; word-break:break-word; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
-#codebox { font-size:9pt; font-family:monospace, 'Noto Color Emoji'; width:300px; resize:horizontal; white-space:pre; }
+#codebox { width:300px; resize:horizontal; }
+#codebox, pre { white-space:pre; font-size:9pt; font-family:monospace, 'Noto Color Emoji'; line-height:17px }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 .joined #wrapper > *, #help { flex-grow:0; flex-shrink:0; }
 .joined #log { flex-grow:1; flex-shrink:1; }
@@ -42,8 +43,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; }
 #arrow.hidden { display:none; }
-@keyframes move { to { background-position:1000px 0; } }
-.rainbow { font-family:'Open Sans', 'Noto Emoji', sans-serif; animation:move 30s ease-out 1; background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.rainbow { font-family:'Open Sans', 'Noto Emoji', sans-serif; background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
 #sidebar { max-width:min(35%, 200px); }
 #sidebar:empty { display:none; }
@@ -78,8 +78,9 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 	a.disabled, #rooms.disabled > a { color:#fff; }
 }
 
-@media (prefers-reduced-motion:reduce) {
-	.rainbow { animation:none; }
+@media (prefers-reduced-motion:no-preference) {
+	@keyframes move { to { background-position:1000px 0; } }
+	.rainbow { animation:move 30s ease-out 1; }
 }
 </style>
 <meta description="Create a chatroom with your own code or join other people's rooms">
@@ -139,6 +140,7 @@ socket.once('start', (myname, rooms) => {
 	let msgindex = 0;
 	let lastmsg = '';
 	let myroom = '';
+	let autoscroll = true;
 	if(location.hash) {
 		socket.emit('join', decodeURI(location.hash));
 	}
@@ -146,15 +148,31 @@ socket.once('start', (myname, rooms) => {
 		socket.emit('join', decodeURI(location.hash));
 	}
 	get('room').placeholder = myname+'\'s room';
+	const enableautoscroll = get('codebox').onmousemove = onresize = () => {
+		if(autoscroll || !document.body.classList.contains('joined') || get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 1) return;
+		get('arrow').classList.add('hidden');
+		autoscroll = true;
+	}
+	const disableautoscroll = () => {
+		get('arrow').classList.remove('hidden');
+		autoscroll = false;
+		enableautoscroll();
+	}
+	get('log').onscroll = () => disableautoscroll();
+	const scrolldown = (y = get('log').scrollHeight) => {
+		if(get('arrow').classList.contains('hidden')) {
+			get('log').onscroll = () => {};
+			get('log').scrollTo(0, y);
+			setTimeout(() => get('log').onscroll = disableautoscroll, 1);
+		}
+	}
 	const addsysmsg = msg => {
 		const div = document.createElement('div');
 		div.className = 'sysmsg';
 		div.textContent = msg;
 		if(document.body.classList.contains('joined')) {
 			get('arrow').before(div);
-			if(get('arrow').classList.contains('hidden')) {
-				div.scrollIntoView();
-			}
+			scrolldown();
 		} else {
 			document.querySelector('#rooms > div')?.remove();
 			get('roomform').after(div);
@@ -233,42 +251,37 @@ socket.once('start', (myname, rooms) => {
 		history.replaceState(null, '', document.location.pathname+room);
 		document.body.classList.add('joined');
 		get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = false;
-		get('log').onscroll = get('codebox').onmousemove = onresize = () => {
-			if(!document.body.classList.contains('joined')) return;
-			get('arrow').classList[get('log').scrollTop + get('log').clientHeight > get('arrow').previousSibling.offsetTop? 'add': 'remove']('hidden');
-		}
 		get('arrow').onclick = () => {
-			get('arrow').previousSibling.scrollIntoView();
+			scrolldown();
 			get('msgbox').focus();
 		}
 		get('leave').onclick = () => socket.emit('leave');
-		const loop = text => {
-			const match = text.match(/(^.*?)\[(#(?=[a-f0-9]{3})|°(?=[0-9]{3})|[!*_/-])((?:.*?\[\2.*?\2\])*?.*?)\2\](.*)/si);
-			if(!match) return text;
-			const frag = document.createDocumentFragment();
-			const span = document.createElement('span');
-			let color;
-			if(match[2] == '#' || match[2] == '°') {
-				color = match[3].slice(0, 3);
-				match[3] = match[3].slice(3);
+		const gethtml = text => {
+			let html = '';
+			const arr = text.split(/\[\{(.*?)\}\]/s);
+			for(let i = 0; i < arr.length; i++) {
+				text = arr[i].replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				if(i % 2) {
+					html += '<pre>'+text+'</pre>';
+				} else {
+					html += text.
+						replace(/\[!(.*?)!\]/g, '<span class="rainbow">$1</span>').
+						replace(/\[#([0-9a-f]{3})(.*?)#\]/gi, '<span style="color:#$1">$2</span>').
+						replace(/\[°([0-9a-f]{3})(.*?)°\]/gi, '<span style="color:hsl($1, 100%, 50%)">$2</span>').
+						replace(/\[\*(.*?)\*\]/g, '<b>$1</b>').
+						replace(/\[\/(.*?)\/\]/g, '<i>$1</i>').
+						replace(/\[_(.*?)_\]/g, '<span style="text-decoration:underline">$1</span>').
+						replace(/\[-(.*?)-\]/g, '<span style="text-decoration:line-through">$1</span>');
+				}
 			}
-			if(match[2] == '!') {
-				span.className = 'rainbow';
-			} else {
-				span.style = { '#':'color:#'+color, '°':'color:hsl('+color+', 100%, 50%)', '*':'font-weight:bold', '_':'text-decoration:underline', '/':'font-style:italic', '-':'text-decoration:line-through' }[match[2]];
-			}
-			span.append(loop(match[3]));
-			frag.append(loop(match[1]), span, loop(match[4]));
-			return frag;
+			return html;
 		}
 		const addmsg = msg => {
 			const div = document.createElement('div');
 			if(!msg || typeof msg != 'string') return;
-			div.append(loop(msg));
+			div.innerHTML = gethtml(msg);
 			get('arrow').before(div);
-			if(get('arrow').classList.contains('hidden')) {
-				div.scrollIntoView();
-			}
+			scrolldown(get('log').scrollHeight - div.scrollHeight - 200);
 			if(document.visibilityState == 'visible') return;
 			msgcount++;
 			if(animation) return;
@@ -436,7 +449,7 @@ socket.once('start', (myname, rooms) => {
 						then(x => x.json()).then(x => a.textContent = a.title = x.title);
 				} else {
 					div.textContent = '';
-					div.append(loop(text));
+					div.innerHTML = gethtml(text);
 				}
 				if(!div.parentNode) {
 					div.id = divid;
