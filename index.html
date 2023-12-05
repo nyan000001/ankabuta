@@ -140,7 +140,6 @@ socket.once('start', (myname, rooms) => {
 	let msgindex = 0;
 	let lastmsg = '';
 	let myroom = '';
-	let autoscroll = true;
 	if(location.hash) {
 		socket.emit('join', decodeURI(location.hash));
 	}
@@ -148,23 +147,20 @@ socket.once('start', (myname, rooms) => {
 		socket.emit('join', decodeURI(location.hash));
 	}
 	get('room').placeholder = myname+'\'s room';
-	const enableautoscroll = get('codebox').onmousemove = onresize = () => {
-		if(autoscroll || !document.body.classList.contains('joined') || get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 1) return;
+	const hidearrow = get('codebox').onmousemove = onresize = () => {
+		if(get('arrow').classList.contains('hidden') || !document.body.classList.contains('joined') || get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 1) return;
 		get('arrow').classList.add('hidden');
-		autoscroll = true;
 	}
-	const disableautoscroll = () => {
+	const showarrow = () => {
 		get('arrow').classList.remove('hidden');
-		autoscroll = false;
-		enableautoscroll();
+		hidearrow();
 	}
-	get('log').onscroll = () => disableautoscroll();
-	const scrolldown = (y = get('log').scrollHeight) => {
-		if(get('arrow').classList.contains('hidden')) {
-			get('log').onscroll = () => {};
-			get('log').scrollTo(0, y);
-			setTimeout(() => get('log').onscroll = disableautoscroll, 1);
-		}
+	get('log').onscroll = () => hidearrow();
+	const scrolldown = y => {
+		if(!get('arrow').classList.contains('hidden')) return;
+		get('log').onscroll = () => {};
+		get('log').scrollTo(0, y || get('log').scrollHeight);
+		setTimeout(() => get('log').onscroll = showarrow, 1);
 	}
 	const addsysmsg = msg => {
 		const div = document.createElement('div');

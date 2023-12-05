@@ -331,7 +331,7 @@ const start = async () => {
 								socket2.emit('addroom', socket.room);
 							}
 							delete rooms[socket.room].banned[hash];
-						});
+						}, mins * 60000);
 					}
 				});
 				socket.on('lock', async mins => {
