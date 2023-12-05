@@ -44,7 +44,7 @@ const start = async () => {
 		socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 		socket.join(socket.hash);
 		const validstring = string => string && typeof string == 'string';
-		const validnumber = num => num > 0;
+		const validnumber = num => num >= 0;
 		const login = password => {
 			if(password != process.env.PASSWORD) {
 				io.to('admin').emit('log', socket.room, 'Invalid password');
