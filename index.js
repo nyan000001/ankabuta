@@ -129,7 +129,7 @@ const start = async () => {
 				if(records.length == 100) {
 					records.shift();
 				}
-				let index = -1;
+/*				let index = -1;
 				for(let i = 0; i < arr.length; i++) {
 					if(JSON.stringify(arr[i]) != JSON.stringify(records.at(-1)[i])) {
 						index = index > -1? -2: i;
@@ -138,9 +138,9 @@ const start = async () => {
 				if(index == -1) return;
 				if(index != -2 && Array.isArray(records.at(-1)[index]) && Array.isArray(arr[index])) {
 					records.at(-1)[index].push(...arr[index]);
-				} else {
+				} else {*/
 					records.push(arr);
-				}
+//				}
 				console.log(...arr);
 			}
 		});
@@ -178,7 +178,7 @@ const start = async () => {
 					rand('bhkltw') + rand(['ai', 'ei'])
 				]);
 			}
-			if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[gk]|d.+k|b.+t|p.+s|h.+t|[bd].+c|s.+x|ch.+n|[kp].+n|ank|[hw]o|yi|nye|.w[ei]/.test(name)) continue;
+			if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[gk]|d.+k|b.+t|p.+s|p.ta|h.+t|b.+c|s.+x|ch.+n|[kp].+n|ank|[hw]o|yi|nye|.w[ei]/.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
 			if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 				taken = false;

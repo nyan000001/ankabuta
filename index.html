@@ -153,11 +153,13 @@ socket.once('start', (myname, rooms) => {
 		hidearrow();
 	}
 	get('log').onscroll = () => hidearrow();
+	let wait;
 	const scrolldown = y => {
 		if(!get('arrow').classList.contains('hidden')) return;
+		wait = clearTimeout(wait);
 		get('log').onscroll = () => {};
-		get('log').scrollTo(0, y || get('log').scrollHeight);
-		setTimeout(() => get('log').onscroll = showarrow, 1);
+		get('log').scrollTop = y || get('log').scrollHeight;
+		wait = setTimeout(() => get('log').onscroll = showarrow, 10);
 	}
 	const addsysmsg = msg => {
 		const div = document.createElement('div');
