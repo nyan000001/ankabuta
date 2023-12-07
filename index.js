@@ -3,6 +3,7 @@ const http = require('http').createServer(app, { cookie:true });
 const io = require('socket.io')(http);
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
+app.get('/NotoColorEmoji.woff2', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.woff2'));
 app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
 app.use((req, res) => res.redirect('/'));
 require('dotenv').config();
@@ -122,27 +123,11 @@ const start = async () => {
 		socket.onAny((...arr) => {
 			arr = [socket.room, socket.name, socket.hash, ...arr];
 			io.to('admin').emit('log', ...arr);
-			if(!records.length) {
-				records.push(arr);
-				console.log(...arr);
-			} else {
-				if(records.length == 100) {
-					records.shift();
-				}
-/*				let index = -1;
-				for(let i = 0; i < arr.length; i++) {
-					if(JSON.stringify(arr[i]) != JSON.stringify(records.at(-1)[i])) {
-						index = index > -1? -2: i;
-					}
-				}
-				if(index == -1) return;
-				if(index != -2 && Array.isArray(records.at(-1)[index]) && Array.isArray(arr[index])) {
-					records.at(-1)[index].push(...arr[index]);
-				} else {*/
-					records.push(arr);
-//				}
-				console.log(...arr);
+			if(records.length == 100) {
+				records.shift();
 			}
+			records.push(arr);
+			console.log(...arr);
 		});
 		if(lockedUntil > Date.now() || bannedUntil[socket.hash] > Date.now()) return;
 		const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
@@ -178,7 +163,7 @@ const start = async () => {
 					rand('bhkltw') + rand(['ai', 'ei'])
 				]);
 			}
-			if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[gk]|d.+k|b.+t|p.+s|p.ta|h.+t|b.+c|s.+x|ch.+n|[kp].+n|ank|[hw]o|yi|nye|.w[ei]/.test(name)) continue;
+			if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[cgkt]|d.+[gk]|b.+t|p.+[ksz]|p.ta|sh.+[gt]|b.+c|s.+x|ch.+n|[kp].+n|wa.+k|[hw]o|l.+[bz]|[tw].+ng|yi|nye|.w[ei]/.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
 			if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 				taken = false;

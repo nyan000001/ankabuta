@@ -3,9 +3,9 @@
 <head>
 <title>ankabuta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@600;750&family=Noto+Color+Emoji&family=Noto+Emoji&display=swap" rel="stylesheet">
 <style>
-* { font-size:11pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
+@font-face { font-family:'Noto Color Emoji'; src:url('NotoColorEmoji.woff2'); size-adjust:120%; unicode-range:U+00A0-FE838; }
+* { font-size:11pt; font-family:sans-serif, 'Noto Color Emoji'; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
 input::-webkit-input-placeholder { opacity: 0.5; }
 textarea, input { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
@@ -34,7 +34,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #wrapper > *:not(#codebox, #help), #help > div > div { white-space:pre-wrap; word-break:break-word; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
 #codebox { width:300px; resize:horizontal; }
-#codebox, pre { white-space:pre; font-size:9pt; font-family:monospace, 'Noto Color Emoji'; line-height:17px }
+#codebox, pre { white-space:pre; font-size:9pt; font-family:'Noto Color Emoji', monospace; line-height:17px }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 .joined #wrapper > *, #help { flex-grow:0; flex-shrink:0; }
 .joined #log { flex-grow:1; flex-shrink:1; }
@@ -42,11 +42,11 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #log > div { margin:5px; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; }
-.rainbow { font-family:'Open Sans', 'Noto Emoji', sans-serif; background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
-#sidebar { max-width:min(35%, 200px); }
+#sidebar { max-width:min(35vw, 250px); }
 #sidebar:empty { display:none; }
-#divvideo { aspect-ratio:1; overflow-y:auto; }
+#divvideo { max-height:min(35vw, 250px); overflow-y:auto; }
 #video { position:sticky; top:0; width:100%; aspect-ratio:16 / 9; }
 #divvideo > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
 #sidebar a.disabled { pointer-events:auto; }
@@ -215,7 +215,7 @@ socket.once('start', (myname, rooms) => {
 	}
 	get('roomform').onsubmit = e => {
 		e.preventDefault();
-		const room = get('room').value;
+		const room = get('room').value || get('room').placeholder;
 		if(!room) return;
 		get('room').value = '';
 		socket.emit('join', room);
