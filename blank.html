@@ -11,8 +11,9 @@ body { font-size:7pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; p
 body.blank * { display:none; }
 #top { display:flex; }
 #top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
-p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; cursor:default; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; }
+p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; cursor:default; }
+p.highlight { color:#fff; background:#f00; text-shadow:1px 1px 1px #000, -1px 1px 1px #000, -1px -1px 1px #000, 1px -1px 1px #000; }
 p.disconnected { opacity:.5; text-decoration:line-through; }
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
 form { display:inline-block; margin:8px; }
@@ -35,7 +36,7 @@ input[type=number] { width:40px; }
 <input type="submit" value="Kick">
 </form>
 <form id="regexform">
-<input id="regex">
+<input id="regex" spellcheck="false">
 <output id="currentregex"></output>
 <input type="submit" value="Regex">
 </form>
@@ -54,7 +55,7 @@ const login = password => {
 		const name = get('name').value;
 		const ps = document.getElementsByTagName('p');
 		for(let i = 0; i < ps.length; i++) {
-			ps[i].style.background = ps[i].classList.contains(name)? '#f00': 'transparent';
+			ps[i].classList[ps[i].classList.contains(name)? 'add': 'remove']('highlight');
 		}
 	}
 	get('kickform').onsubmit = e => {
@@ -117,7 +118,7 @@ socket.once('log', (records, rooms, regex) => {
 					get('name').value = name;
 					const ps = document.getElementsByTagName('p');
 					for(let i = 0; i < ps.length; i++) {
-						ps[i].style.background = ps[i].classList.contains(name)? '#f00': 'transparent';
+						ps[i].classList[ps[i].classList.contains(name)? 'add': 'remove']('highlight');
 					}
 					get('name').focus();
 				}
@@ -129,17 +130,19 @@ socket.once('log', (records, rooms, regex) => {
 			}
 			roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0, behavior:'smooth' });
 		}
-		const cmd = arr.shift();
+		const isboolean = typeof arr[1] == 'boolean';
+		let cmd;
+		[room, name, hash, cmd, ...arr] = [room, name, hash, ...arr].
+			map(x => x? JSON.stringify(x).replace(/(?<!\\)"/g, '').replace(/\\"/g, '"'): '');
 		let boldname = '[*'+name+'*]';
 		if(!cmd) {
 			if(name == 'New regex') get('currentregex').textContent = hash;
-			addtext([name, hash].reduce((acc, curr) => acc+' '+(typeof curr == 'string'? curr: '[/'+curr+'/]')));
-		} else if(cmd == 'join' && typeof arr[0] == 'string') {
+			addtext(name+' '+hash);
+		} else if(cmd == 'join') {
 			room = arr[0].replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
 			addroom(room);
 			addtext(boldname+' joined', true);
 		} else if(cmd == 'say') {
-			if(typeof arr[0] != 'string') arr[0] = JSON.stringify(arr[0]);
 			addtext(boldname+': '+arr[0], true);
 		} else if(cmd == 'disconnect') {
 			addtext(boldname+' has disconnected', true)
@@ -150,7 +153,7 @@ socket.once('log', (records, rooms, regex) => {
 			}
 		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
 			let verb = 'says to';
-			if(typeof arr[0] == 'boolean') verb = ['removes from', 'adds to'][arr.shift()?1:0];
+			if(isboolean) verb = ['removes from', 'adds to'][arr.shift()? 1: 0];
 			if(!arr[0]) return;
 			let included = arr[1];
 			let excluded = 'others';
@@ -159,15 +162,13 @@ socket.once('log', (records, rooms, regex) => {
 				excluded = arr[1];
 			}
 			if(!included) return;
-			if(typeof arr[0] == 'object') arr[0] = JSON.stringify(arr[0]);
 			let text = boldname+' '+verb+' '+included+': '+arr[0];
 			if(arr[2]) {
-				if(typeof arr[2] == 'object') arr[2] = JSON.stringify(arr[2]);
 				text += '\n'+boldname+' '+verb+' '+excluded+': '+arr[2];
 			}
 			addtext(text, true);
 		} else {
-			addtext(boldname+' '+[cmd, ...arr].reduce((acc, curr) => acc+' '+(typeof curr == 'string'? curr: '[/'+curr+'/]')), true);
+			addtext(boldname+' '+cmd+' '+arr.join(' '), true);
 		}
 	}
 	for(const record of records) addrecord(...record);

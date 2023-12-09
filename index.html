@@ -226,13 +226,10 @@ socket.once('start', (myname, rooms) => {
 			get('go').click();
 		}
 	}
+	socket.on('notify', addsysmsg);
 	socket.on('addroom', addroom);
 	socket.on('rmvroom', room => get(room).remove());
-	const join = (room, admin, unavailable) => {
-		if(unavailable) {
-			addsysmsg(room+' is unavailable');
-			return;
-		}
+	const join = (room, adminhash) => {
 		myroom = room.slice(1);
 		socket.on('hideroom', () => get(room).textContent = '('+room+')');
 		socket.on('showroom', () => get(room).textContent = room);
@@ -351,7 +348,7 @@ socket.once('start', (myname, rooms) => {
 			for(const event of ['showroom', 'hideroom', 'hear']) {
 				socket.off(event);
 			}
-			if(admin) {
+			if(adminhash) {
 				socket.off('join');
 				socket.off('leave');
 				iframe.remove();
@@ -451,7 +448,7 @@ socket.once('start', (myname, rooms) => {
 				}
 			}
 		}
-		if(!admin) {
+		if(!adminhash) {
 			get('msgbox').focus();
 			socket.on('change', change);
 			socket.on('hear', addmsg);
@@ -463,20 +460,20 @@ socket.once('start', (myname, rooms) => {
 			const getName = name => users[name].emoji + '[*[#' + users[name].color + name + '#]*]';
 			sendAll(false);
 			for(const name in users) {
-				join(name);
+				join(name, users[name].hash);
 			}
-			function join(name) {
+			function join(name, hash) {
 				const emojis = [...'🐱🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐖🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🫏'];
 				const num = [...name.replace(/\\d+/, '')].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
-				users[name] = { emoji:emojis[num % emojis.length], color:['f00', 'cc0', '0f0', '0cc', '03f'][num % 5] };
-				sendOnly(true, Object.keys(users).concat(name+' '+name+' 🡄 You'), name, name);
+				users[name] = { emoji:emojis[num % emojis.length], color:['f00', 'cc0', '0f0', '0cc', '03f'][num % 5], hash:hash };
+				sendOnly(true, Object.keys(users).map(x => x == name? name+' '+name+' 🡄 You': x), name, name);
 				sendOnly('Welcome, '+getName(name)+'!', name, getName(name)+' has joined');
 			}
-			function leave(msg, name) {
+			function leave(msg, name, hash) {
 				sendAll(getName(name)+' '+msg);
 				sendAll(false, name);
 			}
-			function hear(msg, name) {
+			function hear(msg, name, hash) {
 				const arr = msg.split(' ');
 				const cmd = arr.shift();
 				if(cmd == '/pm') {
@@ -492,7 +489,7 @@ socket.once('start', (myname, rooms) => {
 		let runningcode;
 		let lastcode;
 		document.body.classList.add('admin');
-		persistent = { users:{ [myname]:{} } };
+		persistent = { users:{ [myname]:{ hash:adminhash } } };
 		get('codebox').oninput = () => {
 			if(codeindex < codehistory.length) {
 				codehistory.length = ++codeindex;
@@ -621,7 +618,9 @@ socket.once('start', (myname, rooms) => {
 				socket.off(event);
 			}
 			socket.on('join', (name, hash) => {
-				persistent.users[name] = {};
+				if(!persistent.users[name]) {
+					persistent.users[name] = {};
+				}
 				iframe.contentWindow.join?.(name, hash);
 			});
 			socket.on('leave', (msg, name, hash) => {
