@@ -163,7 +163,7 @@ const start = async () => {
 					rand('bhkltw') + rand(['ai', 'ei'])
 				]);
 			}
-			if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[cgkt]|d.+[gk]|b.+t|p.+[ksz]|p.ta|sh.+[gt]|b.+c|s.+x|ch.+n|[kp].+n|wa.+k|[hw]o|l.+[bz]|[tw].+ng|m.+f|yi|nye|.w[ei]/.test(name)) continue;
+			if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[cgkt]|d.+[gkm]|b.+t|p.+[ksz]|p.ta|sh.+[gt]|b.+c|s.+x|ch.+n|[kp].+n|wa.+k|[hw]o|l.+[bpz]|[tw].+ng|m.+f|yi|nye|.w[ei]/.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
 			if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 				taken = false;

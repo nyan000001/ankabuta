@@ -159,7 +159,7 @@ socket.once('start', (myname, rooms) => {
 		wait = clearTimeout(wait);
 		get('log').onscroll = () => {};
 		get('log').scrollTop = y || get('log').scrollHeight;
-		wait = setTimeout(() => get('log').onscroll = showarrow, 10);
+		wait = setTimeout(() => get('log').onscroll = showarrow, 1000);
 	}
 	const addsysmsg = msg => {
 		const div = document.createElement('div');
