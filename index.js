@@ -216,7 +216,7 @@ const start = async () => {
 		}
 		socket.on('join', async room => {
 			if(!validstring(room)) return;
-			room = room.replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
+			room = room.trim().replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
 			if(regexstring && new RegExp(regexstring).test(room)) {
 				io.to('admin').emit('log', room, 'Kicked '+socket.name);
 				socket.disconnect();
