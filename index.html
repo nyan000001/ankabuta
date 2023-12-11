@@ -313,7 +313,7 @@ socket.once('start', (myname, rooms) => {
 				} else if(/^\/(lock|l)$/.test(cmd)) {
 					socket.emit('lock', arr[0]);
 				} else {
-					iframe.contentWindow.hear?.(msg, myname);
+					iframe.contentWindow.hear(msg, myname, adminhash);
 				}
 			} else {
 				socket.emit('say', msg);
@@ -458,7 +458,6 @@ socket.once('start', (myname, rooms) => {
 		get('codebox').focus();
 		get('codebox').value =
 			`const users = persistent.users;
-			const getName = name => users[name].emoji + '[*[#' + users[name].color + name + '#]*]';
 			sendAll(false);
 			for(const name in users) {
 				join(name, users[name].hash);
@@ -466,23 +465,29 @@ socket.once('start', (myname, rooms) => {
 			function join(name, hash) {
 				const emojis = [...'🐱🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐖🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🫏'];
 				const num = [...name.replace(/\\d+/, '')].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
-				users[name] = { emoji:emojis[num % emojis.length], color:['f00', 'cc0', '0f0', '0cc', '03f'][num % 5], hash:hash };
-				sendOnly(true, Object.keys(users).map(x => x == name? name+' '+name+' 🡄 You': x), name, name);
-				sendOnly('Welcome, '+getName(name)+'!', name, getName(name)+' has joined');
+				users[name].displayName = emojis[num % emojis.length] + '[*[#' + ['f00', 'cc0', '0f0', '0cc', '03f'][num % 5] + name + '#]*]';
+				users[name].hash = hash;
+				sendOnly(true, Object.keys(users).map(x => x == name? name+' '+users[name].displayName+' 🡄 You': x), name, users[name].displayName);
+				sendOnly('Welcome, '+users[name].displayName+'!', name, users[name].displayName+' has joined');
 			}
 			function leave(msg, name, hash) {
-				sendAll(getName(name)+' '+msg);
+				sendAll(users[name].displayName+' '+msg);
 				sendAll(false, name);
 			}
 			function hear(msg, name, hash) {
 				const arr = msg.split(' ');
-				const cmd = arr.shift();
+				const cmd = (arr[0][0] == '/'? arr.shift(): '');
+				const recipient = (cmd == '/pm'? arr.shift(): '');
+				msg = arr.map(word => users[word]? users[word].displayName: word).join(' ');
 				if(cmd == '/pm') {
-					sendOnly(getName(name)+' (private): '+arr.slice(1).join(' '), arr[0]);
+					if(users[recipient]) {
+						sendOnly(users[name].displayName+' (private): '+msg, recipient);
+						sendOnly(users[name].displayName+' (to '+users[recipient].displayName+'): '+msg, name);
+					} else sendOnly('User not found', name);
 				} else if(cmd == '/me') {
-					sendAll('[/* '+getName(name)+' '+arr.join(' ')+'/]');
+					sendAll('[/* '+users[name].displayName+' '+msg+'/]');
 				} else {
-					sendAll(getName(name)+': '+msg);
+					sendAll(users[name].displayName+': '+msg);
 				}
 			}`.replace(/^\t\t\t/gm, '');
 		const codehistory = [];
@@ -615,21 +620,25 @@ socket.once('start', (myname, rooms) => {
 				}
 			}
 			for(const event of ['join', 'leave', 'hear']) {
-				iframe.contentWindow[event] = (...arr) => console.log({ 'join':arr[0]+' has joined', 'leave':arr[0]+' has left', 'hear':arr[1]+': '+arr[0] }[event]);
 				socket.off(event);
+				iframe.contentWindow[event] = () => {};
 			}
 			socket.on('join', (name, hash) => {
 				if(!persistent.users[name]) {
-					persistent.users[name] = {};
+					console.log(name+' has joined');
+					persistent.users[name] = { hash };
 				}
-				iframe.contentWindow.join?.(name, hash);
+				iframe.contentWindow.join(name, hash);
 			});
 			socket.on('leave', (msg, name, hash) => {
-				iframe.contentWindow.leave?.(msg, name, hash);
+				console.log(name+' '+msg);
+				iframe.contentWindow.leave(msg, name, hash);
 				delete persistent.users[name];
 			});
-			socket.on('hear', (msg, name, hash) => iframe.contentWindow.hear?.(msg, name, hash));
-			iframe.contentWindow.eval(runningcode);
+			socket.on('hear', (msg, name, hash) => {
+				console.log(name+': '+msg);
+				iframe.contentWindow.hear(msg, name, hash);
+			});
 			onerror = (event, source, row, col) => {
 				addsysmsg(event);
 				const arr = runningcode.split('\n');
@@ -640,6 +649,7 @@ socket.once('start', (myname, rooms) => {
 				get('codebox').selectionStart = get('codebox').selectionEnd = index + col - 1;
 				get('codebox').focus();
 			}
+			iframe.contentWindow.eval(runningcode);
 		}
 		get('run').click();
 		const pastcode = localStorage.getItem('code');
