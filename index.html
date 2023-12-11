@@ -16,7 +16,10 @@ a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
 .admin #help span.hidden { display:inline; }
 
-#rooms { flex-grow:1; flex-shrink:1; }
+#rooms { flex-grow:1; flex-shrink:1; container-type:size; }
+@container (max-width:100px) {
+	#roomform { flex-direction:column; }
+}
 .joined #rooms { width:150px; }
 #rooms .sysmsg { text-align:center; }
 #roomform { display:flex; margin:6px; justify-content:center; }
@@ -60,6 +63,15 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #msgform > * { margin:1px; }
 #msgform > input { width:80px; }
 #msgbox { flex-grow:1; resize:none; padding:5px; }
+
+@media (max-width:500px) {
+	.admin #wrapper > * { height:calc(50% - 30px); }
+	.joined #rooms { flex-shrink:1; }
+	.joined #sidebar * { font-size:9pt; }
+	.joined:has(#help:not(.hidden)) #sidebar { display:none; }
+	.joined:has(#rooms:not(.hidden)):has(#help:not(.hidden)) #log { display:none; }
+	.admin #codebox { position:fixed; bottom:50px; height:50%; width:calc(100% - 4px); resize:none; }
+}
 
 @media (prefers-color-scheme:dark) {
 	body { background:#000; color:#fff; }
@@ -467,7 +479,7 @@ socket.once('start', (myname, rooms) => {
 				const num = [...name.replace(/\\d+/, '')].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
 				users[name].displayName = emojis[num % emojis.length] + '[*[#' + ['f00', 'cc0', '0f0', '0cc', '03f'][num % 5] + name + '#]*]';
 				users[name].hash = hash;
-				sendOnly(true, Object.keys(users).map(x => x == name? name+' '+users[name].displayName+' 🡄 You': x), name, users[name].displayName);
+				sendOnly(true, Object.keys(users).map(name2 => name2+' '+users[name2].displayName+(name2 == name? ' 🡄 You': '')), name, name+' '+users[name].displayName);
 				sendOnly('Welcome, '+users[name].displayName+'!', name, users[name].displayName+' has joined');
 			}
 			function leave(msg, name, hash) {
