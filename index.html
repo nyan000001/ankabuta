@@ -16,11 +16,8 @@ a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
 .admin #help span.hidden { display:inline; }
 
-#rooms { flex-grow:1; flex-shrink:1; container-type:size; }
-@container (max-width:100px) {
-	#roomform { flex-direction:column; }
-}
-.joined #rooms { width:150px; }
+#rooms { flex-grow:1; flex-shrink:1; }
+.joined #rooms { width:100px; flex-grow:0; flex-shrink:0; }
 #rooms .sysmsg { text-align:center; }
 #roomform { display:flex; margin:6px; justify-content:center; }
 .joined #roomform { margin:0; }
@@ -39,15 +36,15 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #codebox { width:300px; resize:horizontal; }
 #codebox, pre { white-space:pre; font-size:9pt; font-family:'Noto Color Emoji', monospace; line-height:17px }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
-.joined #wrapper > *, #help { flex-grow:0; flex-shrink:0; }
-.joined #log { flex-grow:1; flex-shrink:1; }
+#codebox, #help { flex-shrink:0; }
+#log { flex-grow:1; }
 
 #log > div { margin:5px; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
-#sidebar { max-width:min(35vw, 250px); }
+#sidebar { max-width:min(35vw, 250px); flex-shrink:10; }
 #sidebar:empty { display:none; }
 #divvideo { max-height:min(35vw, 250px); overflow-y:auto; }
 #video { position:sticky; top:0; width:100%; aspect-ratio:16 / 9; }
@@ -64,12 +61,13 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #msgform > input { width:80px; }
 #msgbox { flex-grow:1; resize:none; padding:5px; }
 
-@media (max-width:500px) {
+@media (max-width:900px) {
+	.admin:has(#help:not(.hidden)) #wrapper > * { height:calc(50% - 30px); }
+	.admin:has(#help:not(.hidden)) #codebox { position:fixed; bottom:50px; height:50%; width:calc(100% - 4px); resize:none; }
+}
+
+@media (max-width:600px) {
 	.admin #wrapper > * { height:calc(50% - 30px); }
-	.joined #rooms { flex-shrink:1; }
-	.joined #sidebar * { font-size:9pt; }
-	.joined:has(#help:not(.hidden)) #sidebar { display:none; }
-	.joined:has(#rooms:not(.hidden)):has(#help:not(.hidden)) #log { display:none; }
 	.admin #codebox { position:fixed; bottom:50px; height:50%; width:calc(100% - 4px); resize:none; }
 }
 
