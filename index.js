@@ -129,7 +129,6 @@ const start = async () => {
 			records.push(arr);
 			console.log(...arr);
 		});
-		if(lockedUntil > Date.now() || bannedUntil[socket.hash] > Date.now()) return;
 		const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
 		const getallsockets = () => [...io.sockets.sockets.values()];
 		const sockets = getallsockets();
@@ -178,6 +177,7 @@ const start = async () => {
 		}
 		socket.name = name;
 		socket.join(socket.name);
+		if(lockedUntil > Date.now() || bannedUntil[socket.hash] > Date.now()) return;
 		socket.emit('start', socket.name, Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == undefined && !rooms[room].banned[socket.hash]));
 		const leave = async (socket, msg1, msg2) => {
 			socket.emit('leaveroom', msg1);
