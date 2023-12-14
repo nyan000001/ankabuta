@@ -36,7 +36,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #codebox { width:300px; resize:horizontal; }
 #codebox, pre { white-space:pre; font-size:9pt; font-family:'Noto Color Emoji', monospace; line-height:17px }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
-#codebox, #help { flex-shrink:0; }
+#codebox, #sidebar, #help { flex-shrink:0; }
 #log { flex-grow:1; }
 
 #log > div { margin:5px; }
@@ -44,7 +44,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #arrow { width:100%; bottom:0; position:sticky; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
-#sidebar { max-width:min(35vw, 250px); flex-shrink:10; }
+#sidebar { max-width:min(35vw, 250px); }
 #sidebar:empty { display:none; }
 #divvideo { max-height:min(35vw, 250px); overflow-y:auto; }
 #video { position:sticky; top:0; width:100%; aspect-ratio:16 / 9; }
@@ -69,6 +69,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 @media (max-width:600px) {
 	.admin #wrapper > * { height:calc(50% - 30px); }
 	.admin #codebox { position:fixed; bottom:50px; height:50%; width:calc(100% - 4px); resize:none; }
+	.joined:has(#help:not(.hidden)) #sidebar { display:none; }
 }
 
 @media (prefers-color-scheme:dark) {
@@ -473,7 +474,7 @@ socket.once('start', (myname, rooms) => {
 				join(name, users[name].hash);
 			}
 			function join(name, hash) {
-				const emojis = [...'🐱🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐖🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🫏'];
+				const emojis = [...'🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🐖🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🐱🫏'];
 				const num = [...name].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
 				const displayName = users[name].displayName = emojis[num % emojis.length] + '[*[#' + ['f00', 'cc0', '0f0', '0cc', '03f'][num % 5] + name + '#]*]';
 				users[name].hash = hash;
