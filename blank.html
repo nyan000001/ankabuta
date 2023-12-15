@@ -128,7 +128,7 @@ socket.once('log', (records, rooms, regex) => {
 					highlight(hash);
 				}
 			}
-			roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0, behavior:'smooth' });
+			roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
 		}
 		const isboolean = typeof arr[1] == 'boolean';
 		let cmd;
