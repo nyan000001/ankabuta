@@ -129,54 +129,57 @@ const start = async () => {
 			records.push(arr);
 			console.log(...arr);
 		});
-		const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
 		const getallsockets = () => [...io.sockets.sockets.values()];
-		const sockets = getallsockets();
-		let name;
-		let taken = true;
-		const issimilar = (name1, name2) => {
-			if(name1 == name2) return true;
-			if(name1.length == 3) return false;
-			let i = 0;
-			while(i < name1.length && i < name2.length && name1[i] == name2[i]) {
-				i++;
+		const getname = () => {
+			const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
+			const sockets = getallsockets();
+			let name;
+			let taken = true;
+			const issimilar = (name1, name2) => {
+				if(name1 == name2) return true;
+				if(name1.length == 3) return false;
+				let i = 0;
+				while(i < name1.length && i < name2.length && name1[i] == name2[i]) {
+					i++;
+				}
+				return name1.slice(i + (name1.length >= name2.length)) == name2.slice(i + (name2.length >= name1.length))
 			}
-			return name1.slice(i + (name1.length >= name2.length)) == name2.slice(i + (name2.length >= name1.length))
-		}
-		for(let i = 0; i < 1000; i++) {
-			name = rand([...'bfhklmnpstwxy', 'ch', 'sh', 'ny']) + rand('aeiou');
-			if(Math.random() < .8) {
-				name = rand([
-					name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
-					name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
-					name + rand([rand('dlnrst') + rand('aeiou')], .2) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
-					rand('bhklmnptwxy') + rand([...'aeiou', 'ai']) + rand('bklmntwx') + rand('aeiou')
-				]);
-			} else {
-				name = rand([
-					rand([...'bdghjklnstz', 'tx'], .9) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklnrstz', 'rr']) + rand('aeiou') + rand([...'lnr', '#ts', '#tz']).replace('#', rand('lnr', .3)),
-					rand([...'bdghjklnstz', 'tx'], .9) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklnrstz', 'rr', '#ts', '#tz']).replace('#', rand('lnr', .3)) + rand('aeiou'),
-					rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli']),
-					rand('bkw') + 'a' + rand('hlz') + 'oo',
-					rand([...'bhkltwy', 'xi']) + 'ao',
-					rand('bhkltw') + rand(['ai', 'ei'])
-				]);
+			for(let i = 0; i < 1000; i++) {
+				name = rand([...'bfhklmnpstwxy', 'ch', 'sh', 'ny']) + rand('aeiou');
+				if(Math.random() < .8) {
+					name = rand([
+						name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
+						name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
+						name + rand([rand('dlnrst') + rand('aeiou')], .2) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
+						rand('bhklmnptwxy') + rand([...'aeiou', 'ai']) + rand('bklmntwx') + rand('aeiou')
+					]);
+				} else {
+					name = rand([
+						rand([...'bdghjklnstz', 'tx'], .9) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklnrstz', 'rr']) + rand('aeiou') + rand([...'lnr', '#ts', '#tz']).replace('#', rand('lnr', .3)),
+						rand([...'bdghjklnstz', 'tx'], .9) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklnrstz', 'rr', '#ts', '#tz']).replace('#', rand('lnr', .3)) + rand('aeiou'),
+						rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli']),
+						rand('bkw') + 'a' + rand('hlz') + 'oo',
+						rand([...'bhkltwy', 'xi']) + 'ao',
+						rand('bhkltw') + rand(['ai', 'ei'])
+					]);
+				}
+				if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[cgkt]|d.+[gkm]|b.+t|p.+[kstz]|sh.+[gt]|b.+c|s.+x|ch.+n|[kp].+n|wa.+k|[hw]o|l.+[bpz]|[tw].+ng|m.+f|yi|nye|.w[ei]/.test(name)) continue;
+				//name = name[0].toUpperCase() + name.slice(1);
+				if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
+					taken = false;
+					break;
+				}
 			}
-			if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[cgkt]|d.+[gkm]|b.+t|p.+[kstz]|sh.+[gt]|b.+c|s.+x|ch.+n|[kp].+n|wa.+k|[hw]o|l.+[bpz]|[tw].+ng|m.+f|yi|nye|.w[ei]/.test(name)) continue;
-			//name = name[0].toUpperCase() + name.slice(1);
-			if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
-				taken = false;
-				break;
+			if(taken) {
+				let i;
+				do i = ~~(Math.random()*1000);
+				while(sockets.some(socket2 => socket2 != socket && socket2.name == name+i));
+				name += i;
 			}
+			socket.name = name;
+			socket.join(name);
 		}
-		if(taken) {
-			let i;
-			do i = ~~(Math.random()*1000);
-			while(sockets.some(socket2 => socket2 != socket && socket2.name == name+i));
-			name += i;
-		}
-		socket.name = name;
-		socket.join(socket.name);
+		getname();
 		if(lockedUntil > Date.now() || bannedUntil[socket.hash] > Date.now()) return;
 		socket.emit('start', socket.name, Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == undefined && !rooms[room].banned[socket.hash]));
 		const leave = async (socket, msg1, msg2) => {
@@ -214,9 +217,9 @@ const start = async () => {
 			socket.leave(socket.room);
 			delete socket.room;
 		}
-		socket.on('join', async room => {
+		socket.on('join', async (room, name) => {
 			if(!validstring(room)) return;
-			room = room.trim().replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
+			room = '#'+room.trim().replace(/\s/g, '_').replace(/^#+/, '').slice(0, 30);
 			if(regexstring && new RegExp(regexstring).test(room)) {
 				io.to('admin').emit('log', room, 'Kicked '+socket.name);
 				socket.disconnect();
@@ -230,10 +233,23 @@ const start = async () => {
 				socket.emit('notify', room+' is unavailable');
 				return;
 			}
+			socket.leave(socket.name);
+			if(name) {
+				name = name.trim().slice(0, 30);
+				let i = '';
+				const sockets = getallsockets().filter(socket2 => socket2.room == room);
+				while(sockets.some(socket2 => socket2.name == name+i)) {
+					i = (i || 1) + 1;
+				}
+				socket.name = name+i;
+				socket.join(name+i);
+			} else {
+				getname();
+			}
 			socket.room = room;
 			if(rooms[socket.room]) {
 				socket.join(socket.room);
-				socket.emit('joinroom', socket.room);
+				socket.emit('joinroom', socket.room, socket.name);
 				rooms[socket.room].admin.emit('join', socket.name, socket.hash);
 				socket.on('say', msg => rooms[socket.room].admin.emit('hear', msg, socket.name, socket.hash));
 			} else {
@@ -241,7 +257,7 @@ const start = async () => {
 				if(!socket.room.includes('hidden')) {
 					socket.broadcast.emit('addroom', socket.room);
 				}
-				socket.emit('joinroom', socket.room, socket.hash);
+				socket.emit('joinroom', socket.room, socket.name, socket.hash);
 				const send = async (msg1, names, msg2, only, add) => {
 					if(!Array.isArray(names)) return;
 					const sockets = await io.in(socket.room).fetchSockets();

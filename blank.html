@@ -14,7 +14,6 @@ body.blank * { display:none; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; }
 p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; cursor:default; }
 p.highlight { color:#fff; background:#f00; text-shadow:1px 1px 1px #000, -1px 1px 1px #000, -1px -1px 1px #000, 1px -1px 1px #000; }
-p.disconnected { opacity:.5; text-decoration:line-through; }
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
 form { display:inline-block; margin:8px; }
 input[type=number] { width:40px; }
@@ -30,10 +29,10 @@ input[type=number] { width:40px; }
 <body class="blank">
 <div id="top"></div>
 <div id="bottom">
-<form id="kickform">
-<input id="name" spellcheck="false">
-<input type="number" id="kicktime" value="0">
-<input type="submit" value="Kick">
+<form id="banform">
+<input id="hash" spellcheck="false">
+<input type="number" id="bantime" value="0">
+<input type="submit" value="Ban">
 </form>
 <form id="regexform">
 <input id="regex" spellcheck="false">
@@ -51,16 +50,16 @@ const socket = io();
 const get = id => document.getElementById(id);
 const login = password => {
 	socket.emit('LOGIN', password);
-	get('name').oninput = () => {
-		const name = get('name').value;
+	get('hash').oninput = () => {
+		const hash = get('hash').value;
 		const ps = document.getElementsByTagName('p');
 		for(let i = 0; i < ps.length; i++) {
-			ps[i].classList[ps[i].classList.contains(name)? 'add': 'remove']('highlight');
+			ps[i].classList[ps[i].classList.contains(hash)? 'add': 'remove']('highlight');
 		}
 	}
-	get('kickform').onsubmit = e => {
+	get('banform').onsubmit = e => {
 		e.preventDefault();
-		socket.emit('KICK', password, get('name').value, get('kicktime').value);
+		socket.emit('BAN', password, get('hash').value, get('bantime').value);
 	}
 	get('regexform').onsubmit = e => {
 		e.preventDefault();
@@ -110,22 +109,17 @@ socket.once('log', (records, rooms, regex) => {
 			if(!roomdivs[room]) addroom(room);
 			roomdivs[room].append(p);
 			if(bool) {
-				p.classList.add(name, hash);
-				if([name, hash].includes(get('name').value)) {
+				p.classList.add(hash);
+				if(hash == get('hash').value) {
 					p.style.background = '#f00';
 				}
-				const highlight = name => {
-					get('name').value = name;
+				p.onclick = () => {
+					get('hash').value = hash;
 					const ps = document.getElementsByTagName('p');
 					for(let i = 0; i < ps.length; i++) {
-						ps[i].classList[ps[i].classList.contains(name)? 'add': 'remove']('highlight');
+						ps[i].classList[ps[i].classList.contains(hash)? 'add': 'remove']('highlight');
 					}
-					get('name').focus();
-				}
-				p.onclick = e => highlight(p.classList.contains(name)? name: '');
-				p.oncontextmenu = e => {
-					e.preventDefault();
-					highlight(hash);
+					get('hash').focus();
 				}
 			}
 			roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
@@ -145,12 +139,7 @@ socket.once('log', (records, rooms, regex) => {
 		} else if(cmd == 'say') {
 			addtext(boldname+': '+arr[0], true);
 		} else if(cmd == 'disconnect') {
-			addtext(boldname+' has disconnected', true)
-			const ps = document.getElementsByClassName(name);
-			while(ps.length) {
-				ps[0].classList.add('disconnected');
-				ps[0].classList.remove(name);
-			}
+			addtext(boldname+' has disconnected', true);
 		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
 			let verb = 'says to';
 			if(isboolean) verb = ['removes from', 'adds to'][arr.shift()? 1: 0];
