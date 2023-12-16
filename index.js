@@ -284,7 +284,7 @@ const start = async () => {
 						}
 					}
 				});
-				socket.on('kick', async (name, reason) => {
+				socket.on('kick', async (name, msg) => {
 					if(!validstring(name) || socket.name == name) return;
 					const socket2 = (await io.in(socket.room).fetchSockets()).find(socket2 => socket2.name == name);
 					if(!socket2) {
@@ -292,19 +292,20 @@ const start = async () => {
 						return;
 					}
 					io.to('admin').emit('log', socket.room, 'Kicked '+socket2.name);
-					reason = validstring(reason)? ' ('+reason+')': '';
-					leave(socket2, 'You\'ve been kicked from '+socket.room+'!'+reason, 'has been kicked'+reason);
+					msg = validstring(msg)? ' '+msg: '';
+					leave(socket2, 'You\'ve been kicked'+msg, 'has been kicked'+msg);
 				});
-				socket.on('ban', async (hash, mins = 0) => {
+				socket.on('ban', async (hash, mins = 0, msg) => {
 					if(!validstring(hash) || socket.hash == hash) return;
 					let sockets = (await io.in(socket.room).fetchSockets()).filter(socket2 => socket2.hash == hash);
 					if(!sockets.length) {
 						socket.emit('notify', 'Hash not found');
 						return;
 					}
+					msg = validstring(msg)? ' '+msg: '';
 					for(const socket2 of sockets) {
 						io.to('admin').emit('log', socket.room, 'Kicked '+socket2.name);
-						await leave(socket2, 'You\'ve been banned from '+socket.room+'!', 'has been banned');
+						await leave(socket2, 'You\'ve been banned from '+socket.room+msg, 'has been banned'+msg);
 					}
 					if(!validnumber(mins)) return;
 					clearTimeout(rooms[socket.room].banned[hash]);

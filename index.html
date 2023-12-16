@@ -104,7 +104,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 <div id="help" class="hidden">
 <div>
 <div>/clear</div>
-<div class="hidden">/kick <b>NAME</b> <b>REASON</b></div>
+<div class="hidden">/kick <b>NAME</b></div>
 <div class="hidden">/ban <b>HASH</b> <b>MINUTES</b></div>
 <div class="hidden">/lock <b>MINUTES</b></div>
 </div><div>
@@ -129,6 +129,12 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 	<i>Adds <b>word</b> to everyone's sidebar</i></div>
 <div class="hidden">sendAll(false, <b>word</b>)
 	<i>Removes <b>word</b> from everyone's sidebar</i></div>
+<div class="hidden">kick(<b>name</b, <b>msg</b>)
+	<i>Kicks <b>name</b></i></div>
+<div class="hidden">ban(<b>hash</b>, <b>minutes</b>, <b>msg</b>)
+	<i>Bans <b>hash</b> for <b>minutes</b></i></div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -243,6 +249,7 @@ socket.once('start', (myname, rooms) => {
 	socket.on('addroom', addroom);
 	socket.on('rmvroom', room => get(room).remove());
 	const join = (room, adminhash) => {
+		document.querySelector('#rooms > div')?.remove();
 		myroom = room.slice(1);
 		socket.on('hideroom', () => get(room).textContent = '('+room+')');
 		socket.on('showroom', () => get(room).textContent = room);
@@ -321,7 +328,7 @@ socket.once('start', (myname, rooms) => {
 				get('log').append(arrow);
 			} else if(iframe) {
 				if(/^\/(kick|k)$/.test(cmd)) {
-					socket.emit('kick', arr[0], arr.slice(1).join(' '));
+					socket.emit('kick', arr[0]);
 				} else if(/^\/(ban|b)$/.test(cmd)) {
 					socket.emit('ban', arr[0], arr[1]);
 				} else if(/^\/(lock|l)$/.test(cmd)) {
@@ -382,7 +389,7 @@ socket.once('start', (myname, rooms) => {
 				leave = () => {};
 			}
 			if(msg) {
-				addsysmsg(msg);
+				addmsg(msg);
 				get('leave').onclick = () => leave();
 				socket.once('joinroom', (...arr) => {
 					leave();
@@ -578,7 +585,8 @@ socket.once('start', (myname, rooms) => {
 			iframe.src = 'about:blank';
 			document.body.append(iframe);
 			iframe.contentWindow.persistent = persistent;
-			iframe.contentWindow.kick = name => socket.emit('kick', name);
+			iframe.contentWindow.kick = (name, msg) => socket.emit('kick', name, msg);
+			iframe.contentWindow.ban = (hash, mins, msg) => socket.emit('ban', hash, mins, msg);
 			iframe.contentWindow.print = addmsg;
 			const convert = x => !x || Array.isArray(x)? x: [x];
 			iframe.contentWindow.sendOnly = (...arr) => {
