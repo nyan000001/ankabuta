@@ -411,8 +411,8 @@ socket.once('start', (myname, rooms) => {
 					id = '';
 					text = JSON.stringify(text);
 				} else {
-					id = text.replace(/\s.*/, '');
-					text = text.replace(/.*?\s/, '');
+					id = text.replace(/\s.*/s, '');
+					text = text.replace(/.*?\s/s, '');
 				}
 				let divid = 'div'+(['youtube', 'dailymotion', 'vimeo'].includes(id)? 'video': id);
 				if(!add) {
@@ -519,7 +519,9 @@ socket.once('start', (myname, rooms) => {
 		let runningcode;
 		let lastcode;
 		document.body.classList.add('admin');
-		persistent = { users:{ [myname]:{ hash:adminhash } } };
+		persistent = localStorage.getItem('persistent');
+		persistent = persistent? JSON.parse(persistent): {}
+		persistent.users = { [myname]:{ hash:adminhash } };
 		get('codebox').oninput = () => {
 			if(codeindex < codehistory.length) {
 				codehistory.length = ++codeindex;
@@ -585,6 +587,7 @@ socket.once('start', (myname, rooms) => {
 			iframe.contentWindow.kick = (name, msg) => socket.emit('kick', name, msg);
 			iframe.contentWindow.ban = (hash, mins, msg) => socket.emit('ban', hash, mins, msg);
 			iframe.contentWindow.print = addmsg;
+			iframe.contentWindow.save = () => localStorage.setItem('persistent', JSON.stringify(persistent));
 			const convert = x => !x || Array.isArray(x)? x: [x];
 			iframe.contentWindow.sendOnly = (...arr) => {
 				if(arr[0] === 1) {
