@@ -121,7 +121,12 @@ const start = async () => {
 			}
 		});
 		socket.onAny((...arr) => {
-			arr = [socket.room, socket.name, socket.hash, ...arr];
+			if(arr[0] == 'join') {
+				if(!validstring(arr[1])) return;
+				arr = [arr[1].trim().replace(/\s/g, '_').replace(/^#*/, '#').slice(0, 30), arr[2], socket.hash, 'join'];
+			} else {
+				arr = [socket.room, socket.name, socket.hash, ...arr];
+			}
 			io.to('admin').emit('log', ...arr);
 			if(records.length == 100) {
 				records.shift();
@@ -219,7 +224,7 @@ const start = async () => {
 		}
 		socket.on('join', async (room, name) => {
 			if(!validstring(room)) return;
-			room = '#'+room.trim().replace(/\s/g, '_').replace(/^#+/, '').slice(0, 30);
+			room = room.trim().replace(/\s/g, '_').replace(/^#*/, '#').slice(0, 30);
 			if(regexstring && new RegExp(regexstring).test(room)) {
 				io.to('admin').emit('log', room, 'Kicked '+socket.name);
 				socket.disconnect();
