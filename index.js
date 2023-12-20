@@ -17,7 +17,7 @@ const start = async () => {
 	const users = {};
 	const docs = await collection.find({}).toArray();
 	for(const doc of docs) {
-		users[doc._id] = { ip:doc.ip, bannedUntil:doc.bannedUntil };
+		users[doc._id] = { uid:doc.uid, ip:doc.ip, bannedUntil:doc.bannedUntil };
 	}
 	const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
 	io.engine.on('initial_headers', (headers, request) => {
@@ -27,22 +27,26 @@ const start = async () => {
 		for(const userhash in users) {
 			if(users[userhash].ip == ip) {
 				hash = userhash;
-				break;
+				headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', users[userhash].uid, { maxAge:604800, sameSite:'strict' });
+				return;
 			}
 		}
-		if(hash == undefined && request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
+		if(request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
 			uid = cookie.parse(request.headers.cookie).uid;
 			hash = makehash(uid);
+			if(users[hash]) {
+				users[hash].ip = ip;
+				collection.updateOne({ _id:hash }, { $set: { ip:ip } });
+				return;
+			}
 		}
-		if(!users[hash]) {
-			do {
-				uid = crypto.randomBytes(32).toString('base64');
-				hash = makehash(uid);
-			} while(!users[hash]);
-			headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:604800, sameSite:'strict' });
-			collection.insertOne({ _id:hash, ip:ip, createdAt:new Date(), bannedUntil:0 });
-			users[hash].bannedUntil = 0;
-		}
+		do {
+			uid = crypto.randomBytes(32).toString('base64');
+			hash = makehash(uid);
+		} while(users[hash]);
+		headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:604800, sameSite:'strict' });
+		collection.insertOne({ _id:hash, uid:uid, ip:ip, createdAt:new Date(), bannedUntil:0 });
+		users[hash] = { ip:ip, bannedUntil:0 };
 	});
 	const rooms = {};
 	const records = [];
