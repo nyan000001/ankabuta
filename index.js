@@ -14,28 +14,35 @@ const collection = client.db('Cluster0').collection('hashes');
 const crypto = require('crypto');
 const cookie = require('cookie');
 const start = async () => {
-	const bannedUntil = {};
+	const users = {};
 	const docs = await collection.find({}).toArray();
 	for(const doc of docs) {
-		bannedUntil[doc._id] = doc.bannedUntil;
+		users[doc._id] = { ip:doc.ip, bannedUntil:doc.bannedUntil };
 	}
 	const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
 	io.engine.on('initial_headers', (headers, request) => {
+		const ip = makehash(request.connection._peername.address);
 		let uid;
 		let hash;
-		if(request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
+		for(const userhash in users) {
+			if(users[userhash].ip == ip) {
+				hash = userhash;
+				break;
+			}
+		}
+		if(hash == undefined && request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
 			uid = cookie.parse(request.headers.cookie).uid;
 			hash = makehash(uid);
-			if(bannedUntil[hash] != undefined) return;
-		} else {
+		}
+		if(!users[hash]) {
 			do {
 				uid = crypto.randomBytes(32).toString('base64');
 				hash = makehash(uid);
-			} while(bannedUntil[hash] != undefined);
+			} while(!users[hash]);
 			headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:604800, sameSite:'strict' });
+			collection.insertOne({ _id:hash, ip:ip, createdAt:new Date(), bannedUntil:0 });
+			users[hash].bannedUntil = 0;
 		}
-		collection.insertOne({ _id:hash, createdAt:new Date(), bannedUntil:0 });
-		bannedUntil[hash] = 0;
 	});
 	const rooms = {};
 	const records = [];
@@ -85,12 +92,12 @@ const start = async () => {
 				await socket2.disconnect();
 			}
 			if(validnumber(mins)) {
-				if(bannedUntil[hash] == undefined) {
+				if(!users[hash]) {
 					io.to('admin').emit('log', socket.room, 'Hash not found');
 					return;
 				}
 				const time = Date.now() + mins * 60000;
-				bannedUntil[hash] = time;
+				users[hash].bannedUntil = time;
 				collection.updateOne({ _id:hash }, { $set: { bannedUntil:time } });
 			}
 		});
@@ -185,7 +192,7 @@ const start = async () => {
 			socket.join(name);
 		}
 		getname();
-		if(lockedUntil > Date.now() || bannedUntil[socket.hash] > Date.now()) return;
+		if(lockedUntil > Date.now() || users[socket.hash].bannedUntil > Date.now()) return;
 		socket.emit('start', socket.name, Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == undefined && !rooms[room].banned[socket.hash]));
 		const leave = async (socket, msg1, msg2) => {
 			socket.emit('leaveroom', msg1);
