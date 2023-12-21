@@ -46,7 +46,7 @@ const start = async () => {
 		} while(users[hash]);
 		headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:604800, sameSite:'strict' });
 		collection.insertOne({ _id:hash, uid:uid, ip:ip, createdAt:new Date(), bannedUntil:0 });
-		users[hash] = { ip:ip, bannedUntil:0 };
+		users[hash] = { uid:uid, ip:ip, bannedUntil:0 };
 	});
 	const rooms = {};
 	const records = [];
