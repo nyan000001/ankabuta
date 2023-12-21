@@ -203,7 +203,7 @@ socket.once('start', (myname, rooms) => {
 	socket.once('disconnect', () => {
 		stopanimation();
 		document.title = 'ankabuta☠️'+myroom;
-		get('room').readOnly = get('go').disabled = get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
+		get('room').readOnly = get('name').readOnly = get('go').disabled = get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 		get('leave').onclick = () => location.href = '/';
 		addsysmsg('Connection failed!');
 		get('rooms').classList.add('disabled');
