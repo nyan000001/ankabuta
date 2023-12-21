@@ -1,10 +1,10 @@
 const app = require('express')();
 const http = require('http').createServer(app, { cookie:true });
 const io = require('socket.io')(http);
-app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true }).sendFile(__dirname + '/index.html'));
+app.get('/blank', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true }).sendFile(__dirname + '/blank.html'));
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
 app.get('/NotoColorEmoji.woff2', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.woff2'));
-app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
 app.use((req, res) => res.redirect('/'));
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
@@ -21,6 +21,7 @@ const start = async () => {
 	}
 	const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
 	io.engine.on('initial_headers', (headers, request) => {
+		if(!request.headers.cookie) return;
 		const ip = makehash(request.connection._peername.address);
 		let uid;
 		let hash;
@@ -53,6 +54,7 @@ const start = async () => {
 	let lockedUntil = 0;
 	let regexstring;
 	io.on('connection', socket => {
+		if(!socket.handshake.headers.cookie) return;
 		socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 		socket.join(socket.hash);
 		const validstring = string => string && typeof string == 'string';

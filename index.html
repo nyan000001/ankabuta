@@ -519,13 +519,9 @@ socket.once('start', (myname, rooms) => {
 		let runningcode;
 		let lastcode;
 		document.body.classList.add('admin');
-		try {
-			persistent = localStorage.getItem('persistent');
-			persistent = persistent? JSON.parse(persistent): {}
-			persistent.users = { [myname]:{ hash:adminhash } };
-		} catch(error) {
-			persistent = { users:{ [myname]:{ hash:adminhash } } };
-		}
+		persistent = localStorage.getItem('persistent');
+		persistent = persistent? JSON.parse(persistent): {}
+		persistent.users = { [myname]:{ hash:adminhash } };
 		get('codebox').oninput = () => {
 			if(codeindex < codehistory.length) {
 				codehistory.length = ++codeindex;
