@@ -133,7 +133,6 @@ socket.once('log', (records, rooms, regex) => {
 			if(name == 'New regex') get('currentregex').textContent = hash;
 			addtext(name+' '+hash);
 		} else if(cmd == 'join') {
-			room = room.replace(/\s/g, '_').replace(/^#?/, '#').slice(0, 30);
 			addroom(room);
 			addtext(boldname+' joined', true);
 		} else if(cmd == 'say') {

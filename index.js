@@ -133,19 +133,18 @@ const start = async () => {
 				}
 			}
 		});
-		socket.onAny((...arr) => {
-			if(arr[0] == 'join') {
-				if(!validstring(arr[1])) return;
-				arr = [arr[1].trim().replace(/\s/g, '_').replace(/^#*/, '#').slice(0, 30), arr[2], socket.hash, 'join'];
-			} else {
-				arr = [socket.room, socket.name, socket.hash, ...arr];
-			}
+		const log = (...arr) => {
+			arr = [socket.room, socket.name, socket.hash, ...arr];
 			io.to('admin').emit('log', ...arr);
 			if(records.length == 100) {
 				records.shift();
 			}
 			records.push(arr);
 			console.log(...arr);
+		}
+		socket.onAny((...arr) => {
+			if(arr[0] == 'join') return;
+			log(...arr);
 		});
 		const getallsockets = () => [...io.sockets.sockets.values()];
 		const getname = () => {
@@ -265,6 +264,7 @@ const start = async () => {
 				getname();
 			}
 			socket.room = room;
+			log('join');
 			if(rooms[socket.room]) {
 				socket.join(socket.room);
 				socket.emit('joinroom', socket.room, socket.name);
@@ -390,9 +390,7 @@ const start = async () => {
 			socket.on('leave', () => leave(socket, '', 'has left'));
 		});
 		socket.on('disconnect', () => {
-			const arr = [socket.room, socket.name, socket.hash, 'disconnect'];
-			records.push(arr);
-			io.to('admin').emit('log', ...arr);
+			log('disconnect');
 			if(socket.room) {
 				leave(socket, '', 'has disconnected');
 			}

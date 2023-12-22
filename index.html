@@ -519,9 +519,7 @@ socket.once('start', (myname, rooms) => {
 		let runningcode;
 		let lastcode;
 		document.body.classList.add('admin');
-		persistent = localStorage.getItem('persistent');
-		persistent = persistent? JSON.parse(persistent): {}
-		persistent.users = { [myname]:{ hash:adminhash } };
+		persistent = { users:{ [myname]:{ hash:adminhash, admin:true } } };
 		get('codebox').oninput = () => {
 			if(codeindex < codehistory.length) {
 				codehistory.length = ++codeindex;
@@ -587,7 +585,8 @@ socket.once('start', (myname, rooms) => {
 			iframe.contentWindow.kick = (name, msg) => socket.emit('kick', name, msg);
 			iframe.contentWindow.ban = (hash, mins, msg) => socket.emit('ban', hash, mins, msg);
 			iframe.contentWindow.print = addmsg;
-			iframe.contentWindow.save = () => localStorage.setItem('persistent', JSON.stringify(persistent));
+			iframe.contentWindow.save = (name, value) => localStorage.setItem(name, JSON.stringify(value));
+			iframe.contentWindow.load = name => localStorage.getItem(name);
 			const convert = x => !x || Array.isArray(x)? x: [x];
 			iframe.contentWindow.sendOnly = (...arr) => {
 				if(arr[0] === 1) {
