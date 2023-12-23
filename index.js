@@ -22,22 +22,27 @@ const start = async () => {
 	const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
 	io.engine.on('initial_headers', (headers, request) => {
 		//if(!request.headers.cookie) return;
-		const ip = request.connection.remoteAddress; //makehash(request.connection._peername.address);
+		let ip = request.headers['x-forwarded-for']; //request.connection.remoteAddress; //request.connection._peername.address;
 		let uid;
 		let hash;
-		/*for(const userhash in users) {
-			if(users[userhash].ip == ip) {
-				hash = userhash;
-				headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', users[userhash].uid, { maxAge:604800, sameSite:'strict' });
-				return;
+		if(ip) {
+			ip = makehash(ip);
+			for(const userhash in users) {
+				if(users[userhash].ip == ip) {
+					hash = userhash;
+					headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', users[userhash].uid, { maxAge:604800, sameSite:'strict' });
+					return;
+				}
 			}
-		}*/
+		}
 		if(request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
 			uid = cookie.parse(request.headers.cookie).uid;
 			hash = makehash(uid);
 			if(users[hash]) {
-				users[hash].ip = ip;
-				//collection.updateOne({ _id:hash }, { $set: { ip:ip } });
+				if(ip) {
+					users[hash].ip = ip;
+					collection.updateOne({ _id:hash }, { $set: { ip:ip } });
+				}
 				return;
 			}
 		}
@@ -46,8 +51,9 @@ const start = async () => {
 			hash = makehash(uid);
 		} while(users[hash]);
 		headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:604800, sameSite:'strict' });
-		collection.insertOne({ _id:hash, uid:uid, ip:ip, createdAt:new Date(), bannedUntil:0 });
-		users[hash] = { uid:uid, ip:ip, bannedUntil:0 };
+		users[hash] = { uid:uid, bannedUntil:0 };
+		if(ip) users[hash].ip = ip;
+		collection.insertOne({ _id:hash, createdAt:new Date(), ...users[hash] });
 	});
 	const rooms = {};
 	const records = [];
