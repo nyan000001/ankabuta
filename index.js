@@ -22,7 +22,7 @@ const start = async () => {
 	const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
 	io.engine.on('initial_headers', (headers, request) => {
 		//if(!request.headers.cookie) return;
-		const ip = makehash(request.connection._peername.address);
+		const ip = (request.connection._peername.address);
 		let uid;
 		let hash;
 		/*for(const userhash in users) {
