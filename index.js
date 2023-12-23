@@ -21,17 +21,17 @@ const start = async () => {
 	}
 	const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
 	io.engine.on('initial_headers', (headers, request) => {
-		if(!request.headers.cookie) return;
+		//if(!request.headers.cookie) return;
 		const ip = makehash(request.connection._peername.address);
 		let uid;
 		let hash;
-		for(const userhash in users) {
+		/*for(const userhash in users) {
 			if(users[userhash].ip == ip) {
 				hash = userhash;
 				headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', users[userhash].uid, { maxAge:604800, sameSite:'strict' });
 				return;
 			}
-		}
+		}*/
 		if(request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
 			uid = cookie.parse(request.headers.cookie).uid;
 			hash = makehash(uid);
@@ -54,7 +54,7 @@ const start = async () => {
 	let lockedUntil = 0;
 	let regexstring;
 	io.on('connection', socket => {
-		if(!socket.handshake.headers.cookie) return;
+		//if(!socket.handshake.headers.cookie) return;
 		socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 		socket.join(socket.hash);
 		const validstring = string => string && typeof string == 'string';
