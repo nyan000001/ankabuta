@@ -10,8 +10,7 @@ textarea, input { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
 input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
-.joined #rooms.hidden, #codebox, #log, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
-#arrow.hidden { visibility:hidden; }
+.joined #rooms.hidden, #codebox, #log, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave, .joined #msgbox, .joined #say { display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
 .admin #help span.hidden { display:inline; }
@@ -42,7 +41,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
 #log > div { margin:5px; }
 .sysmsg { font-weight:bold; }
-#arrow { width:100%; bottom:0; position:sticky; }
+#arrow { width:100%; bottom:0; position:sticky; height:22px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
 #sidebar { max-width:min(35vw, 250px); }
