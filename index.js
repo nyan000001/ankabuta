@@ -141,7 +141,7 @@ const start = async () => {
 		const log = (...arr) => {
 			arr = [socket.room, socket.name, socket.hash, ...arr];
 			io.to('admin').emit('log', ...arr);
-			if(records.length == 100) {
+			if(records.length == 500) {
 				records.shift();
 			}
 			records.push(arr);
