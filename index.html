@@ -8,9 +8,10 @@
 * { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
 textarea, input { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
-input[type=text]:read-only, :invalid ~ #go, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
+input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
-.joined #rooms.hidden, #codebox, #log, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
+.joined #rooms.hidden, #codebox, #log, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
+#arrow.hidden { visibility:hidden; }
 .joined #log, .joined #sidebar, .joined #leave, .joined #msgbox, .joined #say { display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
 .admin #help span.hidden { display:inline; }
@@ -77,7 +78,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 	textarea:focus, input[type=text]:focus { outline-color:#ccc; background:#111; }
 	input[type=button], input[type=submit] { background:#222; }
 	input[type=button]:focus, input[type=submit]:focus { outline-color:#ccc; background:#333; }
-	input[type=text]:read-only, :invalid ~ #go, textarea:read-only, input:disabled { background:#000; color:#444; }
+	input[type=text]:read-only, textarea:read-only, input:disabled { background:#000; color:#444; }
 	::-webkit-scrollbar { width:15px; height:15px; }
 	::-webkit-scrollbar-track { background:#222; }
 	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
@@ -96,7 +97,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 </head>
 <body>
 <div id="wrapper">
-<div id="rooms" class="hidden"><form id="roomform" novalidate><input type="text" id="room" maxlength="30" aria-label="room" placeholder="room" autofocus required pattern="(?! +$).+">
+<div id="rooms" class="hidden"><form id="roomform"><input type="text" id="room" maxlength="30" aria-label="room" placeholder="room" autofocus>
 <input type="text" id="name" maxlength="30" aria-label="username (optional)" placeholder="username (optional)">
 <input type="submit" id="go" value="Go"></form></div>
 <textarea id="codebox" spellcheck="false"></textarea>
@@ -173,10 +174,10 @@ socket.once('start', (myname, rooms) => {
 		get('arrow').classList.remove('hidden');
 		hidearrow();
 	}
-	const scrolldown = y => {
+	const scrolldown = () => {
 		if(!get('arrow').classList.contains('hidden')) return;
 		ignorescroll = true;
-		get('log').scrollTop = y || get('log').scrollHeight;
+		get('log').scrollTop = get('log').scrollHeight;
 	}
 	const addsysmsg = msg => {
 		const div = document.createElement('div');
@@ -297,7 +298,8 @@ socket.once('start', (myname, rooms) => {
 			if(!msg || typeof msg != 'string') return;
 			div.innerHTML = gethtml(msg);
 			get('arrow').before(div);
-			scrolldown(get('log').scrollHeight - div.scrollHeight - 200);
+			//scrolldown(get('log').scrollHeight - div.scrollHeight - 200);
+			scrolldown();
 			if(document.visibilityState == 'visible') return;
 			msgcount++;
 			if(animation) return;

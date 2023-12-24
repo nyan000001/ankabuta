@@ -1,8 +1,8 @@
 const app = require('express')();
 const http = require('http').createServer(app, { cookie:true });
 const io = require('socket.io')(http);
-app.get('/', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true }).sendFile(__dirname + '/index.html'));
-app.get('/blank', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true }).sendFile(__dirname + '/blank.html'));
+app.get('/', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true, sameSite:'strict' }).sendFile(__dirname + '/index.html'));
+app.get('/blank', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true, sameSite:'strict' }).sendFile(__dirname + '/blank.html'));
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
 app.get('/NotoColorEmoji.woff2', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.woff2'));
 app.use((req, res) => res.redirect('/'));
@@ -26,7 +26,6 @@ const start = async () => {
 		let uid;
 		let hash;
 		if(ip) {
-			ip = makehash(ip);
 			for(const userhash in users) {
 				if(users[userhash].ip == ip) {
 					hash = userhash;
@@ -159,6 +158,7 @@ const start = async () => {
 			let name;
 			let taken = true;
 			const issimilar = (name1, name2) => {
+				if(!name2) return false;
 				if(name1 == name2) return true;
 				if(name1.length == 3) return false;
 				let i = 0;
