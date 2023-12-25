@@ -111,7 +111,7 @@ socket.once('log', (records, rooms, regex) => {
 			if(bool) {
 				p.classList.add(hash);
 				if(hash == get('hash').value) {
-					ps[i].classList.add('highlight');
+					p.classList.add('highlight');
 				}
 				p.onclick = () => {
 					get('hash').value = hash;

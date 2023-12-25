@@ -1,8 +1,10 @@
 const app = require('express')();
 const http = require('http').createServer(app, { cookie:true });
 const io = require('socket.io')(http);
-app.get('/', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true, sameSite:'strict' }).sendFile(__dirname + '/index.html'));
-app.get('/blank', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true, sameSite:'strict' }).sendFile(__dirname + '/blank.html'));
+app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
+//app.get('/', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true, sameSite:'strict' }).sendFile(__dirname + '/index.html'));
+//app.get('/blank', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true, sameSite:'strict' }).sendFile(__dirname + '/blank.html'));
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
 app.get('/NotoColorEmoji.woff2', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.woff2'));
 app.use((req, res) => res.redirect('/'));
