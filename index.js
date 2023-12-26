@@ -235,7 +235,7 @@ const start = async () => {
 				}
 			} else {
 				rooms[socket.room].admin.emit('leave', msg2, socket.name, socket.hash);
-				for(const listener of ['say', 'leave']) {
+				for(const listener of ['say', 'leave', 'disconnect']) {
 					socket.removeAllListeners(listener);
 				}
 			}
