@@ -143,11 +143,13 @@ const start = async () => {
 		const log = (...arr) => {
 			arr = [socket.room, socket.name, socket.hash, ...arr];
 			io.to('admin').emit('log', ...arr);
-			if(records.length == 500) {
+			if(records.length >= 200) {
 				records.shift();
 			}
 			records.push(arr);
-			console.log(...arr);
+			const date = new Date();
+			get = unit => date['getUTC'+unit]().toString().padStart(2, '0');
+			console.log(date.getUTCDate()+'.'+date.getUTCMonth()+'.'+date.getUTCFullYear()+' '+get('Hours')+':'+get('Minutes')+':'+get('Seconds'), ...arr);
 		}
 		socket.onAny((...arr) => {
 			if(arr[0] == 'join') return;
@@ -176,19 +178,17 @@ const start = async () => {
 						name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
 						name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
 						name + rand([rand('dlnrst') + rand('aeiou')], .2) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
-						rand('bhklmnptwxy') + rand([...'aeiou', 'ai']) + rand('bklmntwx') + rand('aeiou')
+						rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', '#ts', '#tz'], 3).replace('#', rand('lnr', .3))
 					]);
 				} else {
 					name = rand([
-						rand([...'bdghjklnstz', 'tx'], .9) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklnrstz', 'rr']) + rand('aeiou') + rand([...'lnr', '#ts', '#tz']).replace('#', rand('lnr', .3)),
-						rand([...'bdghjklnstz', 'tx'], .9) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklnrstz', 'rr', '#ts', '#tz']).replace('#', rand('lnr', .3)) + rand('aeiou'),
-						rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + rand(['tl', 'ztli', 'htli']),
+						rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + 'tl',
 						rand('bkw') + 'a' + rand('hlz') + 'oo',
 						rand([...'bhkltwy', 'xi']) + 'ao',
 						rand('bhkltw') + rand(['ai', 'ei'])
 					]);
 				}
-				if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l.+r|r.+l|n.+g|f.+[cgkt]|d.+[gkm]|b.+t|p.+[kstz]|sh.+[gt]|b.+c|s.+x|ch.+n|[kp].+n|wa.+k|[hw]o|l.+[bpz]|[tw].+ng|m.+f|yi|nye|.w[ei]/.test(name)) continue;
+				if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l[aeiou]+r|r[aeiou]+[rl]|[aeiou]{2}[^aeiou]{2}|n.+g|f.+[cgkt]|d.+[gkm]|b.+t|p.+[kstz]|sh.+[gt]|b.+c|s.+x|ch.+n|[kp].+n|wa.+k|[hw]o|l.+[bpz]|[tw].+ng|m.+f|yi|nye|.w[ei]/.test(name)) continue;
 				//name = name[0].toUpperCase() + name.slice(1);
 				if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 					taken = false;
@@ -230,7 +230,7 @@ const start = async () => {
 				} else {
 					io.emit('rmvroom', socket.room);
 				}
-				for(const listener of ['say', 'sendOnly', 'sendAll', 'kick', 'lock', 'leave']) {
+				for(const listener of ['say', 'sendOnly', 'sendAll', 'kick', 'lock', 'leave', 'disconnect']) {
 					socket.removeAllListeners(listener);
 				}
 			} else {
@@ -396,12 +396,10 @@ const start = async () => {
 				});
 			}
 			socket.on('leave', () => leave(socket, '', 'has left'));
-		});
-		socket.on('disconnect', () => {
-			log('disconnect');
-			if(socket.room) {
+			socket.on('disconnect', () => {
+				log('disconnect');
 				leave(socket, '', 'has disconnected');
-			}
+			});
 		});
 	});
 }
