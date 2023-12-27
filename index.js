@@ -72,7 +72,7 @@ const start = async () => {
 				return false;
 			}
 			if(!socket.rooms.has('admin')) {
-				socket.emit('log', records, Object.keys(rooms), regexstring);
+				socket.emit('log', records, Object.keys(rooms).map(room => [room, rooms[room].admin.name, rooms[room].admin.hash]), regexstring);
 				socket.join('admin');
 			}
 			return true;
@@ -178,7 +178,7 @@ const start = async () => {
 						name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
 						name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
 						name + rand([rand('dlnrst') + rand('aeiou')], .2) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
-						rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', '#ts', '#tz'], 3).replace('#', rand('lnr', .3))
+						rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], 2)
 					]);
 				} else {
 					name = rand([
@@ -188,7 +188,7 @@ const start = async () => {
 						rand('bhkltw') + rand(['ai', 'ei'])
 					]);
 				}
-				if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l[aeiou]+r|r[aeiou]+[rl]|[aeiou]{2}[^aeiou]{2}|n.+g|f.+[cgkt]|d.+[gkm]|b.+t|p.+[kstz]|sh.+[gt]|b.+c|s.+x|ch.+n|[kp].+n|wa.+k|[hw]o|l.+[bpz]|[tw].+ng|m.+f|yi|nye|.w[ei]/.test(name)) continue;
+				if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l[aeiou]+r|r[aeiou]+[rl]|[aeiou]{2}[^aeiou]{2}|n.+g|f.+[cgkt]|d.+[gkm]|b.+[cnt]|p.+[kstz]|sh.+[gt]|s.+x|ch.+n|[kp].+n|wa.+k|[hw]o|l.+[bpz]|[tw].+ng|m.+f|yi|nye|.w[ei]/.test(name)) continue;
 				//name = name[0].toUpperCase() + name.slice(1);
 				if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 					taken = false;
@@ -220,7 +220,7 @@ const start = async () => {
 					socket2.emit('leaveroom', 'Disconnected from '+socket.room+'! (Admin '+msg2+')');
 					socket2.leave(socket.room);
 					delete socket2.room;
-					for(const listener of ['say', 'leave']) {
+					for(const listener of ['say', 'leave', 'disconnect']) {
 						socket2.removeAllListeners(listener);
 					}
 				}
@@ -277,7 +277,10 @@ const start = async () => {
 				socket.join(socket.room);
 				socket.emit('joinroom', socket.room, socket.name);
 				rooms[socket.room].admin.emit('join', socket.name, socket.hash);
-				socket.on('say', msg => rooms[socket.room].admin.emit('hear', msg, socket.name, socket.hash));
+				socket.on('say', msg => {
+					if(!validstring(msg)) return;
+					rooms[socket.room].admin.emit('hear', msg.slice(0, 10000), socket.name, socket.hash)
+				});
 			} else {
 				rooms[socket.room] = { 'admin':socket, banned:{} };
 				if(!socket.room.includes('hidden')) {

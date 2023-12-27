@@ -141,7 +141,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 <form id="msgform">
 <input type="button" id="leave" value="Leave">
 <input type="button" id="run" value="Run">
-<textarea id="msgbox" aria-label="Message"></textarea>
+<textarea id="msgbox" aria-label="Message" maxlength="10000"></textarea>
 <input type="submit" id="say" value="Say">
 </form>
 <script src="/socket.io/socket.io.js"></script>

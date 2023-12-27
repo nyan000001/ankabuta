@@ -11,9 +11,9 @@ body { font-size:7pt; font-family:'Open Sans', 'Noto Color Emoji', sans-serif; p
 body.blank * { display:none; }
 #top { display:flex; }
 #top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
-h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; }
+h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
 p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; cursor:default; }
-p.highlight { color:#fff; background:#f00; text-shadow:1px 1px 1px #000, -1px 1px 1px #000, -1px -1px 1px #000, 1px -1px 1px #000; }
+.highlight { color:#fff; background:#f00; text-shadow:1px 1px 1px #000, -1px 1px 1px #000, -1px -1px 1px #000, 1px -1px 1px #000; }
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
 form { display:inline-block; margin:8px; }
 input[type=number] { width:40px; }
@@ -48,15 +48,17 @@ input[type=number] { width:40px; }
 <script>
 const socket = io();
 const get = id => document.getElementById(id);
+const highlight = hash => {
+	const elems = document.querySelectorAll('h1, p');
+	for(let i = 0; i < elems.length; i++) {
+		elems[i].classList[elems[i].classList.contains(hash)? 'add': 'remove']('highlight');
+	}
+	get('hash').value = hash;
+	get('hash').focus();
+}
 const login = password => {
 	socket.emit('LOGIN', password);
-	get('hash').oninput = () => {
-		const hash = get('hash').value;
-		const ps = document.getElementsByTagName('p');
-		for(let i = 0; i < ps.length; i++) {
-			ps[i].classList[ps[i].classList.contains(hash)? 'add': 'remove']('highlight');
-		}
-	}
+	get('hash').oninput = () => highlight(get('hash').value);
 	get('banform').onsubmit = e => {
 		e.preventDefault();
 		socket.emit('BAN', password, get('hash').value, get('bantime').value);
@@ -74,16 +76,24 @@ socket.once('disconnect', () => console.log('Connection lost!'));
 socket.once('log', (records, rooms, regex) => {
 	document.body.classList.remove('blank');
 	const roomdivs = {};
-	const addroom = room => {
+	const addroom = (room, name, hash) => {
 		if(roomdivs[room]) return;
 		const div = document.createElement('div');
 		const h1 = document.createElement('h1');
 		h1.textContent = room;
+		if(name) h1.textContent += ' ('+name+')';
 		div.append(h1);
 		get('top').append(div);
 		roomdivs[room] = div;
+		if(hash) {
+			h1.className = hash;
+			if(hash == get('hash').value) {
+				h1.classList.add('highlight');
+			}
+			h1.onclick = () => highlight(hash);
+		}
 	}
-	for(const room of rooms) addroom(room);
+	for(const room of rooms) addroom(...room);
 	const addrecord = (room, name, hash, ...arr) => {
 		const addtext = (text, bool) => {
 			const p = document.createElement('p');
@@ -109,18 +119,11 @@ socket.once('log', (records, rooms, regex) => {
 			if(!roomdivs[room]) addroom(room);
 			roomdivs[room].append(p);
 			if(bool) {
-				p.classList.add(hash);
+				p.className = hash;
 				if(hash == get('hash').value) {
 					p.classList.add('highlight');
 				}
-				p.onclick = () => {
-					get('hash').value = hash;
-					const ps = document.getElementsByTagName('p');
-					for(let i = 0; i < ps.length; i++) {
-						ps[i].classList[ps[i].classList.contains(hash)? 'add': 'remove']('highlight');
-					}
-					get('hash').focus();
-				}
+				p.onclick = () => highlight(hash);
 			}
 			roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
 		}
@@ -133,7 +136,7 @@ socket.once('log', (records, rooms, regex) => {
 			if(name == 'New regex') get('currentregex').textContent = hash;
 			addtext(name+' '+hash);
 		} else if(cmd == 'join') {
-			addroom(room);
+			addroom(room, name, hash);
 			addtext(boldname+' joined', true);
 		} else if(cmd == 'say') {
 			addtext(boldname+': '+arr[0], true);
