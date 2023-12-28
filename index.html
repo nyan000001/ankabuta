@@ -4,7 +4,7 @@
 <title>ankabuta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-@font-face { font-family:'Noto Color Emoji'; src:url('NotoColorEmoji.woff2') format('woff2'), url('NotoColorEmoji.ttf') format('truetype'); size-adjust:120%; unicode-range:U+00A0-FE838; font-display:swap; }
+@font-face { font-family:'Noto Color Emoji'; src:url('NotoColorEmoji.woff2') format('woff2'), url('NotoColorEmoji.ttf') format('truetype'); font-display:swap; }
 * { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
 textarea, input { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
@@ -63,12 +63,12 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
 @media (max-width:900px) {
 	.admin:has(#help:not(.hidden)) #wrapper > * { height:calc(50% - 30px); }
-	.admin:has(#help:not(.hidden)) #codebox { position:fixed; bottom:50px; height:50%; width:calc(100% - 4px); resize:none; }
+	.admin:has(#help:not(.hidden)) #codebox { position:fixed; bottom:50px; height:50%; width:calc(100% - 4px) !important; resize:none; }
 }
 
 @media (max-width:600px) {
 	.admin #wrapper > * { height:calc(50% - 30px); }
-	.admin #codebox { position:fixed; bottom:50px; height:50%; width:calc(100% - 4px); resize:none; }
+	.admin #codebox { position:fixed; bottom:50px; height:50%; width:calc(100% - 4px) !important; resize:none; }
 	.joined:has(#help:not(.hidden)) #sidebar { display:none; }
 }
 
