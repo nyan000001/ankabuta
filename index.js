@@ -71,79 +71,55 @@ io.on('connection', async socket => {
 	socket.join(socket.hash);
 	const validstring = string => string && typeof string == 'string';
 	const validnumber = num => num >= 0;
-	const login = password => {
+	socket.on('LOGIN', password => {
 		if(password != process.env.PASSWORD) {
 			io.to('admin').emit('log', socket.room, 'Invalid password');
-			return false;
-		}
-		if(!socket.rooms.has('admin')) {
-			socket.emit('log', records, Object.keys(rooms).map(room => [room, rooms[room].admin.name, rooms[room].admin.hash]), regexstring);
-			socket.join('admin');
-		}
-		return true;
-	}
-	socket.on('LOGIN', login);
-	socket.on('BAN', async (password, name, mins) => {
-		if(!login(password)) return;
-		if(!validstring(name)) {
-			io.to('admin').emit('log', socket.room, 'Invalid name');
 			return;
 		}
-		let hash;
-		if(name[0] == '#') {
-			if(!rooms[name]) {
-				io.to('admin').emit('log', socket.room, 'Room not found');
-				return;
-			}
-			hash = rooms[name].admin.hash;
-		} else {
-			let sockets = await io.in(name).fetchSockets();
-			if(!sockets[0]) {
-				io.to('admin').emit('log', socket.room, 'Name not found');
-				return;
-			}
-			hash = sockets[0].hash;
-		}
-		sockets = await io.in(hash).fetchSockets();
-		for(const socket2 of sockets) {
-			io.to('admin').emit('log', socket.room, 'Kicked '+socket2.name);
-			await socket2.disconnect();
-		}
-		if(validnumber(mins)) {
+		socket.removeAllListeners('LOGIN');
+		socket.emit('log', records, Object.keys(rooms).map(room => [room, rooms[room].admin.name, rooms[room].admin.hash]), regexstring);
+		socket.join('admin');
+		socket.on('BAN', async (hash, mins) => {
+			if(!validstring(hash)) return;
 			if(!users[hash]) {
 				io.to('admin').emit('log', socket.room, 'Hash not found');
 				return;
 			}
-			const time = Date.now() + mins * 60000;
-			users[hash].bannedUntil = time;
-			collection.updateOne({ _id:hash }, { $set: { bannedUntil:time } });
-		}
-	});
-	socket.on('LOCK', (password, mins) => {
-		if(!login(password)) return;
-		if(!validnumber(mins)) {
-			io.to('admin').emit('log', socket.room, 'Invalid time');
-			return;
-		}
-		lockedUntil = Date.now() + mins * 60000;
-	});
-	socket.on('REGEX', (password, regex) => {
-		if(!login(password)) return;
-		try {
-			new RegExp(regex);
-		} catch(error) {
-			io.to('admin').emit('log', socket.room, error);
-			return;
-		}
-		regexstring = regex;
-		regex = new RegExp(regex);
-		io.to('admin').emit('log', socket.room, 'New regex', regexstring);
-		for(const room in rooms) {
-			if(regex.test(room)) {
-				io.to('admin').emit('log', socket.room, 'Kicked '+rooms[room].admin.name);
-				rooms[room].admin.disconnect();
+			sockets = await io.in(hash).fetchSockets();
+			for(const socket2 of sockets) {
+				io.to('admin').emit('log', socket.room, 'Kicked '+socket2.name);
+				socket2.disconnect();
 			}
-		}
+			if(validnumber(mins)) {
+				const time = Date.now() + mins * 60000;
+				users[hash].bannedUntil = time;
+				collection.updateOne({ _id:hash }, { $set: { bannedUntil:time } });
+			}
+		});
+		socket.on('LOCK', mins => {
+			if(validnumber(mins)) {
+				io.to('admin').emit('log', socket.room, 'Invalid time');
+				return;
+			}
+			lockedUntil = Date.now() + mins * 60000;
+		});
+		socket.on('REGEX', regex => {
+			try {
+				new RegExp(regex);
+			} catch(error) {
+				io.to('admin').emit('log', socket.room, error);
+				return;
+			}
+			regexstring = regex;
+			regex = new RegExp(regex);
+			io.to('admin').emit('log', socket.room, 'New regex', regexstring);
+			for(const room in rooms) {
+				if(regex.test(room)) {
+					io.to('admin').emit('log', socket.room, 'Kicked '+rooms[room].admin.name);
+					rooms[room].admin.disconnect();
+				}
+			}
+		});
 	});
 	const log = (...arr) => {
 		arr = [socket.room, socket.name, socket.hash, ...arr];

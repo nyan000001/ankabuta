@@ -17,6 +17,7 @@ p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; cursor:de
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
 form { display:inline-block; margin:8px; }
 input[type=number] { width:40px; }
+.disconnected { font-size:12pt; margin-bottom:10px; }
 @media (prefers-color-scheme:dark) {
 	body, h1 { background:#000; color:#fff; }
 	::-webkit-scrollbar { width:15px; height:15px; }
@@ -61,18 +62,21 @@ const login = password => {
 	get('hash').oninput = () => highlight(get('hash').value);
 	get('banform').onsubmit = e => {
 		e.preventDefault();
-		socket.emit('BAN', password, get('hash').value, get('bantime').value);
+		socket.emit('BAN', get('hash').value, get('bantime').value);
 	}
 	get('regexform').onsubmit = e => {
 		e.preventDefault();
-		socket.emit('REGEX', password, get('regex').value);
+		socket.emit('REGEX', get('regex').value);
 	}
 	get('lockform').onsubmit = e => {
 		e.preventDefault();
-		socket.emit('LOCK', password, get('locktime').value);
+		socket.emit('LOCK', get('locktime').value);
 	}
 }
-socket.once('disconnect', () => console.log('Connection lost!'));
+socket.once('disconnect', () => {
+	get('bottom').className = 'disconnected';
+	get('bottom').textContent = 'Connection lost!';
+});
 socket.once('log', (records, rooms, regex) => {
 	document.body.classList.remove('blank');
 	const roomdivs = {};
