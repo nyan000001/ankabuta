@@ -69,6 +69,7 @@ io.on('connection', async socket => {
 	//if(!socket.handshake.headers.cookie) return;
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 	socket.join(socket.hash);
+	console.log(socket.hash);
 	const validstring = string => string && typeof string == 'string';
 	const validnumber = num => num >= 0;
 	socket.on('LOGIN', password => {
@@ -158,7 +159,7 @@ io.on('connection', async socket => {
 				name = rand([
 					name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
 					name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
-					name + rand([rand('dlnrst') + rand('aeiou')], .2) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
+					name + rand([rand('dlnrstw') + rand('aeiou')], .2) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
 					rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], 2)
 				]);
 			} else {
@@ -169,7 +170,7 @@ io.on('connection', async socket => {
 					rand('bhkltw') + rand(['ai', 'ei'])
 				]);
 			}
-			if(/([bcdfghklmnprstwxz]).+\1|huo.+tl|l[aeiou]+r|r[aeiou]+[rl]|[aeiou]{2}[^aeiou]{2}|n.+g|f.+[cgkt]|d.+[gkm]|b.+[cnt]|p.+[kstz]|sh.+[gt]|s.+x|ch.+n|[kp].+n|wa.+k|[hw]o|l.+[bpz]|[tw].+ng|m.+f|yi|nye|.w[ei]/.test(name)) continue;
+			if(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|[hw]o|[kp].+n|[tw].+ng|b.+[cnt]|ch.+n|d.+[gkm]|f.+[cgkt]|l.+[bpz]|m.+f|n.+g|p.+[sz]|pak|pet|s.+x|sh.+[gt]|w.nk|yi|nye|.w[ei]|huo.+tl/.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
 			if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 				taken = false;
@@ -318,7 +319,7 @@ io.on('connection', async socket => {
 					return;
 				}
 				io.to('admin').emit('log', socket.room, 'Kicked '+socket2.name);
-				msg = validstring(msg)? ' '+msg: '';
+				msg = validstring(msg)? ' '+msg: '!';
 				leave(socket2, 'You\'ve been kicked'+msg, 'has been kicked'+msg);
 			});
 			socket.on('ban', async (hash, mins = 0, msg) => {

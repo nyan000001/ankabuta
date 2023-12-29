@@ -33,7 +33,8 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #wrapper > *:not(#codebox, #help), #help > div > div { white-space:pre-wrap; word-break:break-word; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
 #codebox { width:300px; resize:horizontal; }
-#codebox, pre { white-space:pre; font-size:9pt; font-family:'Noto Color Emoji', monospace; line-height:17px }
+#codebox { font-size:9pt; line-height:17px }
+#codebox, pre, code, #help summary { font-family:'Noto Color Emoji', monospace; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 #codebox, #sidebar, #help { flex-shrink:0; }
 #log { flex-grow:1; }
@@ -43,6 +44,8 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; height:22px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+pre { display:inline-block; }
+summary { cursor:default; }
 
 #sidebar { max-width:min(35vw, 250px); }
 #sidebar:empty { display:none; }
@@ -54,7 +57,8 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #help { padding:0 5px; line-height:13pt; }
 #help > div { padding:1px 0; }
 #help > div > div { margin:5px 0; }
-#help b { opacity:.5; font-weight:normal; }
+kbd { border-radius:5px; padding:2px; border:1px solid #999; }
+var { opacity:.6; font-style:inherit; font-family:inherit; }
 
 #msgform { bottom:0; position:fixed; width:100%; height:50px; display:flex; padding:0 1px 1px 1px; }
 #msgform > * { margin:1px; }
@@ -105,36 +109,45 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 <div id="sidebar" role="log"></div>
 <div id="help" class="hidden">
 <div>
-<div>/clear</div>
-<div class="hidden">/kick <b>NAME</b></div>
-<div class="hidden">/ban <b>HASH</b> <b>MINUTES</b></div>
-<div class="hidden">/lock <b>MINUTES</b></div>
-</div><div>
-<div>ctrl+h
+<div><kbd>ctrl</kbd> + <kbd>h</kbd>
 	<i>Toggle this help menu</i></div>
-<div>ctrl+o
+<div><kbd>ctrl</kbd> + <kbd>o</kbd>
 	<i>Show or hide the rooms</i></div>
-<div>ctrl+up
+<div><kbd>ctrl</kbd> + <kbd>up</kbd>
 	<i>Previous message<span class="hidden"> or code</span></i></div>
-<div>ctrl+down
+<div><kbd>ctrl</kbd> + <kbd>down</kbd>
 	<i>Next message<span class="hidden"> or code</span></i></div>
-<div class="hidden">ctrl+s
+<div class="hidden"><kbd>ctrl</kbd> + <kbd>s</kbd>
 	<i>Save and run the code</i></span></div>
-</div><div>
-<div class="hidden">sendOnly(<b>message1, users, message2</b>)
-	<i>Sends <b>message1</b> to <b>users</b>
-	and sends <b>message2</b> to everyone else</i></div>
-<div class="hidden">sendAll(<b>message1, users, message2</b>)
-	<i>Sends <b>message1</b> to everyone but <b>users</b>
-	and sends <b>message2</b> to <b>users</b></i></div>
-<div class="hidden">sendAll(true, <b>word</b>)
-	<i>Adds <b>word</b> to everyone's sidebar</i></div>
-<div class="hidden">sendAll(false, <b>word</b>)
-	<i>Removes <b>word</b> from everyone's sidebar</i></div>
-<div class="hidden">kick(<b>name</b, <b>msg</b>)
-	<i>Kicks <b>name</b></i></div>
-<div class="hidden">ban(<b>hash</b>, <b>minutes</b>, <b>msg</b>)
-	<i>Bans <b>hash</b> for <b>minutes</b></i></div>
+</div>
+<div>
+<div><code>[{sample text}]</code> <pre>sample text</pre></div>
+<div><code>[!sample text!]</code> <span class='rainbow'>sample text</span></div>
+<div><code>[*sample text*]</code> <b>sample text</b></div>
+<div><code>[/sample text/]</code> <i>sample text</i></div>
+<div><code>[_sample text_]</code> <span style='text-decoration:underline'>sample text</span></div>
+<div><code>[-sample text-]</code> <span style='text-decoration:line-through'>sample text</span></div>
+<div><code>[#f00sample text#]</code> <span style="color:#f00">sample text</span></div>
+<div><code>[°360sample text°]</code> <span style="color:hsl(360, 100%, 50%)">sample text</span></div>
+<div><details><summary>[(sample text)]</summary>sample text</details></div>
+</div>
+<div class="hidden">
+<div><code>sendOnly(<var>message1, users, message2</var>)</code>
+	<i>Sends <var>message1</var> to <var>users</var>
+	and sends <var>message2</var> to everyone else</i></div>
+<div><code>sendAll(<var>message1, users, message2</var>)</code>
+	<i>Sends <var>message1</var> to everyone but <var>users</var>
+	and sends <var>message2</var> to <var>users</var></i></div>
+<div><code>sendAll(true, <var>word</var>)</code>
+	<i>Adds <var>word</var> to everyone's sidebar</i></div>
+<div><code>sendAll(false, <var>word</var>)</code>
+	<i>Removes <var>word</var> from everyone's sidebar</i></div>
+<div><code>kick(<var>name</var>, <var>msg</var>)</code>
+	<i>Kicks <var>name</var></i></div>
+<div><code>ban(<var>hash</var>, <var>minutes</var>, <var>msg</var>)</code>
+	<i>Bans <var>hash</var> for <var>minutes</var></i></div>
+<div><code>lock(<var>minutes</var>)</code>
+	<i>Locks the room for <var>minutes</var></i></div>
 </div>
 </div>
 </div>
@@ -282,6 +295,7 @@ socket.once('start', (myname, rooms) => {
 					html += '<pre>'+text+'</pre>';
 				} else {
 					html += text.
+						replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 						replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
 						replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span style="color:#$1">$2</span>').
 						replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span style="color:hsl($1, 100%, 50%)">$2</span>').
@@ -332,15 +346,7 @@ socket.once('start', (myname, rooms) => {
 				get('log').textContent = '';
 				get('log').append(arrow);
 			} else if(iframe) {
-				if(/^\/(kick|k)$/.test(cmd)) {
-					socket.emit('kick', arr[0]);
-				} else if(/^\/(ban|b)$/.test(cmd)) {
-					socket.emit('ban', arr[0], arr[1]);
-				} else if(/^\/(lock|l)$/.test(cmd)) {
-					socket.emit('lock', arr[0]);
-				} else {
-					iframe.contentWindow.hear(msg, myname, adminhash);
-				}
+				iframe.contentWindow.hear(msg, myname, adminhash);
 			} else {
 				socket.emit('say', msg);
 			}
@@ -392,7 +398,7 @@ socket.once('start', (myname, rooms) => {
 				leave = () => {};
 			}
 			if(msg) {
-				addmsg(msg);
+				addsysmsg(msg);
 				get('leave').onclick = () => leave();
 				socket.once('joinroom', (...arr) => {
 					leave();
@@ -488,21 +494,30 @@ socket.once('start', (myname, rooms) => {
 				join(name, users[name].hash);
 			}
 			function join(name, hash) {
-				const emojis = [...'🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🐑🐒🐕🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🦆🐖🦇🦈🦉🦊🦋🦍🦎🦏🦒🦓🦔🦕🦖🦘🦚🦛🦜🦝🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🐱🫏'];
+				const emojis = [...'🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🦎🐑🐒🐕🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🐖🦆🦇🦈🦉🦊🦋🦍🦏🦒🦓🦝🦔🦕🦖🦘🦚🦛🦜🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🐱🫏'];
 				const num = [...name].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
 				const displayName = users[name].displayName = emojis[num % emojis.length] + '[*[#' + ['f00', 'cc0', '0f0', '0cc', '03f'][num % 5] + name + '#]*]';
 				users[name].hash = hash;
 				sendOnly(true, Object.keys(users).map(name2 => name2+' '+users[name2].displayName+(name2 == name? ' (you)': '')), name, name+' '+displayName);
-				sendOnly('Welcome, '+displayName+'!', name, displayName+' has joined');
+				sendOnly('Welcome, '+displayName+'!', name, displayName+' [*has joined*]');
 			}
 			function leave(msg, name, hash) {
-				sendAll(users[name].displayName+' '+msg);
+				sendAll(users[name].displayName+' [*'+msg+'*]');
 				sendAll(false, name);
 			}
 			function hear(msg, name, hash) {
 				const displayName = users[name].displayName;
 				const arr = msg.split(' ');
 				if(arr[0][0] == '/') {
+					if(arr[0][1] == '!' && users[name].admin) {
+						const cmd = arr.shift().slice(2);
+						if(['kick', 'ban', 'lock'].includes(cmd)) {
+							this[cmd](...arr);
+						} else {
+							sendOnly('Command not found', name);
+						}
+						return;
+					}
 					let cmd = arr.shift().slice(1);
 					if(cmd == 'pm') {
 						const recipient = arr.shift();
@@ -512,7 +527,7 @@ socket.once('start', (myname, rooms) => {
 							sendOnly(displayName+' (to '+users[recipient].displayName+'): '+msg, name);
 						} else sendOnly('User not found', name);
 					} else {
-						if(cmd == 'me') cmd = arr.shift();
+						if(cmd == 'me') cmd = arr.shift() ?? '';
 						else cmd = cmd.replace(/(ch|s|sh|x|z|o)$/, '$1e').replace(/y$/, 'ie')+'s';
 						msg = arr.map(word => users[word]? users[word].displayName: word).join(' ');
 						sendAll('[/* '+displayName+' '+cmd+' '+msg+'/]');
@@ -591,6 +606,7 @@ socket.once('start', (myname, rooms) => {
 			iframe.contentWindow.persistent = persistent;
 			iframe.contentWindow.kick = (name, msg) => socket.emit('kick', name, msg);
 			iframe.contentWindow.ban = (hash, mins, msg) => socket.emit('ban', hash, mins, msg);
+			iframe.contentWindow.lock = mins => socket.emit('lock', mins);
 			iframe.contentWindow.print = addmsg;
 			iframe.contentWindow.save = (name, value) => localStorage.setItem(name, JSON.stringify(value));
 			iframe.contentWindow.load = name => localStorage.getItem(name);
