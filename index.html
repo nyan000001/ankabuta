@@ -373,6 +373,7 @@ socket.once('start', (myname, rooms) => {
 		}
 		addsysmsg('You have joined '+room);
 		socket.once('leaveroom', msg => {
+			stopanimation();
 			get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 			history.replaceState(null, '', document.location.pathname);
 			get(room)?.classList.remove('disabled');
@@ -398,6 +399,7 @@ socket.once('start', (myname, rooms) => {
 				leave = () => {};
 			}
 			if(msg) {
+				document.title = 'ankabuta☠️'+myroom;
 				addsysmsg(msg);
 				get('leave').onclick = () => leave();
 				socket.once('joinroom', (...arr) => {
@@ -408,8 +410,6 @@ socket.once('start', (myname, rooms) => {
 				leave();
 				socket.once('joinroom', join);
 			}
-			stopanimation();
-			document.title = 'ankabuta☠️'+myroom;
 		});
 		const change = (add, arr) => {
 			if(!arr) {
