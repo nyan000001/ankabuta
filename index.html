@@ -496,9 +496,10 @@ socket.once('start', (myname, rooms) => {
 			function join(name, hash) {
 				const emojis = [...'🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🦎🐑🐒🐕🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🐖🦆🦇🦈🦉🦊🦋🦍🦏🦒🦓🦝🦔🦕🦖🦘🦚🦛🦜🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🐱🫏'];
 				const num = [...name].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
-				const displayName = users[name].displayName = emojis[num % emojis.length] + '[*[#' + ['f00', 'cc0', '0f0', '0cc', '03f'][num % 5] + name + '#]*]';
+				const names = Object.keys(users);
+				const displayName = users[name].displayName = emojis[num % emojis.length] + '[*[#' + ['f20', 'f70', 'ff0', '0f0', '0ff', '03f', '70f', 'e09'][names.length % 8] + name + '#]*]';
 				users[name].hash = hash;
-				sendOnly(true, Object.keys(users).map(name2 => name2+' '+users[name2].displayName+(name2 == name? ' (you)': '')), name, name+' '+displayName);
+				sendOnly(true, names.map(name2 => name2+' '+users[name2].displayName+(name2 == name? ' (you)': '')), name, name+' '+displayName);
 				sendOnly('Welcome, '+displayName+'!', name, displayName+' [*has joined*]');
 			}
 			function leave(msg, name, hash) {
