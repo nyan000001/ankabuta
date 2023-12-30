@@ -489,6 +489,7 @@ socket.once('start', (myname, rooms) => {
 		}
 		get('codebox').value =
 			`const users = persistent.users;
+			const colors = ['f20', 'f70', 'ff0', '0f0', '0ff', '03f', '70f', 'e09'];
 			sendAll(false);
 			for(const name in users) {
 				join(name, users[name].hash);
@@ -496,16 +497,17 @@ socket.once('start', (myname, rooms) => {
 			function join(name, hash) {
 				const emojis = [...'🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🦎🐑🐒🐕🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🐖🦆🦇🦈🦉🦊🦋🦍🦏🦒🦓🦝🦔🦕🦖🦘🦚🦛🦜🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🐱🫏'];
 				const num = [...name].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
-				const names = Object.keys(users);
-				const index = names.indexOf(name);
-				const displayName = users[name].displayName = emojis[num % emojis.length] + '[*[#' + ['f20', 'f70', 'ff0', '0f0', '0ff', '03f', '70f', 'e09'][index % 8] + name + '#]*]';
+				users[name].color = colors[0];
+				const displayName = users[name].displayName = emojis[num % emojis.length] + '[*[#' + colors[0] + name + '#]*]';
+				colors.push(colors.shift());
 				users[name].hash = hash;
-				sendOnly(true, names.map(name2 => name2+' '+users[name2].displayName+(name2 == name? ' (you)': '')), name, name+' '+displayName);
-				sendOnly('Welcome, '+displayName+'!', name, displayName+' [*has joined*]');
+				sendOnly(true, Object.keys(users).map(name2 => name2+' '+users[name2].displayName+(name2 == name? ' (you)': '')), name, name+' '+displayName);
+				sendOnly('Welcome, '+displayName+'!', name, displayName+'[* has joined*]');
 			}
 			function leave(msg, name, hash) {
-				sendAll(users[name].displayName+' [*'+msg+'*]');
+				sendAll(users[name].displayName+'[* '+msg+'*]');
 				sendAll(false, name);
+				colors.unshift(colors.splice(colors.indexOf(users[name].color), 1)[0]);
 			}
 			function hear(msg, name, hash) {
 				const displayName = users[name].displayName;
@@ -530,7 +532,7 @@ socket.once('start', (myname, rooms) => {
 						} else sendOnly('User not found', name);
 					} else {
 						if(cmd == 'me') cmd = arr.shift() ?? '';
-						else cmd = cmd == 'be'? 'is': cmd.replace(/(ch|s|sh|x|z|o)$/, '$1e').replace(/([^aeiou])y$/, '$1ie')+'s';
+						else cmd = cmd == 'be'? 'is': cmd.replace(/(ch|s|sh|x|z|[^aeiou]o)$/, '$1e').replace(/([^aeiou])y$/, '$1ie')+'s';
 						msg = arr.map(word => users[word]? users[word].displayName: word).join(' ');
 						sendAll('[/* '+displayName+' '+cmd+' '+msg+'/]');
 					}
