@@ -333,7 +333,7 @@ socket.once('start', (myname, rooms) => {
 			e.preventDefault();
 			const msg = get('msgbox').value;
 			if(!msg) return;
-			if(msghistory.at(-1) != msg) {
+			if(msghistory[msghistory.length-1] != msg) {
 				msghistory.push(msg);
 				msgindex++;
 			}
@@ -529,7 +529,7 @@ socket.once('start', (myname, rooms) => {
 						} else sendOnly('User not found', name);
 					} else {
 						if(cmd == 'me') cmd = arr.shift() ?? '';
-						else cmd = cmd.replace(/(ch|s|sh|x|z|o)$/, '$1e').replace(/y$/, 'ie')+'s';
+						else cmd = cmd == 'be'? 'is': cmd.replace(/(ch|s|sh|x|z|o)$/, '$1e').replace(/([^aeiou])y$/, '$1ie')+'s';
 						msg = arr.map(word => users[word]? users[word].displayName: word).join(' ');
 						sendAll('[/* '+displayName+' '+cmd+' '+msg+'/]');
 					}
@@ -595,7 +595,7 @@ socket.once('start', (myname, rooms) => {
 			e.preventDefault();
 			get('codebox').classList.remove('changed');
 			runningcode = get('codebox').value;
-			if(!iframe.src || codehistory.at(-1) != runningcode) {
+			if(!iframe.src || codehistory[codehistory.length-1] != runningcode) {
 				codehistory.push(runningcode);
 				codeindex++;
 			}
