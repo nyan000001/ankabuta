@@ -155,7 +155,7 @@ io.on('connection', async socket => {
 		}
 		for(let i = 0; i < 1000; i++) {
 			name = rand([...'bfhklmnpstwxy', 'ch', 'sh', 'ny']) + rand('aeiou');
-			if(Math.random() < .8) {
+			if(Math.random() < .9) {
 				name = rand([
 					name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
 					name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
@@ -166,7 +166,7 @@ io.on('connection', async socket => {
 				name = rand([
 					rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + 'tl',
 					rand('bkw') + 'a' + rand('hlz') + 'oo',
-					rand([...'bhkltwy', 'xi']) + 'ao',
+					rand([...'bhkltwy', 'ch', 'xi']) + 'ao',
 					rand('bhkltw') + rand(['ai', 'ei'])
 				]);
 			}

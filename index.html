@@ -497,7 +497,8 @@ socket.once('start', (myname, rooms) => {
 				const emojis = [...'🐀🐄🐆🐇🐉🐊🐍🐎🐏🐐🦎🐑🐒🐕🐘🐙🐞🐡🐢🐧🐨🐩🐫🐬🐮🐼🐿🕊🦃🦄🐖🦆🦇🦈🦉🦊🦋🦍🦏🦒🦓🦝🦔🦕🦖🦘🦚🦛🦜🦡🦢🦣🦤🦥🦦🦧🦨🦩🦫🦬🦭🐱🫏'];
 				const num = [...name].reduce((acc, curr) => acc + curr.charCodeAt(), 0);
 				const names = Object.keys(users);
-				const displayName = users[name].displayName = emojis[num % emojis.length] + '[*[#' + ['f20', 'f70', 'ff0', '0f0', '0ff', '03f', '70f', 'e09'][names.length % 8] + name + '#]*]';
+				const index = names.indexOf(name);
+				const displayName = users[name].displayName = emojis[num % emojis.length] + '[*[#' + ['f20', 'f70', 'ff0', '0f0', '0ff', '03f', '70f', 'e09'][index % 8] + name + '#]*]';
 				users[name].hash = hash;
 				sendOnly(true, names.map(name2 => name2+' '+users[name2].displayName+(name2 == name? ' (you)': '')), name, name+' '+displayName);
 				sendOnly('Welcome, '+displayName+'!', name, displayName+' [*has joined*]');
