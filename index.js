@@ -160,14 +160,15 @@ io.on('connection', async socket => {
 					name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
 					name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
 					name + rand([rand('dlnrstw') + rand('aeiou')], .1) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
-					rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], 2)
+					rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], .2)
 				]);
 			} else {
 				name = rand([
 					rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + 'tl',
 					rand('bkw') + 'a' + rand('hlz') + 'oo',
 					rand([...'bhkltwy', 'ch', 'xi']) + 'ao',
-					rand('bhkltw') + rand(['ai', 'ei'])
+					rand('bhkltw') + 'ei',
+					rand([...'bdghjklmnpstwxyz', 'ch', 'tx']) + rand([...'aiou', 'ai'])
 				]);
 			}
 			if(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|[hw]o|[kp][aeiou]+n|[tw][aeiou]+ng|b[aeiou]+[cnt]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n[aeiou]+g|p[aeiou]+[sz]|pak|pet|s[aeiou]+x|sh[aeiou]+[gt]|w.nk|yi|nye|.w[ei]|huo.+tl/.test(name)) continue;
