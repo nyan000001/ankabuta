@@ -174,18 +174,20 @@ socket.once('start', (myname, rooms) => {
 	onhashchange = () => {
 		socket.emit('join', decodeURI(location.hash));
 	}
-	const hidearrow = get('codebox').onmousemove = onresize = () => {
-		if(get('arrow').classList.contains('hidden') || !document.body.classList.contains('joined') || get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 1) return;
-		get('arrow').classList.add('hidden');
-	}
 	let ignorescroll;
+	let scrollpos = 0;
 	get('log').onscroll = () => {
+		scrollpos = get('log').scrollTop / get('log').clientHeight;
 		if(ignorescroll) {
 			ignorescroll = false;
 			return;
 		}
-		get('arrow').classList.remove('hidden');
-		hidearrow();
+		get('arrow').classList[get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 1? 'remove': 'add']('hidden');
+	}
+	get('codebox').onmousemove = onresize = () => {
+		ignorescroll = true;
+		get('log').scrollTop = scrollpos * get('log').clientHeight;
+		get('arrow').classList[get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 1? 'remove': 'add']('hidden');
 	}
 	const scrolldown = () => {
 		if(!get('arrow').classList.contains('hidden')) return;

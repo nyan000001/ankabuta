@@ -159,7 +159,7 @@ io.on('connection', async socket => {
 				name = rand([
 					name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
 					name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
-					name + rand([rand('dlnrstw') + rand('aeiou')], .2) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
+					name + rand([rand('dlnrstw') + rand('aeiou')], .1) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
 					rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], 2)
 				]);
 			} else {
