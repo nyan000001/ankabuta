@@ -27,7 +27,8 @@ input[type=text] { padding:0 4px; width:100%; max-width:200px; }
 a:hover { color:#f55; }
 a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
-#wrapper { display:flex; position:fixed; width:100%; height:calc(100% - 50px); padding:1px 1px 0 1px; }
+#wrapper { display:flex; position:fixed; width:100%; padding:1px 1px 0 1px; height:100%; }
+.joined #wrapper { height:calc(100% - 50px); }
 #wrapper > * { margin:1px; }
 #wrapper > *:not(#log, #help) { padding:5px; }
 #wrapper > *:not(#codebox, #help), #help > div > div { white-space:pre-wrap; word-break:break-word; }
