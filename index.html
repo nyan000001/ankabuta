@@ -254,6 +254,10 @@ socket.once('start', (myname, rooms) => {
 		get('room').value = '';
 		socket.emit('join', room, get('name').value.trim());
 	}
+	get('roomform').ondrop = e => {
+		e.preventDefault();
+		get('room').value = e.dataTransfer.getData('text/uri-list').replace(/.*?#/, '#');
+	}
 	get('room').onkeydown = get('name').onkeydown = e => {
 		if(!e.shiftKey && e.key == 'Enter') {
 			e.preventDefault();
