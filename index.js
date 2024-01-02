@@ -18,8 +18,9 @@ const crypto = require('crypto');
 const cookie = require('cookie');
 const users = {};
 const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
-let promise = new Promise(resolve => {
-	io.engine.on('initial_headers', async (headers, request) => {
+let promise;
+io.engine.on('initial_headers', (headers, request) => {
+	promise = new Promise(async resolve => {
 		//if(!request.headers.cookie) return;
 		let ip = request.headers['x-forwarded-for']; //request.connection.remoteAddress; //request.connection._peername.address;
 		let uid;
@@ -131,7 +132,7 @@ io.on('connection', async socket => {
 		records.push(arr);
 		const date = new Date();
 		get = unit => date['getUTC'+unit]().toString().padStart(2, '0');
-		console.log(date.getUTCDate()+'.'+date.getUTCMonth()+'.'+date.getUTCFullYear()+' '+get('Hours')+':'+get('Minutes')+':'+get('Seconds'), ...arr);
+		console.log(date.getUTCDate()+'.'+(date.getUTCMonth()+1)+'.'+date.getUTCFullYear()+' '+get('Hours')+':'+get('Minutes')+':'+get('Seconds'), ...arr);
 	}
 	socket.onAny((...arr) => {
 		if(arr[0] == 'join') return;
