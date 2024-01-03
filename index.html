@@ -557,8 +557,8 @@ socket.once('start', (myname, rooms) => {
 						const recipient = arr.shift();
 						msg = arr.join(' ');
 						if(users[recipient]) {
-							sendOnly(displayName+' (private): '+msg, recipient);
-							sendOnly(displayName+' (to '+users[recipient].displayName+'): '+msg, name);
+							sendOnly('[/(private) '+displayName+': '+msg+'/]', recipient);
+							sendOnly('[/'+displayName+' (to '+users[recipient].displayName+'): '+msg+'/]', name);
 						} else sendOnly('User not found', name);
 					} else {
 						if(cmd == 'me') cmd = arr.shift() ?? '';
