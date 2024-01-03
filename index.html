@@ -57,7 +57,7 @@ summary { cursor:default; }
 
 #help { padding:0 5px; line-height:13pt; }
 #help > div { padding:1px 0; }
-#help > div > div { margin:5px 0; }
+#help > div > div { margin:5px 0; white-space:pre; }
 kbd { border-radius:5px; padding:2px; border:1px solid #999; }
 var { opacity:.6; font-style:inherit; font-family:inherit; }
 
@@ -246,6 +246,32 @@ socket.once('start', (myname, rooms) => {
 			}
 		} else return;
 		e.preventDefault();
+	}
+	ontouchstart = e => {
+		if(e.target == get('codebox')) return;
+		get('help').firstElementChild.innerHTML = '<div>→ Swipe right to close this menu →</div>';
+		let dist = innerWidth - e.changedTouches[0].clientX;
+		if(get('help').classList.contains('hidden')) {
+			if(dist > 20) return;
+		} else {
+			if(Math.abs(dist - 319) > 40) return;
+		}
+		ontouchmove = e => {
+			dist = innerWidth - e.changedTouches[0].clientX;
+			if(dist < 150) {
+				get('help').classList.add('hidden');
+				get('help').style.opacity = .5;
+			} else {
+				get('help').classList.remove('hidden');
+				get('help').style.opacity = 1;
+			}
+			get('help').style.width = dist + 'px';
+			get('help').style.display = 'block';
+		}
+		ontouchend = e => {
+			get('help').removeAttribute('style');
+			ontouchmove = ontouchend = null;
+		}
 	}
 	get('roomform').onsubmit = e => {
 		e.preventDefault();
@@ -443,8 +469,7 @@ socket.once('start', (myname, rooms) => {
 				const match = {
 					'youtube':text.match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9a-z_-]{11}/i),
 					'dailymotion':text.match(/(?<=\/video\/)[0-9a-z_-]+/i),
-					'vimeo':text.match(/\d+/),
-//					'niconico':text.match(/(?<=\/watch\/)[0-9a-z_-]+/i)
+					'vimeo':text.match(/\d+/)
 				}[id];
 				if(divid == 'divvideo' && match) {
 					const video = get('video') || document.createElement('iframe');
@@ -452,14 +477,12 @@ socket.once('start', (myname, rooms) => {
 					a.textContent = a.href = {
 						'youtube':'https://youtu.be/'+match[0],
 						'dailymotion':'https://www.dailymotion.com/video/'+match[0],
-						'vimeo':'https://vimeo.com/'+match[0],
-//						'niconico':'https://www.nicovideo.jp/watch/'+match[0]
+						'vimeo':'https://vimeo.com/'+match[0]
 					}[id];
 					const embedurl = {
 						'youtube':'https://www.youtube-nocookie.com/embed/'+match[0],
 						'dailymotion':'https://www.dailymotion.com/embed/video/'+match[0],
-						'vimeo':'https://player.vimeo.com/video/'+match[0],
-//						'niconico':'https://embed.nicovideo.jp/watch/'+match[0]+'?autoplay=0'
+						'vimeo':'https://player.vimeo.com/video/'+match[0]
 					}[id];
 					a.onclick = e => {
 						e.preventDefault();
