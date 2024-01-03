@@ -176,9 +176,7 @@ socket.once('start', (myname, rooms) => {
 		socket.emit('join', decodeURI(location.hash));
 	}
 	let ignorescroll;
-	let scrollpos = 0;
 	get('log').onscroll = () => {
-		scrollpos = get('log').scrollTop / get('log').clientHeight;
 		if(ignorescroll) {
 			ignorescroll = false;
 			return;
@@ -186,8 +184,6 @@ socket.once('start', (myname, rooms) => {
 		get('arrow').classList[get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 1? 'remove': 'add']('hidden');
 	}
 	get('codebox').onmousemove = onresize = () => {
-		ignorescroll = true;
-		get('log').scrollTop = scrollpos * get('log').clientHeight;
 		get('arrow').classList[get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 1? 'remove': 'add']('hidden');
 	}
 	const scrolldown = () => {
@@ -553,7 +549,11 @@ socket.once('start', (myname, rooms) => {
 						return;
 					}
 					let cmd = arr.shift().slice(1);
-					if(cmd == 'pm') {
+					if(cmd == 'help') {
+						sendOnly('Commands: /help, /list, /me MESSAGE, /pm USER MESSAGE', name);
+					} else if(cmd == 'list') {
+						sendOnly('Users: '+Object.values(users).map(user => user.displayName).join(', '), name);
+					} else if(cmd == 'pm') {
 						const recipient = arr.shift();
 						msg = arr.join(' ');
 						if(users[recipient]) {
