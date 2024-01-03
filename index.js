@@ -38,8 +38,8 @@ io.engine.on('initial_headers', (headers, request) => {
 			uid = cookie.parse(request.headers.cookie).uid;
 			hash = makehash(uid);
 			const doc = await collection.findOne({ _id:hash });
-			users[hash] = { uid:doc.uid, ip:doc.ip, bannedUntil:doc.bannedUntil };
 			if(doc) {
+				users[hash] = { uid:doc.uid, ip:doc.ip, bannedUntil:doc.bannedUntil };
 				if(ip) {
 					users[hash].ip = ip;
 					collection.updateOne({ _id:hash }, { $set: { ip:ip } });
@@ -152,7 +152,7 @@ io.on('connection', async socket => {
 			while(i < name1.length && i < name2.length && name1[i] == name2[i]) {
 				i++;
 			}
-			return name1.slice(i + (name1.length >= name2.length)) == name2.slice(i + (name2.length >= name1.length))
+			return name1.slice(i + (name1.length >= name2.length)) == name2.slice(i + (name2.length >= name1.length));
 		}
 		for(let i = 0; i < 1000; i++) {
 			name = rand([...'bfhklmnpstwxy', 'ch', 'sh', 'ny']) + rand('aeiou');
