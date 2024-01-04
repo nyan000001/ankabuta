@@ -245,12 +245,12 @@ socket.once('start', (myname, rooms) => {
 	}
 	ontouchstart = e => {
 		if(e.target == get('codebox')) return;
-		get('help').firstElementChild.innerHTML = '<div>→ Swipe right to close this menu →</div>';
+		get('help').firstElementChild.innerHTML = '<div>Tap to close this menu</div>';
 		let dist = innerWidth - e.changedTouches[0].clientX;
 		if(get('help').classList.contains('hidden')) {
-			if(dist > 20) return;
+			if(dist > 20 && get('help').classList.contains('hidden')) return;
 		} else {
-			if(Math.abs(dist - 319) > 40) return;
+			if(Math.abs(dist - get('help').offsetWidth) > 40) return;
 		}
 		ontouchmove = e => {
 			dist = innerWidth - e.changedTouches[0].clientX;
@@ -268,6 +268,10 @@ socket.once('start', (myname, rooms) => {
 			get('help').removeAttribute('style');
 			ontouchmove = ontouchend = null;
 		}
+	}
+	get('help').ontouchstart = () => {
+		get('help').ontouchmove = () => get('help').ontouchend = null;
+		get('help').ontouchend = () => get('help').classList.add('hidden');
 	}
 	get('roomform').onsubmit = e => {
 		e.preventDefault();
