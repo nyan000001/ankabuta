@@ -1,6 +1,6 @@
 const app = require('express')();
 const http = require('http').createServer(app, { cookie:true });
-const io = require('socket.io')(http);
+const io = require('socket.io')(http, { pingInterval:50000, pingTimeout:50000 });
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
 //app.get('/', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true, sameSite:'strict' }).sendFile(__dirname + '/index.html'));

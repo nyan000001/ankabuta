@@ -269,7 +269,8 @@ socket.once('start', (myname, rooms) => {
 			ontouchmove = ontouchend = null;
 		}
 	}
-	get('help').ontouchstart = () => {
+	get('help').ontouchstart = e => {
+		if(e.target.tagName == 'SUMMARY') return;
 		get('help').ontouchmove = () => get('help').ontouchend = null;
 		get('help').ontouchend = () => get('help').classList.add('hidden');
 	}
