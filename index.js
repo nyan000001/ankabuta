@@ -228,7 +228,7 @@ io.on('connection', async socket => {
 	}
 	socket.on('join', async (room, name) => {
 		if(!validstring(room)) return;
-		room = room.trim().replace(/\s/g, '_').replace(/^#*/, '#').slice(0, 30);
+		room = room.trim().replace(/^#*/, '#').slice(0, 30).replace(/\s/g, '_');
 		if(regexstring && new RegExp(regexstring).test(room)) {
 			io.to('admin').emit('log', room, 'Kicked '+socket.name);
 			socket.disconnect();
@@ -244,7 +244,7 @@ io.on('connection', async socket => {
 		}
 		socket.leave(socket.name);
 		if(name) {
-			name = name.trim().slice(0, 30);
+			name = name.trim().slice(0, 30).replace(/\s/g, '_');
 			let i = '';
 			const sockets = getallsockets().filter(socket2 => socket2.room == room);
 			while(sockets.some(socket2 => socket2.name == name+i)) {
