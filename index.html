@@ -322,21 +322,26 @@ socket.once('start', (myname, rooms) => {
 		get('leave').onclick = () => socket.emit('leave');
 		const gethtml = text => {
 			let html = '';
-			const arr = text.split(/\[\{(.*?)\}\]/s);
+			const arr = text.split(/\[\{(.*)\}\]/s);
 			for(let i = 0; i < arr.length; i++) {
 				text = arr[i].replace(/</g, '&lt;').replace(/>/g, '&gt;');
 				if(i % 2) {
 					html += '<pre>'+text+'</pre>';
 				} else {
-					html += text.
-						replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
-						replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
-						replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span style="color:#$1">$2</span>').
-						replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span style="color:hsl($1, 100%, 50%)">$2</span>').
-						replace(/\[\*(.*?)\*\]/gs, '<b>$1</b>').
-						replace(/\[\/(.*?)\/\]/gs, '<i>$1</i>').
-						replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
-						replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>');
+					let temp;
+					do {
+						temp = text;
+						text = text.
+							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
+							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
+							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span style="color:#$1">$2</span>').
+							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span style="color:hsl($1, 100%, 50%)">$2</span>').
+							replace(/\[\*(.*?)\*\]/gs, '<b>$1</b>').
+							replace(/\[\/(.*?)\/\]/gs, '<i>$1</i>').
+							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
+							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>');
+					} while(temp != text);
+					html += text;
 				}
 			}
 			return html;
@@ -708,12 +713,12 @@ socket.once('start', (myname, rooms) => {
 				socket.off(event);
 				iframe.contentWindow[event] = () => {};
 			}
-			socket.on('join', (name, hash) => {
+			socket.on('join', (name, hash, custom) => {
 				if(!persistent.users[name]) {
 					console.log(name+' has joined');
 					persistent.users[name] = { hash };
 				}
-				iframe.contentWindow.join(name, hash);
+				iframe.contentWindow.join(name, hash, custom);
 			});
 			socket.on('leave', (msg, name, hash) => {
 				console.log(name+' '+msg);

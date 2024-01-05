@@ -243,7 +243,7 @@ io.on('connection', async socket => {
 			return;
 		}
 		socket.leave(socket.name);
-		if(name) {
+		if(validstring(name)) {
 			name = name.trim().slice(0, 30).replace(/\s/g, '_');
 			let i = '';
 			const sockets = getallsockets().filter(socket2 => socket2.room == room);
@@ -253,6 +253,7 @@ io.on('connection', async socket => {
 			socket.name = name+i;
 			socket.join(name+i);
 		} else {
+			name = undefined;
 			getname();
 		}
 		socket.room = room;
@@ -260,7 +261,7 @@ io.on('connection', async socket => {
 		if(rooms[socket.room]) {
 			socket.join(socket.room);
 			socket.emit('joinroom', socket.room, socket.name);
-			rooms[socket.room].admin.emit('join', socket.name, socket.hash);
+			rooms[socket.room].admin.emit('join', socket.name, socket.hash, !!name);
 			socket.on('say', msg => {
 				if(!validstring(msg)) return;
 				rooms[socket.room].admin.emit('hear', msg.slice(0, 5000), socket.name, socket.hash)
