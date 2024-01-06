@@ -191,6 +191,7 @@ socket.once('start', (myname, rooms) => {
 		ignorescroll = true;
 		get('log').scrollTop = get('log').scrollHeight;
 	}
+	get('log').onclick = () => setTimeout(scrolldown, 1);
 	const addsysmsg = msg => {
 		const div = document.createElement('div');
 		div.className = 'sysmsg';
