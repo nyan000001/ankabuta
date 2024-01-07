@@ -4,8 +4,8 @@
 <title>ankabuta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-@font-face { font-family:'Noto Color Emoji'; src:url('./NotoColorEmoji.woff2') format('woff2'), url('./NotoColorEmoji.ttf') format('truetype'); size-adjust:120%; unicode-range:U+00A0-FE838; font-display:swap; }
-* { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
+@font-face { font-family:'Noto Color Emoji'; src:url('./NotoColorEmoji.woff2') format('woff2'), url('./NotoColorEmoji.ttf') format('truetype'); size-adjust:120%; unicode-range:U+00A0-FE838; font-display:swap; font-style:normal; font-weight:400; }
+* { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; font-style:normal; font-weight:400; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
 textarea, input { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
 input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
@@ -471,22 +471,22 @@ socket.once('start', (myname, rooms) => {
 				}
 				const div = get(divid) || document.createElement('div');
 				const match = {
-					'youtube':text.match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9a-z_-]{11}/i),
-					'dailymotion':text.match(/(?<=\/video\/)[0-9a-z_-]+/i),
-					'vimeo':text.match(/\d+/)
+					'youtube':text.match(/(^|\.be\/|\/v\/|\?v=|\/embed\/)([0-9A-Za-z_-]{11})/),
+					'dailymotion':text.match(/(\/video\/)([0-9A-Za-z_-]+)/),
+					'vimeo':text.match(/()(\d+)/)
 				}[id];
 				if(divid == 'divvideo' && match) {
 					const video = get('video') || document.createElement('iframe');
 					const a = document.createElement('a');
 					a.textContent = a.href = {
-						'youtube':'https://youtu.be/'+match[0],
-						'dailymotion':'https://www.dailymotion.com/video/'+match[0],
-						'vimeo':'https://vimeo.com/'+match[0]
+						'youtube':'https://youtu.be/'+match[2],
+						'dailymotion':'https://www.dailymotion.com/video/'+match[2],
+						'vimeo':'https://vimeo.com/'+match[2]
 					}[id];
 					const embedurl = {
-						'youtube':'https://www.youtube-nocookie.com/embed/'+match[0],
-						'dailymotion':'https://www.dailymotion.com/embed/video/'+match[0],
-						'vimeo':'https://player.vimeo.com/video/'+match[0]
+						'youtube':'https://www.youtube-nocookie.com/embed/'+match[2],
+						'dailymotion':'https://www.dailymotion.com/embed/video/'+match[2],
+						'vimeo':'https://player.vimeo.com/video/'+match[2]
 					}[id];
 					a.onclick = e => {
 						e.preventDefault();
