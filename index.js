@@ -146,8 +146,7 @@ io.on('connection', async socket => {
 		let taken = true;
 		const issimilar = (name1, name2) => {
 			if(!name2) return false;
-			if(name1 == name2) return true;
-			if(name1.length == 3) return false;
+			if(name1 == name2 || name1.slice(0, 3) == name2.slice(0, 3)) return true;
 			let i = 0;
 			while(i < name1.length && i < name2.length && name1[i] == name2[i]) {
 				i++;
