@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-@font-face { font-family:'Noto Color Emoji'; src:url('NotoColorEmoji.ttf') format('truetype'); size-adjust:120%; unicode-range:U+2139-FE837; font-display:swap; font-style:normal; font-weight:400; }
+@font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 html, body, #top { height:100%; }
 body { font-size:7pt; font-family:'Noto Color Emoji', sans-serif; padding:0; margin:0; line-height:13px; }
 body.blank * { display:none; }
@@ -102,20 +102,26 @@ socket.once('log', (records, rooms, regex) => {
 		const addtext = (text, bool) => {
 			const p = document.createElement('p');
 			let html = '';
-			const arr = text.split(/\[\{(.*?)\}\]/s);
+			const arr = text.split(/\[\{(.*)\}\]/s);
 			for(let i = 0; i < arr.length; i++) {
 				text = arr[i].replace(/</g, '&lt;').replace(/>/g, '&gt;');
 				if(i % 2) {
 					html += '<pre>'+text+'</pre>';
 				} else {
-					html += text.
-						replace(/\[!(.*?)!\]/g, '<span class="rainbow">$1</span>').
-						replace(/\[#([0-9a-f]{3})(.*?)#\]/gi, '<span style="color:#$1">$2</span>').
-						replace(/\[°([0-9a-f]{3})(.*?)°\]/gi, '<span style="color:hsl($1, 100%, 50%)">$2</span>').
-						replace(/\[\*(.*?)\*\]/g, '<b>$1</b>').
-						replace(/\[\/(.*?)\/\]/g, '<i>$1</i>').
-						replace(/\[_(.*?)_\]/g, '<span style="text-decoration:underline">$1</span>').
-						replace(/\[-(.*?)-\]/g, '<span style="text-decoration:line-through">$1</span>');
+					let temp;
+					do {
+						temp = text;
+						text = text.
+							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
+							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
+							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span style="color:#$1">$2</span>').
+							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span style="color:hsl($1, 100%, 50%)">$2</span>').
+							replace(/\[\*(.*?)\*\]/gs, '<b>$1</b>').
+							replace(/\[\/(.*?)\/\]/gs, '<i>$1</i>').
+							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
+							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>');
+					} while(temp != text);
+					html += text;
 				}
 			}
 			p.innerHTML = html;
