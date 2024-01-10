@@ -524,7 +524,6 @@ socket.once('start', (myname, rooms) => {
 		get('codebox').value =
 			`const users = persistent.users;
 			const colors = ['f20', 'f70', 'ff0', '0f0', '0ff', '03f', '70f', 'e09'];
-			sendAll(false);
 			for(const name in users) {
 				join(name, users[name].hash);
 			}
@@ -711,6 +710,7 @@ socket.once('start', (myname, rooms) => {
 					socket.emit('sendAll', msg1, names, msg2);
 				}
 			}
+			iframe.contentWindow.sendAll(false);
 			for(const event of ['join', 'leave', 'hear']) {
 				socket.off(event);
 				iframe.contentWindow[event] = () => {};
