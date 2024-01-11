@@ -12,8 +12,10 @@ app.use((req, res) => res.redirect('/'));
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const client = new MongoClient(process.env.URI, { serverApi:{ version:ServerApiVersion.v1, strict:true, deprecationErrors:true } });
-const collection = client.db('Cluster0').collection('hashes');
-//collection.createIndex( { createdAt:1 }, { expireAfterSeconds:604800 } );
+const hashes = client.db('Cluster0').collection('hashes');
+const logs = client.db('Cluster0').collection('logs');
+//hashes.createIndex( { createdAt:1 }, { expireAfterSeconds:345600 } ); // 4 days
+//logs.createIndex( { createdAt:1 }, { expireAfterSeconds:345600 } );
 const crypto = require('crypto');
 const cookie = require('cookie');
 const users = {};
@@ -22,11 +24,11 @@ let promise;
 io.engine.on('initial_headers', (headers, request) => {
 	promise = new Promise(async resolve => {
 		//if(!request.headers.cookie) return;
-		let ip = request.headers['x-forwarded-for']; //request.connection.remoteAddress; //request.connection._peername.address;
+		let ip = request.headers['x-forwarded-for'];
 		let uid;
 		let hash;
 		if(ip) {
-			const doc = await collection.findOne({ ip:ip });
+			const doc = await hashes.findOne({ ip:ip });
 			if(doc) {
 				users[doc._id] = { uid:doc.uid, ip:doc.ip, bannedUntil:doc.bannedUntil };
 				headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', doc.uid, { maxAge:604800, sameSite:'strict' });
@@ -37,12 +39,12 @@ io.engine.on('initial_headers', (headers, request) => {
 		if(request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
 			uid = cookie.parse(request.headers.cookie).uid;
 			hash = makehash(uid);
-			const doc = await collection.findOne({ _id:hash });
+			const doc = await hashes.findOne({ _id:hash });
 			if(doc) {
 				users[hash] = { uid:doc.uid, ip:doc.ip, bannedUntil:doc.bannedUntil };
 				if(ip) {
 					users[hash].ip = ip;
-					collection.updateOne({ _id:hash }, { $set: { ip:ip } });
+					hashes.updateOne({ _id:hash }, { $set: { ip:ip } });
 				}
 				resolve();
 				return;
@@ -52,17 +54,16 @@ io.engine.on('initial_headers', (headers, request) => {
 		do {
 			uid = crypto.randomBytes(32).toString('base64');
 			hash = makehash(uid);
-			doc = await collection.findOne({ _id:hash });
+			doc = await hashes.findOne({ _id:hash });
 		} while(doc);
 		headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:604800, sameSite:'strict' });
 		users[hash] = { uid:uid, bannedUntil:0 };
 		if(ip) users[hash].ip = ip;
-		collection.insertOne({ _id:hash, createdAt:new Date(), ...users[hash] });
+		hashes.insertOne({ _id:hash, createdAt:new Date(), ...users[hash] });
 		resolve();
 	});
 });
 const rooms = {};
-const records = [];
 let lockedUntil = 0;
 let regexstring;
 io.on('connection', async socket => {
@@ -70,16 +71,16 @@ io.on('connection', async socket => {
 	//if(!socket.handshake.headers.cookie) return;
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 	socket.join(socket.hash);
-	console.log(socket.hash);
 	const validstring = string => string && typeof string == 'string';
 	const validnumber = num => num >= 0;
-	socket.on('LOGIN', password => {
+	socket.on('LOGIN', async password => {
 		if(password != process.env.PASSWORD) {
 			io.to('admin').emit('log', socket.room, 'Invalid password');
 			return;
 		}
 		socket.removeAllListeners('LOGIN');
-		socket.emit('log', records, Object.keys(rooms).map(room => [room, rooms[room].admin.name, rooms[room].admin.hash]), regexstring);
+		const records = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) } }).toArray();
+		socket.emit('log', records.map(x => [x.room, x.name, x.hash, x.cmd, ...x.arr]), Object.keys(rooms).map(room => [room, rooms[room].admin.name, rooms[room].admin.hash]), regexstring);
 		socket.join('admin');
 		socket.on('BAN', async (hash, mins) => {
 			if(!validstring(hash)) return;
@@ -95,7 +96,7 @@ io.on('connection', async socket => {
 			if(validnumber(mins)) {
 				const time = Date.now() + mins * 60000;
 				users[hash].bannedUntil = time;
-				collection.updateOne({ _id:hash }, { $set: { bannedUntil:time } });
+				hashes.updateOne({ _id:hash }, { $set: { bannedUntil:time } });
 			}
 		});
 		socket.on('LOCK', mins => {
@@ -123,16 +124,9 @@ io.on('connection', async socket => {
 			}
 		});
 	});
-	const log = (...arr) => {
-		arr = [socket.room, socket.name, socket.hash, ...arr];
-		io.to('admin').emit('log', ...arr);
-		if(records.length >= 200) {
-			records.shift();
-		}
-		records.push(arr);
-		const date = new Date();
-		get = unit => date['getUTC'+unit]().toString().padStart(2, '0');
-		console.log(date.getUTCDate()+'.'+(date.getUTCMonth()+1)+'.'+date.getUTCFullYear()+' '+get('Hours')+':'+get('Minutes')+':'+get('Seconds'), ...arr);
+	const log = (cmd, ...arr) => {
+		io.to('admin').emit('log', socket.room, socket.name, socket.hash, cmd, ...arr);
+		logs.insertOne({ createdAt:new Date(), ip:users[socket.hash].ip, room:socket.room, name:socket.name, hash:socket.hash, cmd:cmd, arr:arr });
 	}
 	socket.onAny((...arr) => {
 		if(arr[0] == 'join') return;
@@ -236,6 +230,7 @@ io.on('connection', async socket => {
 		}
 		if(socket.room) {
 			if(socket.room == room) return;
+			log('leave');
 			await leave(socket, '', 'has left');
 		}
 		if(rooms[room] && (rooms[room].timeout != undefined || rooms[room].banned[socket.name] || rooms[room].banned[socket.hash])) {
