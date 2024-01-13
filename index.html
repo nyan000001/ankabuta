@@ -335,13 +335,14 @@ socket.once('start', (myname, rooms) => {
 						temp = text;
 						text = text.
 							replace(/\[\[(.*?)\]\]/gs, (a, b) => {
-								if(b == 'input' || b == 'text') return '<input type="text">';
-								if(b == 'longinput' || b == 'longtext') return '<input type="text" style="width:300px">';
+								b = b.replace(/(?<!:.*)input/, 'text');
+								if(b == 'text') return '<input type="text">';
+								if(b == 'longtext') return '<input type="text" style="width:300px">';
 								if(b == 'password') return '<input type="password">';
 								if(b == 'button') return '<input type="button" value="send">';
-								const c = b.slice(b.indexOf(':')+1);
-								if(b.startsWith('input:') || b.startsWith('text:')) return '<input type="text" placeholder="'+c+'">';
-								if(b.startsWith('longinput:') || b.startsWith('longtext:')) return '<input type="text" placeholder="'+c+'" style="width:300px">';
+								const c = b.slice(b.indexOf(':')+1).replace(/"/g, '&quot;');
+								if(b.startsWith('text:')) return '<input type="text" placeholder="'+c+'">';
+								if(b.startsWith('longtext:')) return '<input type="text" placeholder="'+c+'" style="width:300px">';
 								if(b.startsWith('password:')) return '<input type="password" placeholder="'+c+'">';
 								if(b.startsWith('button:')) return '<input type="button" value="'+c+'">';
 								if(b.startsWith('label:')) return '<label>'+c+'</label>';
@@ -505,22 +506,22 @@ socket.once('start', (myname, rooms) => {
 				}
 				const div = get(divid) || document.createElement('div');
 				const match = {
-					'youtube':text.match(/(^|\.be\/|\/v\/|\?v=|\/embed\/)([0-9A-Za-z_-]{11})/),
-					'dailymotion':text.match(/(\/video\/)([0-9A-Za-z_-]+)/),
-					'vimeo':text.match(/()(\d+)/)
+					'youtube':text.match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9A-Za-z_-]{11}/),
+					'dailymotion':text.match(/(?<=\/video\/)[0-9A-Za-z_-]+/),
+					'vimeo':text.match(/\d+/)
 				}[id];
 				if(divid == 'divvideo' && match) {
 					const video = get('video') || document.createElement('iframe');
 					const a = document.createElement('a');
 					a.textContent = a.href = {
-						'youtube':'https://youtu.be/'+match[2],
-						'dailymotion':'https://www.dailymotion.com/video/'+match[2],
-						'vimeo':'https://vimeo.com/'+match[2]
+						'youtube':'https://youtu.be/'+match[0],
+						'dailymotion':'https://www.dailymotion.com/video/'+match[0],
+						'vimeo':'https://vimeo.com/'+match[0]
 					}[id];
 					const embedurl = {
-						'youtube':'https://www.youtube-nocookie.com/embed/'+match[2],
-						'dailymotion':'https://www.dailymotion.com/embed/video/'+match[2],
-						'vimeo':'https://player.vimeo.com/video/'+match[2]
+						'youtube':'https://www.youtube-nocookie.com/embed/'+match[0],
+						'dailymotion':'https://www.dailymotion.com/embed/video/'+match[0],
+						'vimeo':'https://player.vimeo.com/video/'+match[0]
 					}[id];
 					a.onclick = e => {
 						e.preventDefault();
