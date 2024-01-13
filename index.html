@@ -42,7 +42,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #log > div:last-of-type { margin-bottom:-22px; }
 
 #log > div { padding:3px; max-height:50%; overflow:auto; }
-#log > div input { max-width:100px; }
+#log > div input:not([type=button]) { width:100px; max-width:100%; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; height:22px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
@@ -335,13 +335,16 @@ socket.once('start', (myname, rooms) => {
 						temp = text;
 						text = text.
 							replace(/\[\[(.*?)\]\]/gs, (a, b) => {
-								if(b == 'input') return '<input type="text">';
+								if(b == 'text') return '<input type="text">';
+								if(b == 'longtext') return '<input type="text" style="width:300px">';
 								if(b == 'password') return '<input type="password">';
 								if(b == 'button') return '<input type="button" value="send">';
-								if(b.startsWith('input:')) return '<input type="text" placeholder="'+b.slice(6)+'">';
-								if(b.startsWith('password:')) return '<input type="password" placeholder="'+b.slice(9)+'">';
-								if(b.startsWith('label:')) return '<label>'+b.slice(6)+'</label>';
-								if(b.startsWith('button:')) return '<input type="button" value="'+b.slice(7)+'">';
+								const c = b.slice(b.indexOf(':')+1);
+								if(b.startsWith('text:')) return '<input type="text" placeholder="'+c+'">';
+								if(b.startsWith('longtext:')) return '<input type="text" placeholder="'+c+'" style="width:300px">';
+								if(b.startsWith('password:')) return '<input type="password" placeholder="'+c+'">';
+								if(b.startsWith('button:')) return '<input type="button" value="'+c+'">';
+								if(b.startsWith('label:')) return '<label>'+c+'</label>';
 								return a;
 							}).
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
