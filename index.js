@@ -12,8 +12,8 @@ app.use((req, res) => res.redirect('/'));
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const client = new MongoClient(process.env.URI, { serverApi:{ version:ServerApiVersion.v1, strict:true, deprecationErrors:true } });
-const hashes = client.db('Cluster0').collection('hashes');
-const logs = client.db('Cluster0').collection('logs');
+const hashes = client.db('ankabuta').collection('hashes');
+const logs = client.db('ankabuta').collection('logs');
 //hashes.createIndex( { createdAt:1 }, { expireAfterSeconds:345600 } ); // 4 days
 //logs.createIndex( { createdAt:1 }, { expireAfterSeconds:345600 } );
 const crypto = require('crypto');
