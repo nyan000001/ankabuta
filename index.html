@@ -10,7 +10,7 @@ textarea, input { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
 input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
-.joined #rooms.hidden, #codebox, #log, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
+.joined #rooms.hidden, .joined #rooms div, #codebox, #log, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave, .joined #msgbox, .joined #say { display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
 .admin #help span.hidden { display:inline; }
@@ -104,7 +104,7 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 </head>
 <body>
 <div id="wrapper">
-<div id="rooms" class="hidden"><form id="roomform"><input type="text" id="room" maxlength="30" aria-label="room" placeholder="room" autofocus>
+<div id="rooms" class="hidden"><form id="roomform"><div>Create or join a chatroom</div><input type="text" id="room" maxlength="30" aria-label="room" placeholder="room" autofocus>
 <input type="text" id="name" maxlength="30" aria-label="username (optional)" placeholder="(username)">
 <input type="submit" id="go" value="Go"></form></div>
 <textarea id="codebox" spellcheck="false"></textarea>
@@ -335,13 +335,13 @@ socket.once('start', (myname, rooms) => {
 						temp = text;
 						text = text.
 							replace(/\[\[(.*?)\]\]/gs, (a, b) => {
-								if(b == 'text') return '<input type="text">';
-								if(b == 'longtext') return '<input type="text" style="width:300px">';
+								if(b == 'input' || b == 'text') return '<input type="text">';
+								if(b == 'longinput' || b == 'longtext') return '<input type="text" style="width:300px">';
 								if(b == 'password') return '<input type="password">';
 								if(b == 'button') return '<input type="button" value="send">';
 								const c = b.slice(b.indexOf(':')+1);
-								if(b.startsWith('text:')) return '<input type="text" placeholder="'+c+'">';
-								if(b.startsWith('longtext:')) return '<input type="text" placeholder="'+c+'" style="width:300px">';
+								if(b.startsWith('input:') || b.startsWith('text:')) return '<input type="text" placeholder="'+c+'">';
+								if(b.startsWith('longinput:') || b.startsWith('longtext:')) return '<input type="text" placeholder="'+c+'" style="width:300px">';
 								if(b.startsWith('password:')) return '<input type="password" placeholder="'+c+'">';
 								if(b.startsWith('button:')) return '<input type="button" value="'+c+'">';
 								if(b.startsWith('label:')) return '<label>'+c+'</label>';
