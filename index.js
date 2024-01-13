@@ -129,7 +129,7 @@ io.on('connection', async socket => {
 		logs.insertOne({ createdAt:new Date(), ip:users[socket.hash].ip, room:socket.room, name:socket.name, hash:socket.hash, cmd:cmd, arr:arr });
 	}
 	socket.onAny((...arr) => {
-		if(arr[0] == 'join') return;
+		if(arr[0] == 'join' || arr[0] == 'say') return;
 		log(...arr);
 	});
 	const getallsockets = () => [...io.sockets.sockets.values()];
@@ -259,7 +259,9 @@ io.on('connection', async socket => {
 			rooms[socket.room].admin.emit('join', socket.name, socket.hash, !!name);
 			socket.on('say', msg => {
 				if(!validstring(msg)) return;
-				rooms[socket.room].admin.emit('hear', msg.slice(0, 5000), socket.name, socket.hash)
+				msg = msg.replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));
+				log('say', msg);
+				rooms[socket.room].admin.emit('hear', msg.slice(0, 5000), socket.name, socket.hash);
 			});
 		} else {
 			rooms[socket.room] = { 'admin':socket, banned:{} };

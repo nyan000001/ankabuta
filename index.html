@@ -42,6 +42,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #log > div:last-of-type { margin-bottom:-22px; }
 
 #log > div { padding:3px; max-height:50%; overflow:auto; }
+#log input { max-width:100px; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; height:22px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
@@ -109,7 +110,7 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 <textarea id="codebox" spellcheck="false"></textarea>
 <div id="log" role="log"><input type="button" id="arrow" value="↓" class="hidden"></div>
 <div id="sidebar" role="log"></div>
-<div id="help" class="hidden">Create a chatroom with your own code or join other people's rooms</div>
+<div id="help" class="hidden"></div>
 </div>
 <form id="msgform">
 <input type="button" id="leave" value="Leave">
@@ -333,6 +334,13 @@ socket.once('start', (myname, rooms) => {
 					do {
 						temp = text;
 						text = text.
+							replace(/\[\[(.*?)\]\]/gs, (a, b) => {
+								if(b == 'input') return '<input type="text">';
+								if(b == 'password') return '<input type="password">';
+								if(b.startsWith('label:')) return '<label>'+b.slice(6)+'</label>';
+								if(b.startsWith('button:')) return '<input type="button" value="'+b.slice(7)+'">';
+								return a;
+							}).
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
 							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span style="color:#$1">$2</span>').
@@ -352,7 +360,24 @@ socket.once('start', (myname, rooms) => {
 			if(!msg || typeof msg != 'string') return;
 			div.innerHTML = gethtml(msg);
 			get('arrow').before(div);
-			//scrolldown(get('log').scrollHeight - div.scrollHeight - 200);
+			div.querySelector('input')?.focus();
+			div.onclick = e => {
+				if(e.target.type == 'button') {
+					msg = '/'+e.target.value+' '+
+						[...div.querySelectorAll('input:not([type=button])')].
+						map(input => input.type == 'password'? 'hash:'+input.value: input.value).join(' ');
+					if(iframe) {
+						iframe.contentWindow.hear(msg, myname, adminhash);
+					} else {
+						socket.emit('say', msg);
+					}
+				} else if(e.target.tagName == 'LABEL') {
+					e.target.nextElementSibling?.focus();
+				}
+			}
+			div.onkeydown = e => {
+				if(e.key == 'Enter') div.querySelector('input[type=button]')?.click();
+			}
 			scrolldown();
 			if(document.visibilityState == 'visible') return;
 			msgcount++;
