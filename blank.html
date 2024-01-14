@@ -77,27 +77,22 @@ socket.once('disconnect', () => {
 	get('bottom').className = 'disconnected';
 	get('bottom').textContent = 'Connection lost!';
 });
-socket.once('log', (records, rooms, regex) => {
+socket.once('log', (records, regex) => {
 	document.body.classList.remove('blank');
 	const roomdivs = {};
-	const addroom = (room, name, hash) => {
+	const addroom = room => {
 		if(roomdivs[room]) return;
 		const div = document.createElement('div');
 		const h1 = document.createElement('h1');
 		h1.textContent = room;
-		if(name) h1.textContent += ' ('+name+')';
 		div.append(h1);
 		get('top').append(div);
 		roomdivs[room] = div;
-		if(hash) {
-			h1.className = hash;
-			if(hash == get('hash').value) {
-				h1.classList.add('highlight');
-			}
-			h1.onclick = () => highlight(hash);
+		h1.onclick = () => {
+			get('regex').value = room;
+			get('regex').focus();
 		}
 	}
-	for(const room of rooms) addroom(...room);
 	const addrecord = (room, name, hash, ...arr) => {
 		const addtext = (text, bool) => {
 			const p = document.createElement('p');
@@ -146,7 +141,7 @@ socket.once('log', (records, rooms, regex) => {
 			if(name == 'New regex') get('currentregex').textContent = hash;
 			addtext(name+' '+hash);
 		} else if(cmd == 'join') {
-			addroom(room, name, hash);
+			addroom(room);
 			addtext(boldname+' joined', true);
 		} else if(cmd == 'say') {
 			addtext(boldname+': '+arr[0], true);
