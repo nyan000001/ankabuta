@@ -110,21 +110,10 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 <textarea id="codebox" spellcheck="false"></textarea>
 <div id="log" role="log"><input type="button" id="arrow" value="↓" class="hidden"></div>
 <div id="sidebar" role="log"></div>
-<div id="help" class="hidden"></div>
-</div>
-<form id="msgform">
-<input type="button" id="leave" value="Leave">
-<input type="button" id="run" value="Run">
-<textarea id="msgbox" aria-label="Message" maxlength="5000"></textarea>
-<input type="submit" id="say" value="Say">
-</form>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const socket = io();
-const get = id => document.getElementById(id);
-get('help').innerHTML = `<div>
+<div id="help" class="hidden">
+<div>
 <div><kbd>ctrl</kbd> + <kbd>h</kbd>
-	<i>Toggle this help menu</i></div>
+	<i>Toggle the help menu</i></div>
 <div><kbd>ctrl</kbd> + <kbd>o</kbd>
 	<i>Show or hide the rooms</i></div>
 <div><kbd>ctrl</kbd> + <kbd>up</kbd>
@@ -133,8 +122,7 @@ get('help').innerHTML = `<div>
 	<i>Next message<span class="hidden"> or code</span></i></div>
 <div class="hidden"><kbd>ctrl</kbd> + <kbd>s</kbd>
 	<i>Save and run the code</i></span></div>
-</div>
-<div>
+</div><div>
 <div><code>[{sample text}]</code> <pre>sample text</pre></div>
 <div><code>[!sample text!]</code> <span class='rainbow'>sample text</span></div>
 <div><code>[*sample text*]</code> <b>sample text</b></div>
@@ -144,8 +132,7 @@ get('help').innerHTML = `<div>
 <div><code>[#f00sample text#]</code> <span style="color:#f00">sample text</span></div>
 <div><code>[°360sample text°]</code> <span style="color:hsl(360, 100%, 50%)">sample text</span></div>
 <div><details><summary>[(sample text)]</summary>sample text</details></div>
-</div>
-<div class="hidden">
+</div><div class="hidden">
 <div><code>sendOnly(<var>message1, users, message2</var>)</code>
 	<i>Sends <var>message1</var> to <var>users</var>
 	and sends <var>message2</var> to everyone else</i></div>
@@ -162,8 +149,20 @@ get('help').innerHTML = `<div>
 	<i>Bans <var>hash</var> for <var>minutes</var></i></div>
 <div><code>lock(<var>minutes</var>)</code>
 	<i>Locks the room for <var>minutes</var></i></div>
-</div>`;
+</div>
+</div>
+</div>
+<form id="msgform">
+<input type="button" id="leave" value="Leave">
+<input type="button" id="run" value="Run">
+<textarea id="msgbox" aria-label="Message" maxlength="5000"></textarea>
+<input type="submit" id="say" value="Say">
+</form>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
 socket.once('start', (myname, rooms) => {
+	const get = id => document.getElementById(id);
 	let animation;
 	let msgcount = 0;
 	const msghistory = [];
@@ -286,6 +285,7 @@ socket.once('start', (myname, rooms) => {
 	get('roomform').ondrop = e => {
 		e.preventDefault();
 		get('room').value = e.dataTransfer.getData('text/uri-list').replace(/.*?#/, '#');
+		get('name').focus();
 	}
 	get('room').onkeydown = get('name').onkeydown = e => {
 		if(!e.shiftKey && e.key == 'Enter') {
