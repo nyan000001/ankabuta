@@ -6,8 +6,8 @@
 <style>
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 * { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
-textarea, input { border:1px solid #000; border-radius:3px; }
-textarea:focus, input:focus { outline:1px solid #000; outline-offset:-2px; }
+textarea, input, select { border:1px solid #000; border-radius:3px; }
+textarea:focus, input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 .joined #rooms.hidden, .joined #rooms div, #codebox, #log, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
@@ -81,8 +81,8 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 
 @media (prefers-color-scheme:dark) {
 	body { background:#000; color:#fff; }
-	input, textarea { background:#000; color:#fff; border-color:#ccc; }
-	textarea:focus, input[type=text]:focus, input[type=password]:focus { outline-color:#ccc; background:#111; }
+	input, textarea, select { background:#000; color:#fff; border-color:#ccc; }
+	textarea:focus, input[type=text]:focus, input[type=password]:focus, select:focus { outline-color:#ccc; background:#111; }
 	input[type=button], input[type=submit] { background:#222; }
 	input[type=button]:focus, input[type=submit]:focus { outline-color:#ccc; background:#333; }
 	input[type=text]:read-only, textarea:read-only, input:disabled { background:#000; color:#444; }
@@ -335,6 +335,7 @@ socket.once('start', (myname, rooms) => {
 						temp = text;
 						text = text.
 							replace(/\[\[(.*?)\]\]/gs, (a, b) => {
+								if(b.startsWith('select|')) return ('<select><option>'+b.slice(7).replace(/\|/g, '</option><option>')+'</option></select>').replace(/"/g, '&quot;').replace(/>([^<]*?):([^<]*?)</g, ' value="$1">$2<');
 								b = b.replace(/(?<!:.*)input/, 'text');
 								if(b == 'text') return '<input type="text">';
 								if(b == 'longtext') return '<input type="text" style="width:300px">';
@@ -370,7 +371,7 @@ socket.once('start', (myname, rooms) => {
 			div.onclick = e => {
 				if(e.target.type == 'button') {
 					msg = [];
-					const inputs = [...div.querySelectorAll('input:not([type=button])')];
+					const inputs = [...div.querySelectorAll('input:not([type=button]), select')];
 					for(const input of inputs) {
 						msg.push(input.type == 'password'? 'hash:'+input.value: input.value);
 						input.value = '';

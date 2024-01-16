@@ -31,7 +31,7 @@ io.engine.on('initial_headers', (headers, request) => {
 			const doc = await hashes.findOne({ ip:ip });
 			if(doc) {
 				users[doc._id] = { uid:doc.uid, ip:doc.ip, bannedUntil:doc.bannedUntil };
-				headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', doc.uid, { maxAge:604800, sameSite:'strict' });
+				headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', doc.uid, { maxAge:345600, sameSite:'strict' });
 				resolve();
 				return;
 			}
@@ -56,7 +56,7 @@ io.engine.on('initial_headers', (headers, request) => {
 			hash = makehash(uid);
 			doc = await hashes.findOne({ _id:hash });
 		} while(doc);
-		headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:604800, sameSite:'strict' });
+		headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:345600, sameSite:'strict' });
 		users[hash] = { uid:uid, bannedUntil:0 };
 		if(ip) users[hash].ip = ip;
 		hashes.insertOne({ _id:hash, createdAt:new Date(), ...users[hash] });
