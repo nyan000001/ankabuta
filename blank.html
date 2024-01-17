@@ -107,7 +107,7 @@ socket.once('log', (records, regex) => {
 					do {
 						temp = text;
 						text = text.
-							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
+							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details open><summary>$1</summary>$2</details>').
 							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
 							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span style="color:#$1">$2</span>').
 							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span style="color:hsl($1, 100%, 50%)">$2</span>').
