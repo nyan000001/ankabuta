@@ -376,8 +376,10 @@ socket.once('start', (myname, rooms) => {
 			div.onclick = e => {
 				if(e.target.type == 'button' || e.target.type == 'submit') {
 					if(e.target.type == 'submit') {
+						const form = e.target.closest('form');
+						if(!form) return;
 						msg = [e.target.value];
-						const inputs = [...e.target.closest('form, div').querySelectorAll('input[type=text], input[type=password], select')];
+						const inputs = [...form.querySelectorAll('input[type=text], input[type=password], select')];
 						for(const input of inputs) {
 							msg.push(input.type == 'password'? 'hash:'+input.value: input.value);
 							input.value = '';
@@ -395,7 +397,11 @@ socket.once('start', (myname, rooms) => {
 				}
 			}
 			div.onkeydown = e => {
-				if(e.key == 'Enter') div.querySelector('input[type=button]')?.click();
+				if(e.key != 'Enter') return;
+				e.preventDefault();
+				if(e.target.type == 'text' || e.target.type == 'password' || e.target.tagName == 'SELECT') {
+					e.target.closest('form')?.querySelector('input[type=submit]')?.click();
+				} e.target.click();
 			}
 			scrolldown();
 			if(document.visibilityState == 'visible') return;
