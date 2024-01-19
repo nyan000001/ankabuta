@@ -42,7 +42,9 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #log > div:last-of-type { margin-bottom:-22px; }
 
 #log > div { padding:3px; max-height:50%; overflow:auto; }
-#log > div input:not([type=button]) { width:100px; max-width:100%; }
+#log > div form { border:1px solid #aaa; border-radius:4px; display:inline-block; padding:1px; }
+#log > div input[type=text], #log > div input[type=password] { width:100px; max-width:100%; }
+#log > div input, #log > div select { margin:1px; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; height:22px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
@@ -60,7 +62,7 @@ summary { cursor:default; margin-left:-1em; }
 #help { padding:0 5px; line-height:13pt; }
 #help > div { padding:1px 0; }
 #help > div > div { margin:5px 0; white-space:pre; }
-kbd { border-radius:5px; padding:2px; border:1px solid #999; }
+kbd { border-radius:4px; padding:2px; border:1px solid #999; }
 var { opacity:.6; font-style:inherit; font-family:inherit; }
 
 #msgform { bottom:0; position:fixed; width:100%; height:50px; display:flex; padding:0 1px 1px 1px; }
@@ -86,6 +88,7 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 	input[type=button], input[type=submit] { background:#222; }
 	input[type=button]:focus, input[type=submit]:focus { outline-color:#ccc; background:#333; }
 	input[type=text]:read-only, textarea:read-only, input:disabled { background:#000; color:#444; }
+	#log > div form { border-color:#555; }
 	::-webkit-scrollbar { width:15px; height:15px; }
 	::-webkit-scrollbar-track { background:#222; }
 	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
@@ -334,20 +337,21 @@ socket.once('start', (myname, rooms) => {
 					do {
 						temp = text;
 						text = text.
-							replace(/\[\[(.*?)\]\]/gs, (a, b) => {
-								if(b.startsWith('select|')) return ('<select><option>'+b.slice(7).replace(/\|/g, '</option><option>')+'</option></select>').replace(/"/g, '&quot;').replace(/>([^<]*?):([^<]*?)</g, ' value="$1">$2<');
-								b = b.replace(/(?<!:.*)input/, 'text');
-								if(b == 'text') return '<input type="text">';
-								if(b == 'longtext') return '<input type="text" style="width:300px">';
-								if(b == 'password') return '<input type="password">';
-								if(b == 'button') return '<input type="button" value="send">';
-								const c = b.slice(b.indexOf(':')+1).replace(/"/g, '&quot;');
-								if(b.startsWith('text:')) return '<input type="text" placeholder="'+c+'">';
-								if(b.startsWith('longtext:')) return '<input type="text" placeholder="'+c+'" style="width:300px">';
-								if(b.startsWith('password:')) return '<input type="password" placeholder="'+c+'">';
-								if(b.startsWith('button:')) return '<input type="button" value="'+c+'">';
-								if(b.startsWith('label:')) return '<label>'+c+'</label>';
-								return a;
+							replace(/\[\[([^\[\[]*?)\]\]/gs, (_, tag) => {
+								if(tag.startsWith('select|')) return ('<select><option>'+tag.slice(7).replace(/\|/g, '</option><option>')+'</option></select>').replace(/"/g, '&quot;').replace(/>([^<]*?):([^<]*?)</g, ' value="$1">$2<');
+								tag = tag.replace(/^(long)?input/, '$1text');
+								if(tag == 'text' || tag == 'password') return '<input type="'+tag+'">';
+								if(tag == 'longtext') return '<input type="text" style="width:300px">';
+								if(tag == 'button' || tag == 'submit') return '<input type="'+tag+'" value="send">';
+								const match = tag.match(/^(?<tag>\w+):(?<value>.*)/)?.groups;
+								if(match) {
+									match.value = match.value.replace(/"/g, '&quot;');
+									if(match.tag == 'text' || match.tag == 'password') return '<input type="'+match.tag+'" placeholder="'+match.value+'">';
+									if(match.tag == 'longtext') return '<input type="text" placeholder="'+match.value+'" style="width:300px">';
+									if(match.tag == 'button' || match.tag == 'submit') return '<input type="'+match.tag+'" value="'+match.value+'">';
+									if(match.tag == 'label') return '<label>'+match.value+'</label>';
+								}
+								return '<form>'+tag+'</form>';
 							}).
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
@@ -368,15 +372,18 @@ socket.once('start', (myname, rooms) => {
 			if(!msg || typeof msg != 'string') return;
 			div.innerHTML = gethtml(msg);
 			get('arrow').before(div);
+			div.onsubmit = e => e.preventDefault();
 			div.onclick = e => {
-				if(e.target.type == 'button') {
-					msg = [];
-					const inputs = [...div.querySelectorAll('input:not([type=button]), select')];
-					for(const input of inputs) {
-						msg.push(input.type == 'password'? 'hash:'+input.value: input.value);
-						input.value = '';
-					}
-					msg = '/'+e.target.value+' '+msg.join(' ');
+				if(e.target.type == 'button' || e.target.type == 'submit') {
+					if(e.target.type == 'submit') {
+						msg = [e.target.value];
+						const inputs = [...e.target.closest('form, div').querySelectorAll('input[type=text], input[type=password], select')];
+						for(const input of inputs) {
+							msg.push(input.type == 'password'? 'hash:'+input.value: input.value);
+							input.value = '';
+						}
+						msg = '/'+msg.join(' ');
+					} else msg = '/'+e.target.value;
 					if(iframe) {
 						iframe.contentWindow.hear(msg, myname, adminhash);
 					} else {
@@ -606,8 +613,8 @@ socket.once('start', (myname, rooms) => {
 					} else {
 						if(cmd == 'me') cmd = arr.shift() ?? '';
 						else cmd = cmd == 'be'? 'is': cmd.replace(/(ch|s|sh|x|z|[^aeiou]o)$/, '$1e').replace(/([^aeiou])y$/, '$1ie')+'s';
-						msg = arr.map(word => users[word]? users[word].displayName: word).join(' ');
-						sendAll('[/* '+displayName+' '+cmd+' '+msg+'/]');
+						if(arr.length) cmd += ' '+arr.map(word => users[word]? users[word].displayName: word).join(' ');
+						sendAll('[/* '+displayName+' '+cmd+'/]');
 					}
 				} else {
 					sendAll(displayName+': '+msg);

@@ -11,15 +11,18 @@ body { font-size:7pt; font-family:'Noto Color Emoji', sans-serif; padding:0; mar
 body.blank * { display:none; }
 #top { display:flex; }
 #top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
+#top input[type=text], #top input[type=password] { width:100px; max-width:100%; }
+#top input, #top select { font-size:7pt; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
 p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; cursor:default; }
 .highlight { color:#fff; background:#f00; text-shadow:1px 1px 1px #000, -1px 1px 1px #000, -1px -1px 1px #000, 1px -1px 1px #000; }
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
-form { display:inline-block; margin:8px; }
-input[type=number] { width:40px; }
+#bottom form { display:inline-block; margin:8px; }
+#bottom input[type=number] { width:40px; }
 .disconnected { font-size:12pt; margin-bottom:10px; }
 @media (prefers-color-scheme:dark) {
-	body, h1 { background:#000; color:#fff; }
+	body, h1, input, select { background:#000; color:#fff; }
+	input, select { border:1px solid #fff; }
 	::-webkit-scrollbar { width:15px; height:15px; }
 	::-webkit-scrollbar-track { background:#222; }
 	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
@@ -107,6 +110,22 @@ socket.once('log', (records, regex) => {
 					do {
 						temp = text;
 						text = text.
+							replace(/\[\[([^\[\[]*?)\]\]/gs, (_, tag) => {
+								if(tag.startsWith('select|')) return ('<select><option>'+tag.slice(7).replace(/\|/g, '</option><option>')+'</option></select>').replace(/"/g, '&quot;').replace(/>([^<]*?):([^<]*?)</g, ' value="$1">$2<');
+								tag = tag.replace(/^(long)?input/, '$1text');
+								if(tag == 'text' || tag == 'password') return '<input type="'+tag+'">';
+								if(tag == 'longtext') return '<input type="text" style="width:300px">';
+								if(tag == 'button' || tag == 'submit') return '<input type="'+tag+'" value="send">';
+								const match = tag.match(/^(?<tag>\w+):(?<value>.*)/)?.groups;
+								if(match) {
+									match.value = match.value.replace(/"/g, '&quot;');
+									if(match.tag == 'text' || match.tag == 'password') return '<input type="'+match.tag+'" placeholder="'+match.value+'">';
+									if(match.tag == 'longtext') return '<input type="text" placeholder="'+match.value+'" style="width:300px">';
+									if(match.tag == 'button' || match.tag == 'submit') return '<input type="'+match.tag+'" value="'+match.value+'">';
+									if(match.tag == 'label') return '<label>'+match.value+'</label>';
+								}
+								return '<form>'+tag+'</form>';
+							}).
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details open><summary>$1</summary>$2</details>').
 							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
 							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span style="color:#$1">$2</span>').
