@@ -42,6 +42,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #log > div:last-of-type { margin-bottom:-22px; }
 
 #log > div { padding:3px; max-height:50%; overflow:auto; }
+#log > div.error { cursor:pointer; }
 #log > div form { border:1px solid #aaa; border-radius:4px; display:inline-block; padding:1px; }
 #log > div input[type=text], #log > div input[type=password] { width:100px; max-width:100%; }
 #log > div input, #log > div select { margin:1px; }
@@ -633,6 +634,8 @@ socket.once('start', (myname, rooms) => {
 		document.body.classList.add('admin');
 		persistent = { users:{ [myname]:{ hash:adminhash, admin:true } } };
 		get('codebox').oninput = () => {
+			const errors = document.getElementsByClassName('error');
+			while(errors.length) errors[0].remove();
 			if(codeindex < codehistory.length) {
 				codehistory.length = ++codeindex;
 			}
@@ -782,14 +785,19 @@ socket.once('start', (myname, rooms) => {
 				iframe.contentWindow.hear(msg, name, hash);
 			});
 			onerror = (event, source, row, col) => {
-				addsysmsg(event);
 				const arr = runningcode.split('\n');
-				let index = 0;
+				let index = col - 1;
 				for(let i = 0; i < row - 1; i++) {
 					index += arr[i].length + 1; // +1 for the linebreak
 				}
-				get('codebox').selectionStart = get('codebox').selectionEnd = index + col - 1;
-				get('codebox').focus();
+				addsysmsg(event);
+				const div = get('log').querySelector('div:last-of-type');
+				div.classList.add('error');
+				div.onclick = () => {
+					get('codebox').selectionStart = get('codebox').selectionEnd = index;
+					get('codebox').focus();
+				}
+				div.click();
 			}
 			iframe.contentWindow.eval(runningcode);
 		}
