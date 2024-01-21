@@ -11,6 +11,8 @@ body { font-size:7pt; font-family:'Noto Color Emoji', sans-serif; padding:0; mar
 body.blank * { display:none; }
 #top { display:flex; }
 #top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
+#top > div.closed { opacity:.5; }
+#top > div.closed:hover { opacity:1; }
 #top input[type=text], #top input[type=password] { width:100px; max-width:100%; }
 #top input, #top select { font-size:7pt; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
@@ -84,7 +86,6 @@ socket.once('log', (records, regex) => {
 	document.body.classList.remove('blank');
 	const roomdivs = {};
 	const addroom = room => {
-		if(roomdivs[room]) return;
 		const div = document.createElement('div');
 		const h1 = document.createElement('h1');
 		h1.textContent = room;
@@ -160,12 +161,13 @@ socket.once('log', (records, regex) => {
 			if(name == 'New regex') get('currentregex').textContent = hash;
 			addtext(name+' '+hash);
 		} else if(cmd == 'join') {
-			addroom(room);
-			addtext(boldname+' joined', true);
+			addtext(boldname+' has joined', true);
+			if(arr[0]) roomdivs[room].classList.remove('closed');
+		} else if(cmd == 'leave') {
+			addtext(boldname+' has left', true);
+			if(arr[0]) roomdivs[room].classList.add('closed');
 		} else if(cmd == 'say') {
 			addtext(boldname+': '+arr[0], true);
-		} else if(cmd == 'disconnect') {
-			addtext(boldname+' has disconnected', true);
 		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
 			let verb = 'says to';
 			if(isboolean) verb = ['removes from', 'adds to'][arr.shift()? 1: 0];

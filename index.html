@@ -126,7 +126,9 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 <div><kbd>ctrl</kbd> + <kbd>down</kbd>
 	<i>Next message<span class="hidden"> or code</span></i></div>
 <div class="hidden"><kbd>ctrl</kbd> + <kbd>s</kbd>
-	<i>Save and run the code</i></span></div>
+	<i>Save and run the code</i></div>
+<div class="hidden"><kbd>ctrl</kbd> + <kbd>e</kbd>
+	<i>Click the first error message</i></div>
 </div><div>
 <div><code>[{sample text}]</code> <pre>sample text</pre></div>
 <div><code>[!sample text!]</code> <span class='rainbow'>sample text</span></div>
@@ -397,6 +399,7 @@ socket.once('start', (myname, rooms) => {
 						msg = '/'+msg.join(' ');
 					} else msg = '/'+e.target.value;
 					if(iframe) {
+						console.log(myname+': '+msg);
 						iframe.contentWindow.hear(msg, myname, adminhash);
 					} else {
 						socket.emit('say', msg);
