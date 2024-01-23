@@ -16,7 +16,8 @@ body.blank * { display:none; }
 #top input[type=text], #top input[type=password] { width:100px; max-width:100%; }
 #top input, #top select { font-size:7pt; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
-p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; cursor:default; }
+h1.room, p { cursor:pointer; }
+p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; }
 .highlight { color:#fff; background:#f00; text-shadow:1px 1px 1px #000, -1px 1px 1px #000, -1px -1px 1px #000, 1px -1px 1px #000; }
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
 #bottom form { display:inline-block; margin:8px; }
@@ -60,7 +61,7 @@ const highlight = hash => {
 		elems[i].classList[elems[i].classList.contains(hash)? 'add': 'remove']('highlight');
 	}
 	get('hash').value = hash;
-	get('hash').focus();
+	get('regex').value = '';
 }
 const login = password => {
 	socket.emit('LOGIN', password);
@@ -92,9 +93,12 @@ socket.once('log', (records, regex) => {
 		div.append(h1);
 		get('top').append(div);
 		roomdivs[room] = div;
-		h1.onclick = () => {
-			get('regex').value = room;
-			get('regex').focus();
+		if(room != '(not in a room)') {
+			h1.className = 'room';
+			h1.onclick = () => {
+				highlight('');
+				get('regex').value = room;
+			}
 		}
 	}
 	const addrecord = (room, name, hash, ...arr) => {
