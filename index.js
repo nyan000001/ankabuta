@@ -254,7 +254,7 @@ io.on('connection', async socket => {
 		}
 		socket.room = room;
 		if(rooms[socket.room]) {
-			log('join', true);
+			log('join', false);
 			socket.join(socket.room);
 			socket.emit('joinroom', socket.room, socket.name);
 			rooms[socket.room].admin.emit('join', socket.name, socket.hash, !!name);
@@ -265,12 +265,12 @@ io.on('connection', async socket => {
 				rooms[socket.room].admin.emit('hear', msg.slice(0, 5000), socket.name, socket.hash);
 			});
 		} else {
-			log('join', false);
+			log('join', true);
 			rooms[socket.room] = { 'admin':socket, banned:{} };
 			if(!socket.room.includes('hidden')) {
 				socket.broadcast.emit('addroom', socket.room);
 			}
-			socket.emit('joinroom', socket.room, socket.name, socket.hash);
+			socket.emit('joinroom', socket.room, socket.name, socket.hash, !!name);
 			const send = async (msg1, names, msg2, only, add) => {
 				if(!Array.isArray(names)) return;
 				const sockets = await io.in(socket.room).fetchSockets();
@@ -294,8 +294,8 @@ io.on('connection', async socket => {
 			socket.on('sendOnly', (...arr) => {
 				log('sendOnly', ...arr);
 				if(typeof arr[0] == 'boolean') {
-					const [add, msgs1, names, msgs2] = arr;
-					send(msgs1, names, msgs2, true, add);
+					const [add, msg1, names, msg2] = arr;
+					send(msg1, names, msg2, true, add);
 				} else {
 					const [msg1, names, msg2] = arr;
 					send(msg1, names, msg2, true);
@@ -304,9 +304,9 @@ io.on('connection', async socket => {
 			socket.on('sendAll', async (...arr) => {
 				log('sendAll', ...arr);
 				if(typeof arr[0] == 'boolean') {
-					const [add, msgs1, names, msgs2] = arr;
-					if(!await send(msgs1, names, msgs2, false, add)) {
-						io.to(socket.room).emit('change', add, msgs1);
+					const [add, msg1, names, msg2] = arr;
+					if(!await send(msg1, names, msg2, false, add)) {
+						io.to(socket.room).emit('change', add, msg1);
 					}
 				} else {
 					const [msg1, names, msg2] = arr;

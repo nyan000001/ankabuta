@@ -13,8 +13,8 @@ body.blank * { display:none; }
 #top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
 #top > div.closed { opacity:.5; }
 #top > div.closed:hover { opacity:1; }
+#top input, #top select { pointer-events:none; font-size:7pt; }
 #top input[type=text], #top input[type=password] { width:100px; max-width:100%; }
-#top input, #top select { font-size:7pt; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
 h1.room, p { cursor:pointer; }
 p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; }
@@ -22,10 +22,15 @@ p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; }
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
 #bottom form { display:inline-block; margin:8px; }
 #bottom input[type=number] { width:40px; }
+input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 .disconnected { font-size:12pt; margin-bottom:10px; }
 @media (prefers-color-scheme:dark) {
 	body, h1, input, select { background:#000; color:#fff; }
 	input, select { border:1px solid #fff; }
+	input[type=submit] { background:#222; }
+	input:focus, select:focus { outline-color:#ccc; }
+	input[type=text]:focus, input[type=number]:focus, select:focus { background:#111; }
+	input[type=button]:focus, input[type=submit]:focus { background:#333; }
 	::-webkit-scrollbar { width:15px; height:15px; }
 	::-webkit-scrollbar-track { background:#222; }
 	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
@@ -37,12 +42,12 @@ p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; }
 <div id="top"></div>
 <div id="bottom">
 <form id="banform">
-<input id="hash" spellcheck="false">
+<input type="text" id="hash" spellcheck="false">
 <input type="number" id="bantime" value="0">
 <input type="submit" value="Ban">
 </form>
 <form id="regexform">
-<input id="regex" spellcheck="false">
+<input type="text" id="regex" spellcheck="false">
 <output id="currentregex"></output>
 <input type="submit" value="Regex">
 </form>
@@ -55,17 +60,36 @@ p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; }
 <script>
 const socket = io();
 const get = id => document.getElementById(id);
-const highlight = hash => {
-	const elems = document.querySelectorAll('h1, p');
+const reset = () => {
+	const elems = document.getElementsByClassName('highlight');
+	while(elems.length) {
+		elems[0].classList.remove('highlight');
+	}
+	get('hash').value = get('regex').value = '';
+}
+const highlighthash = hash => {
+	reset();
+	const elems = document.getElementsByTagName('p');
 	for(let i = 0; i < elems.length; i++) {
-		elems[i].classList[elems[i].classList.contains(hash)? 'add': 'remove']('highlight');
+		if(!elems[i].classList.contains(hash)) continue;
+		elems[i].classList.add('highlight');
 	}
 	get('hash').value = hash;
-	get('regex').value = '';
+}
+const highlightregex = regex => {
+	reset();
+	if(!regex) return;
+	const elems = document.getElementsByClassName('room');
+	for(let i = 0; i < elems.length; i++) {
+		if(!new RegExp(regex).test(elems[i].textContent)) continue;
+		elems[i].classList.add('highlight');
+	}
+	get('regex').value = regex;
 }
 const login = password => {
 	socket.emit('LOGIN', password);
-	get('hash').oninput = () => highlight(get('hash').value);
+	get('hash').oninput = () => highlighthash(get('hash').value);
+	get('regex').oninput = () => highlightregex(get('regex').value);
 	get('banform').onsubmit = e => {
 		e.preventDefault();
 		socket.emit('BAN', get('hash').value, get('bantime').value);
@@ -95,10 +119,10 @@ socket.once('log', (records, regex) => {
 		roomdivs[room] = div;
 		if(room != '(not in a room)') {
 			h1.className = 'room';
-			h1.onclick = () => {
-				highlight('');
-				get('regex').value = room;
+			if(get('regex').value && new RegExp(get('regex').value).test(room)) {
+				h1.classList.add('highlight');
 			}
+			h1.onclick = () => highlightregex(room);
 		}
 	}
 	const addrecord = (room, name, hash, ...arr) => {
@@ -152,7 +176,7 @@ socket.once('log', (records, regex) => {
 				if(hash == get('hash').value) {
 					p.classList.add('highlight');
 				}
-				p.onclick = () => highlight(hash);
+				p.onclick = () => highlighthash(hash);
 			}
 			roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
 		}
