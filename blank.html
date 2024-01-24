@@ -43,7 +43,7 @@ input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 <div id="bottom">
 <form id="banform">
 <input type="text" id="hash" spellcheck="false">
-<input type="number" id="bantime" value="0">
+<input type="number" id="bantime" value="0" min="0">
 <input type="submit" value="Ban">
 </form>
 <form id="regexform">
@@ -52,7 +52,7 @@ input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 <input type="submit" value="Regex">
 </form>
 <form id="lockform">
-<input type="number" id="locktime" value="0">
+<input type="number" id="locktime" value="0" min="0">
 <input type="submit" value="Lock">
 </form>
 </div>
@@ -125,7 +125,7 @@ socket.once('log', (records, regex) => {
 			h1.onclick = () => highlightregex(room);
 		}
 	}
-	const addrecord = (room, name, hash, ...arr) => {
+	const addrecord = (room, name, hash, cmd, arr) => {
 		const addtext = (text, bool) => {
 			const p = document.createElement('p');
 			let html = '';
@@ -180,14 +180,18 @@ socket.once('log', (records, regex) => {
 			}
 			roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
 		}
-		const isboolean = typeof arr[1] == 'boolean';
-		let cmd;
-		[room, name, hash, cmd, ...arr] = [room, name, hash, ...arr].
+		if(!arr) arr = [];
+		const isboolean = typeof arr[0] == 'boolean';
+		[room, name, hash, cmd, ...arr] = [room, name, hash, cmd, ...arr].
 			map(x => x? JSON.stringify(x).replace(/(?<!\\)"/g, '').replace(/\\"/g, '"'): '');
 		let boldname = '[*'+name+'*]';
 		if(!cmd) {
 			if(name == 'New regex') get('currentregex').textContent = hash;
 			addtext(name+' '+hash);
+		} else if(cmd == 'restart') {
+			for(const room in roomdivs) {
+				roomdivs[room].classList.add('closed');
+			}
 		} else if(cmd == 'join') {
 			addtext(boldname+' has joined', true);
 			if(arr[0]) roomdivs[room].classList.remove('closed');

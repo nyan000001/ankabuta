@@ -14,6 +14,7 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 const client = new MongoClient(process.env.URI, { serverApi:{ version:ServerApiVersion.v1, strict:true, deprecationErrors:true } });
 const hashes = client.db('ankabuta').collection('hashes');
 const logs = client.db('ankabuta').collection('logs');
+logs.insertOne({ createdAt:new Date(), cmd:'restart' });
 //hashes.createIndex( { createdAt:1 }, { expireAfterSeconds:345600 } ); // 4 days
 //logs.createIndex( { createdAt:1 }, { expireAfterSeconds:345600 } );
 const crypto = require('crypto');
@@ -74,7 +75,7 @@ io.on('connection', async socket => {
 	const validstring = string => string && typeof string == 'string';
 	const validnumber = num => num >= 0;
 	const log = (cmd, ...arr) => {
-		io.to('admin').emit('log', socket.room, socket.name, socket.hash, cmd, ...arr);
+		io.to('admin').emit('log', socket.room, socket.name, socket.hash, cmd, arr);
 		logs.insertOne({ createdAt:new Date(), ip:users[socket.hash].ip, room:socket.room, name:socket.name, hash:socket.hash, cmd:cmd, arr:arr });
 	}
 	socket.on('LOGIN', async password => {
@@ -85,10 +86,10 @@ io.on('connection', async socket => {
 		}
 		socket.removeAllListeners('LOGIN');
 		const records = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) } }).toArray();
-		socket.emit('log', records.map(x => [x.room, x.name, x.hash, x.cmd, ...x.arr]), regexstring);
+		socket.emit('log', records.map(x => [x.room, x.name, x.hash, x.cmd, x.arr]), regexstring);
 		socket.join('admin');
 		socket.on('BAN', async (hash, mins) => {
-			log('BAN');
+			log('BAN', hash, mins);
 			if(!validstring(hash)) return;
 			if(!users[hash]) {
 				io.to('admin').emit('log', socket.room, 'Hash not found');
