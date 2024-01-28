@@ -320,6 +320,7 @@ socket.once('start', (myname, rooms) => {
 	socket.on('addroom', addroom);
 	socket.on('rmvroom', room => get(room).remove());
 	const join = (room, name, adminhash, customname) => {
+		onbeforeunload = () => true;
 		document.querySelector('#rooms > div')?.remove();
 		myroom = room.slice(1);
 		myname = name;
@@ -403,7 +404,9 @@ socket.once('start', (myname, rooms) => {
 						msg = '/'+msg.join(' ');
 					} else msg = '/'+e.target.value;
 					if(iframe) {
+						console.log(myname+': '+msg);
 						iframe.contentWindow.hear(msg, myname, adminhash);
+
 					} else {
 						socket.emit('say', msg);
 					}
@@ -478,6 +481,7 @@ socket.once('start', (myname, rooms) => {
 		}
 		addsysmsg('You have joined '+room);
 		socket.once('leaveroom', msg => {
+			onbeforeunload = null;
 			stopanimation();
 			get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 			history.replaceState(null, '', document.location.pathname);
@@ -607,9 +611,9 @@ socket.once('start', (myname, rooms) => {
 						const cmd = arr.shift().slice(1);
 						msg = arr.join(' ');
 						if(cmd == 'pat' || cmd == 'hug') {
-							sendAll(name+' '+cmd+'s '+msg);
+							sendAll('* '+name+' '+cmd+'s '+msg);
 						} else if(cmd == 'me') {
-							sendAll(name+' '+msg);
+							sendAll('* '+name+' '+msg);
 						} else sendOnly('Invalid command: /'+cmd, name);
 					}
 				} else sendAll(name+': '+msg);

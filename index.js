@@ -150,10 +150,10 @@ io.on('connection', async socket => {
 			return name1.slice(i + (name1.length >= name2.length)) == name2.slice(i + (name2.length >= name1.length));
 		}
 		for(let i = 0; i < 1000; i++) {
-			name = rand([...'bfhklmnpstwxy', 'ch', 'sh', 'ny']) + rand('aeiou');
+			name = rand([...'bfhklmnpstwxy', 'ch', 'fl', 'ny', 'sh']) + rand('aeiou');
 			if(Math.random() < .9) {
 				name = rand([
-					name + rand(['bbo', 'ggo', 'll', 'mba', 'nker', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
+					name + rand(['bbo', 'ggo', 'll', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
 					name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
 					name + rand([rand('dlnrstw') + rand('aeiou')], .1) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
 					rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], .2)
@@ -167,7 +167,7 @@ io.on('connection', async socket => {
 					rand([...'bdghjklmnpstwxyz', 'ch', 'tx']) + rand([...'aiou', 'ai'])
 				]);
 			}
-			if(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|[hw]o|[kp][aeiou]+n|[tw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|pet|s[aeiou]+x|sh[aeiou]+[gt]|w.nk|[jy]i|nye|.w[ei]|huo.+tl/.test(name)) continue;
+			if(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|[hw]o|[kp][aeiou]+n|[tw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|pet|s[aeiou]+x|sh[aeiou]+[gt]|w.nk|[jy]i|nye|.w[ei]|wu|huo.+tl/.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
 			if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
 				taken = false;
