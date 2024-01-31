@@ -100,6 +100,10 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 	a.disabled, #rooms.disabled > a { color:#fff; }
 }
 
+@media (prefers-color-scheme:no-preference) {
+	.color { text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
+}
+
 @media (prefers-reduced-motion:no-preference) {
 	@keyframes move { to { background-position:1000px 0; } }
 	.rainbow { animation:move 30s ease-out 1; }
@@ -372,8 +376,8 @@ socket.once('start', (myname, rooms) => {
 							}).
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
-							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span style="color:#$1">$2</span>').
-							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span style="color:hsl($1, 100%, 50%)">$2</span>').
+							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span class="color" style="color:#$1">$2</span>').
+							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span class="color" style="color:hsl($1, 100%, 50%)">$2</span>').
 							replace(/\[\*(.*?)\*\]/gs, '<b>$1</b>').
 							replace(/\[\/(.*?)\/\]/gs, '<i>$1</i>').
 							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').

@@ -125,7 +125,11 @@ socket.once('log', (records, regex) => {
 			h1.onclick = () => highlightregex(room);
 		}
 	}
-	const addrecord = (room, name, hash, cmd, arr) => {
+	const addrecord = record => {
+		let { room, name, hash, cmd, arr = [], msg, regex } = record;
+		const isboolean = typeof arr[0] == 'boolean';
+		[room, name, hash, cmd, ...arr] = [room, name, hash, cmd, ...arr].
+			map(x => x? JSON.stringify(x).replace(/(?<!\\)"/g, '').replace(/\\"/g, '"'): '');
 		const addtext = (text, bool) => {
 			const p = document.createElement('p');
 			let html = '';
@@ -180,14 +184,13 @@ socket.once('log', (records, regex) => {
 			}
 			roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
 		}
-		if(!arr) arr = [];
-		const isboolean = typeof arr[0] == 'boolean';
-		[room, name, hash, cmd, ...arr] = [room, name, hash, cmd, ...arr].
-			map(x => x? JSON.stringify(x).replace(/(?<!\\)"/g, '').replace(/\\"/g, '"'): '');
-		let boldname = '[*'+name+'*]';
+		const boldname = '[*'+name+'*]';
 		if(!cmd) {
-			if(name == 'New regex') get('currentregex').textContent = hash;
-			addtext(name+' '+hash);
+			if(regex) {
+				get('currentregex').textContent = regex;
+				msg = 'New regex '+regex;
+			}
+			addtext(msg);
 		} else if(cmd == 'restart') {
 			for(const room in roomdivs) {
 				roomdivs[room].classList.add('closed');
@@ -220,7 +223,7 @@ socket.once('log', (records, regex) => {
 			addtext(boldname+' '+cmd+' '+arr.join(' '), true);
 		}
 	}
-	for(const record of records) addrecord(...record);
+	for(const record of records) addrecord(record);
 	socket.on('log', addrecord);
 });
 </script>
