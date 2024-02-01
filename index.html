@@ -105,8 +105,8 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 }
 
 @media (prefers-reduced-motion:no-preference) {
-	@keyframes move { to { background-position:1000px 0; } }
-	.rainbow { animation:move 30s ease-out 1; }
+	@keyframes move { to { background-position:500px 0; } }
+	.rainbow { animation:move 15s ease-out 1; }
 }
 </style>
 <meta name="description" content="Create a chatroom with your own code or join other people's rooms">
@@ -410,7 +410,6 @@ socket.once('start', (myname, rooms) => {
 					if(iframe) {
 						console.log(myname+': '+msg);
 						iframe.contentWindow.hear(msg, myname, adminhash);
-
 					} else {
 						socket.emit('say', msg);
 					}

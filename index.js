@@ -82,6 +82,7 @@ io.on('connection', async socket => {
 			if(user.spam[0] - user.spam[10] < 500) { // 10 in 0.5 seconds
 				sockets = await io.in(socket.hash).fetchSockets();
 				for(const socket2 of sockets) {
+					if(socket.room != socket2.room) continue;
 					io.to('admin').emit('log', { room:socket2.room, msg:'Autokicked '+socket2.name });
 					socket2.disconnect();
 				}
