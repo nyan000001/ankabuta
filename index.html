@@ -6,7 +6,7 @@
 <style>
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 * { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
-textarea, input, select { border:1px solid #000; border-radius:3px; }
+textarea, input, select, #arrow { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
@@ -39,15 +39,17 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 #codebox, #sidebar, #help { flex-shrink:0; }
 #log { flex-grow:1; }
-#log > div:last-of-type { margin-bottom:-22px; }
+#log:nth-child(-2) { margin-bottom:-26px; }
 
-#log > div { padding:3px; max-height:50%; overflow:auto; }
+#log > div:not(#arrow) { padding:3px; max-height:50%; overflow:auto; }
 #log > div.error { cursor:pointer; }
-#log > div form { border:1px solid #aaa; border-radius:4px; display:inline-block; padding:1px; }
+#log > div form { display:inline-block; }
+#log > div:not(#arrow) form { border:1px solid #aaa; border-radius:4px; padding:1px; }
 #log > div input[type=text], #log > div input[type=password] { width:100px; max-width:100%; }
 #log > div input, #log > div select { margin:1px; }
 .sysmsg { font-weight:bold; }
-#arrow { width:100%; bottom:0; position:sticky; height:22px; }
+#arrow { width:100%; bottom:0; position:sticky; height:26px; background:ButtonFace; text-align:center; line-height:22px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; }
+#arrow * { pointer-events:none; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 pre { display:inline; }
 details { display:inline-block; vertical-align:top; margin-left:1em; }
@@ -84,9 +86,9 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 
 @media (prefers-color-scheme:dark) {
 	body { background:#000; color:#fff; }
-	textarea, input, select { background:#000; color:#fff; border-color:#ccc; }
+	textarea, input, select, #arrow { background:#000; color:#fff; border-color:#ccc; }
 	textarea:focus, input:focus, select:focus { outline-color:#ccc; background:#111; }
-	input[type=button], input[type=submit] { background:#222; }
+	input[type=button], input[type=submit], #arrow { background:#222; }
 	input[type=button]:focus, input[type=submit]:focus { background:#333; }
 	input[type=text]:read-only, textarea:read-only, input:disabled { background:#000; color:#444; }
 	input[type=checkbox] { filter:invert(100%); }
@@ -120,7 +122,7 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 <input type="text" id="name" maxlength="30">
 <input type="submit" id="go" value="Go"></form></div>
 <textarea id="codebox" spellcheck="false"></textarea>
-<div id="log" role="log"><input type="button" id="arrow" value="↓" class="hidden"></div>
+<div id="log" role="log"><div id="arrow" class="hidden">↓</div></div>
 <div id="sidebar" role="log"></div>
 <div id="help" class="hidden">
 <div>
@@ -388,6 +390,7 @@ socket.once('start', (myname, rooms) => {
 			}
 			return html;
 		}
+		let timeout;
 		const addmsg = msg => {
 			const div = document.createElement('div');
 			if(!msg || typeof msg != 'string') return;
@@ -428,7 +431,17 @@ socket.once('start', (myname, rooms) => {
 				} e.target.click();
 			}
 			scrolldown();
-			if(document.visibilityState == 'visible') return;
+			if(document.visibilityState == 'visible') {
+				if(!get('arrow').classList.contains('hidden')) {
+					get('arrow').innerHTML = div.innerHTML;
+					if(timeout) clearTimeout(timeout);
+					timeout = setTimeout(() => {
+						timeout = null;
+						get('arrow').textContent = '↓';
+					}, 2000);
+				}
+				return;
+			}
 			msgcount++;
 			if(animation) return;
 			document.title = '('+msgcount+') ankabuta'+room;
@@ -598,9 +611,11 @@ socket.once('start', (myname, rooms) => {
 		get('codebox').value =
 			`function join(name) {
 				sendAll('[*'+name+' has joined'+'*]');
+				sendAll(true, name, name, Object.keys(persistent.users));
 			}
 			function leave(msg, name) {
 				sendAll('[*'+name+' '+msg+'*]');
+				sendAll(false, name);
 			}
 			function hear(msg, name) {
 				if(msg[0] == '/') {
@@ -619,7 +634,7 @@ socket.once('start', (myname, rooms) => {
 							sendAll('* '+name+' '+msg);
 						} else sendOnly('Invalid command: /'+cmd, name);
 					}
-				} else sendAll(name+': '+msg);
+				} else sendAll('[*'+name+'*]: '+msg);
 			}`.replace(/^\t\t\t/gm, '');
 		const codehistory = [];
 		let codeindex = 0;
