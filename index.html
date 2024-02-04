@@ -39,10 +39,10 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 #codebox, #sidebar, #help { flex-shrink:0; }
 #log { flex-grow:1; }
-#log:nth-child(-2) { margin-bottom:-26px; }
+#log > div:nth-last-of-type(2) { margin-bottom:-26px; }
 
 #log > div:not(#arrow) { padding:3px; max-height:50%; overflow:auto; }
-#log > div.error { cursor:pointer; }
+#log > div.clickable { cursor:pointer; }
 #log > div form { display:inline-block; }
 #log > div:not(#arrow) form { border:1px solid #aaa; border-radius:4px; padding:1px; }
 #log > div input[type=text], #log > div input[type=password] { width:100px; max-width:100%; }
@@ -224,6 +224,7 @@ socket.once('start', (myname, rooms) => {
 			document.querySelector('#rooms > div')?.remove();
 			get('roomform').after(div);
 		}
+		return div;
 	}
 	const stopanimation = () => {
 		animation = clearInterval(animation);
@@ -261,7 +262,7 @@ socket.once('start', (myname, rooms) => {
 		} else if(e.ctrlKey && e.key == 's' && document.body.classList.contains('admin')) {
 			get('run').click();
 		} else if(e.ctrlKey && e.key == 'e') {
-			document.getElementsByClassName('error')[0]?.click();
+			document.getElementsByClassName('clickable')[0]?.click();
 		} else if(e.key == 'Escape') {
 			get('leave').focus();
 		} else return;
@@ -799,18 +800,26 @@ socket.once('start', (myname, rooms) => {
 				console.log(name+': '+msg);
 				iframe.contentWindow.hear(msg, name, hash);
 			});
-			onerror = (event, source, row, col) => {
+			const adderrormsg = onerror = (event, source, line, col) => {
 				const arr = runningcode.split('\n');
 				let index = col - 1;
-				for(let i = 0; i < row - 1; i++) {
+				for(let i = 0; i < line - 1; i++) {
 					index += arr[i].length + 1; // +1 for the linebreak
 				}
-				addsysmsg(event);
-				const div = get('log').querySelector('div:last-of-type');
-				div.classList.add('error');
+				const div = addsysmsg(event);
+				div.classList.add('error', 'clickable');
 				div.onclick = () => {
 					get('codebox').selectionStart = get('codebox').selectionEnd = index;
 					get('codebox').focus();
+				}
+			}
+			iframe.contentWindow.onunhandledrejection = event => {
+				const numbers = event.reason.stack.split(/\D+/);
+				if(numbers[4] != undefined && numbers[5] != undefined) {
+					adderrormsg(event.reason.message, null, numbers[4], numbers[5]);
+				} else {
+					const div = addsysmsg(event.reason.message);
+					div.classList.add('error');
 				}
 			}
 			iframe.contentWindow.eval(runningcode);
