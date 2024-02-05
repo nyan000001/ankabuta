@@ -78,15 +78,15 @@ io.on('connection', async socket => {
 	} else user.sockets++;
 	socket.onAny(async () => {
 		user.spam.unshift(Date.now());
-		if(user.spam.length > 10) {
-			if(user.spam[0] - user.spam[10] < 500) { // 10 in 0.5 seconds
+		if(user.spam.length > 50) {
+			if(user.spam[0] - user.spam[50] < 1000) { // 50 in 1 second
 				sockets = await io.in(socket.hash).fetchSockets();
 				for(const socket2 of sockets) {
 					if(socket.room != socket2.room) continue;
 					io.to('admin').emit('log', { room:socket2.room, msg:'Autokicked '+socket2.name });
 					socket2.disconnect();
 				}
-				hashes.updateOne({ _id:hash }, { $set: { bannedUntil:60000 } });
+				hashes.updateOne({ _id:hash }, { $set:{ bannedUntil:Date.now() + 60000 } });
 			} else user.spam.pop();
 		}
 	});
@@ -170,7 +170,7 @@ io.on('connection', async socket => {
 			name = rand([...'bfhklmnpstwxy', 'ch', 'fl', 'ny', 'sh']) + rand('aeiou');
 			if(Math.random() < .9) {
 				name = rand([
-					name + rand(['bbo', 'ggo', 'll', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
+					name + rand(['bbo', 'ffy', 'ggo', 'll', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
 					name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
 					name + rand([rand('dlnrstw') + rand('aeiou')], .1) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
 					rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], .2)
