@@ -45,7 +45,7 @@ io.engine.on('initial_headers', (headers, request) => {
 				users[hash] = { uid:doc.uid, ip:doc.ip, bannedUntil:doc.bannedUntil };
 				if(ip) {
 					users[hash].ip = ip;
-					hashes.updateOne({ _id:hash }, { $set: { ip:ip } });
+					hashes.updateOne({ _id:hash }, { $set:{ ip:ip } });
 				}
 				resolve();
 				return;
@@ -76,20 +76,6 @@ io.on('connection', async socket => {
 		user.sockets = 1;
 		user.spam = [];
 	} else user.sockets++;
-	const ban = async (room, hash, mins) => {
-		clearTimeout(rooms[room].banned[hash]);
-		let sockets = await io.in(hash).fetchSockets();
-		for(const socket2 of sockets) {
-			socket2.emit('rmvroom', room);
-		}
-		rooms[room].banned[hash] = setTimeout(async () => {
-			delete rooms[room].banned[hash];
-			sockets = await io.in(hash).fetchSockets();
-			for(const socket2 of sockets) {
-				socket2.emit('addroom', room);
-			}
-		}, mins * 60000);
-	}
 	socket.onAny(async cmd => {
 		if(cmd == 'sendOnly' || cmd == 'sendAll') return;
 		user.spam.unshift(Date.now());
@@ -98,13 +84,10 @@ io.on('connection', async socket => {
 		if(user.spam[0] - user.spam[20] > 500) return;
 		sockets = await io.in(socket.hash).fetchSockets();
 		for(const socket2 of sockets) {
-			if(socket.room != socket2.room) continue;
 			io.to('admin').emit('log', { room:socket2.room, msg:'Autokicked '+socket2.name });
 			socket2.disconnect();
 		}
-		if(socket.room && rooms[socket.room] && rooms[socket.room].admin != socket) {
-			ban(socket.room, socket.hash, 1);
-		}
+		hashes.updateOne({ _id:socket.hash }, { $set:{ bannedUntil:Date.now() + 60000 } });
 	});
 	socket.join(socket.hash);
 	const validstring = string => string && typeof string == 'string';
@@ -136,7 +119,7 @@ io.on('connection', async socket => {
 				socket2.disconnect();
 			}
 			if(validnumber(mins)) {
-				hashes.updateOne({ _id:hash }, { $set: { bannedUntil:Date.now() + mins * 60000 } });
+				hashes.updateOne({ _id:hash }, { $set:{ bannedUntil:Date.now() + mins * 60000 } });
 			}
 		});
 		socket.on('LOCK', mins => {
@@ -230,7 +213,7 @@ io.on('connection', async socket => {
 			const sockets = await io.in(socket.room).fetchSockets();
 			delete rooms[socket.room];
 			for(const socket2 of sockets) {
-				socket2.emit('leaveroom', 'Disconnected from '+socket.room+'! (Admin '+msg2+')');
+				socket2.emit('leaveroom', 'Admin '+msg2+'!');
 				socket2.leave(socket.room);
 				delete socket2.room;
 				for(const listener of ['say', 'leave', 'disconnect']) {
@@ -364,7 +347,7 @@ io.on('connection', async socket => {
 			socket.on('ban', async (hash, mins = 0, msg) => {
 				log('ban', hash, mins, msg);
 				if(!validstring(hash) || socket.hash == hash) return;
-				const sockets = (await io.in(socket.room).fetchSockets()).filter(socket2 => socket2.hash == hash);
+				let sockets = (await io.in(socket.room).fetchSockets()).filter(socket2 => socket2.hash == hash);
 				if(!sockets.length) {
 					socket.emit('notify', 'Hash not found');
 					return;
@@ -375,7 +358,18 @@ io.on('connection', async socket => {
 					await leave(socket2, 'You\'ve been banned from '+socket.room+msg, 'has been banned'+msg);
 				}
 				if(!validnumber(mins)) return;
-				ban(socket.room, hash, mins);
+				clearTimeout(rooms[socket.room].banned[hash]);
+				sockets = await io.in(hash).fetchSockets();
+				for(const socket2 of sockets) {
+					socket2.emit('rmvroom', socket.room);
+				}
+				rooms[socket.room].banned[hash] = setTimeout(async () => {
+					sockets = await io.in(hash).fetchSockets();
+					for(const socket2 of sockets) {
+						socket2.emit('addroom', socket.room);
+					}
+					delete rooms[socket.room].banned[hash];
+				}, mins * 60000);
 			});
 			socket.on('lock', async mins => {
 				log('lock', mins);

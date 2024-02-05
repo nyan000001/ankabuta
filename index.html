@@ -51,6 +51,8 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #arrow { width:100%; bottom:0; position:sticky; height:26px; background:ButtonFace; text-align:center; line-height:22px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; }
 #arrow * { pointer-events:none; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.big { font-size:150%; }
+.small { font-size:66.6%; }
 pre { display:inline; }
 details { display:inline-block; vertical-align:top; margin-left:1em; }
 summary { cursor:default; margin-left:-1em; }
@@ -140,11 +142,13 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 	<i>Click the first error message</i></div>
 </div><div>
 <div><code>[{sample text}]</code> <pre>sample text</pre></div>
-<div><code>[!sample text!]</code> <span class='rainbow'>sample text</span></div>
+<div><code>[!sample text!]</code> <span class="rainbow">sample text</span></div>
 <div><code>[*sample text*]</code> <b>sample text</b></div>
 <div><code>[/sample text/]</code> <i>sample text</i></div>
-<div><code>[_sample text_]</code> <span style='text-decoration:underline'>sample text</span></div>
-<div><code>[-sample text-]</code> <span style='text-decoration:line-through'>sample text</span></div>
+<div><code>[_sample text_]</code> <span style="text-decoration:underline">sample text</span></div>
+<div><code>[-sample text-]</code> <span style="text-decoration:line-through">sample text</span></div>
+<div><code>[&lt;sample text&gt;]</code> <span class="big">sample text</span></div>
+<div><code>[&gt;sample text&lt;]</code> <span class="small">sample text</span></div>
 <div><code>[#f00sample text#]</code> <span style="color:#f00">sample text</span></div>
 <div><code>[°360sample text°]</code> <span style="color:hsl(360, 100%, 50%)">sample text</span></div>
 <div><details><summary>[(sample text)]</summary>sample text</details></div>
@@ -384,7 +388,9 @@ socket.once('start', (myname, rooms) => {
 							replace(/\[\*(.*?)\*\]/gs, '<b>$1</b>').
 							replace(/\[\/(.*?)\/\]/gs, '<i>$1</i>').
 							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
-							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>');
+							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
+							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
+							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>');
 					} while(temp != text);
 					html += text;
 				}
@@ -610,7 +616,10 @@ socket.once('start', (myname, rooms) => {
 			return;
 		}
 		get('codebox').value =
-			`function join(name) {
+			`for(const name in persistent.users) {
+				join(name);
+			}
+			function join(name) {
 				sendAll('[*'+name+' has joined'+'*]');
 				sendAll(true, name, name, Object.keys(persistent.users));
 			}
