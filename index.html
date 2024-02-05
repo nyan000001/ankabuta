@@ -39,20 +39,22 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 #codebox, #sidebar, #help { flex-shrink:0; }
 #log { flex-grow:1; }
-#log > div:nth-last-of-type(2) { margin-bottom:-26px; }
+.msg:nth-last-child(2) { margin-bottom:-26px; }
 
-#log > div:not(#arrow) { padding:3px; max-height:50%; overflow:auto; }
-#log > div.clickable { cursor:pointer; }
-#log > div form { display:inline-block; }
-#log > div:not(#arrow) form { border:1px solid #aaa; border-radius:4px; padding:1px; }
-#log > div input[type=text], #log > div input[type=password] { width:100px; max-width:100%; }
-#log > div input, #log > div select { margin:1px; }
+.msg { padding:3px; max-height:50%; overflow:auto; }
+.clickable { cursor:pointer; }
+.msg form { display:inline-block; }
+.msg form { border:1px solid #aaa; border-radius:4px; padding:1px; }
+.msg input[type=text], .msg input[type=password] { width:100px; max-width:100%; }
+.msg input, .msg select { margin:1px; padding:1px; }
+.rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.msg .big, .msg .big *, #help .big { font-size:17pt; }
+.msg .big input, .msg .big select { font-size:17pt; line-height:30px; }
+.msg .small, .msg .small *, #help .small { font-size:8pt; }
+.msg .small input, .msg .small select { font-size:8pt; line-height:10px; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; height:26px; background:ButtonFace; text-align:center; line-height:22px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; }
 #arrow * { pointer-events:none; }
-.rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-.big { font-size:150%; }
-.small { font-size:66.6%; }
 pre { display:inline; }
 details { display:inline-block; vertical-align:top; margin-left:1em; }
 summary { cursor:default; margin-left:-1em; }
@@ -94,7 +96,7 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 	input[type=button]:focus, input[type=submit]:focus { background:#333; }
 	input[type=text]:read-only, textarea:read-only, input:disabled { background:#000; color:#444; }
 	input[type=checkbox] { filter:invert(100%); }
-	#log > div form { border-color:#555; }
+	.msg form { border-color:#555; }
 	::-webkit-scrollbar { width:15px; height:15px; }
 	::-webkit-scrollbar-track { background:#222; }
 	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
@@ -219,9 +221,10 @@ socket.once('start', (myname, rooms) => {
 	get('log').onclick = () => setTimeout(scrolldown, 1);
 	const addsysmsg = msg => {
 		const div = document.createElement('div');
-		div.className = 'sysmsg';
+		div.classList.add('sysmsg');
 		div.textContent = msg;
 		if(document.body.classList.contains('joined')) {
+			div.classList.add('msg');
 			get('arrow').before(div);
 			scrolldown();
 		} else {
@@ -399,8 +402,9 @@ socket.once('start', (myname, rooms) => {
 		}
 		let timeout;
 		const addmsg = msg => {
-			const div = document.createElement('div');
 			if(!msg || typeof msg != 'string') return;
+			const div = document.createElement('div');
+			div.classList.add('msg');
 			div.innerHTML = gethtml(msg);
 			get('arrow').before(div);
 			div.onsubmit = e => e.preventDefault();
