@@ -642,10 +642,7 @@ socket.once('start', (myname, rooms) => {
 			return;
 		}
 		get('codebox').value =
-			`for(const name in persistent.users) {
-				join(name);
-			}
-			function join(name) {
+			`function join(name, hash, customname) {
 				sendAll('[*'+name+' has joined'+'*]');
 				sendAll(true, name, name, Object.keys(persistent.users));
 			}
@@ -677,7 +674,7 @@ socket.once('start', (myname, rooms) => {
 		let runningcode;
 		let lastcode;
 		document.body.classList.add('admin');
-		persistent = { users:{ [myname]:{ hash:adminhash, admin:true } } };
+		persistent = { users:{ [myname]:{ hash:adminhash, admin:true, customname:customname } } };
 		get('codebox').oninput = () => {
 			const errors = document.getElementsByClassName('error');
 			while(errors.length) errors[0].remove();
@@ -822,7 +819,7 @@ socket.once('start', (myname, rooms) => {
 			socket.on('join', (name, hash, customname) => {
 				if(!persistent.users[name]) {
 					console.log(name+' has joined');
-					persistent.users[name] = { hash };
+					persistent.users[name] = { hash:hash, customname:customname };
 				}
 				iframe.contentWindow.join(name, hash, customname);
 			});
@@ -858,9 +855,11 @@ socket.once('start', (myname, rooms) => {
 				}
 			}
 			iframe.contentWindow.eval(runningcode);
+			for(const name in persistent.users) {
+				iframe.contentWindow.join(name, persistent.users[name].hash, persistent.users[name].customname);
+			}
 		}
 		get('run').click();
-		iframe.contentWindow.join(myname, adminhash, customname);
 		const pastcode = localStorage.getItem('code');
 		if(pastcode) {
 			lastcode = get('codebox').value = pastcode;
