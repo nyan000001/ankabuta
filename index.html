@@ -39,22 +39,26 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 #codebox, #sidebar, #help { flex-shrink:0; }
 #log { flex-grow:1; }
-.msg:nth-last-child(2) { margin-bottom:-26px; }
+.msg:nth-last-child(2) { margin-bottom:-24px; }
 
 .msg { padding:3px; max-height:50%; overflow:auto; }
 .clickable { cursor:pointer; }
+.scrollup { background:linear-gradient(rgba(127.5, 127.5, 127.5, .2), transparent) no-repeat top; background-size:100% 10px; }
+.scrolldown { background:linear-gradient(transparent, rgba(127.5, 127.5, 127.5, .2)) no-repeat bottom; background-size:100% 10px; }
+.scrollup.scrolldown { background:linear-gradient(rgba(127.5, 127.5, 127.5, .2), transparent) no-repeat top, linear-gradient(transparent, rgba(127.5, 127.5, 127.5, .2)) no-repeat bottom; background-size:100% 10px; }
 .msg form { display:inline-block; }
 .msg form { border:1px solid #aaa; border-radius:4px; padding:1px; }
 .msg input[type=text], .msg input[type=password] { width:100px; max-width:100%; }
-.msg input, .msg select { margin:1px; padding:1px; }
+.msg input, .msg select { margin:1px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 .msg .big, .msg .big *, #help .big { font-size:17pt; }
 .msg .big input, .msg .big select { font-size:17pt; line-height:30px; }
 .msg .small, .msg .small *, #help .small { font-size:8pt; }
 .msg .small input, .msg .small select { font-size:8pt; line-height:10px; }
 .sysmsg { font-weight:bold; }
-#arrow { width:100%; bottom:0; position:sticky; height:26px; background:ButtonFace; text-align:center; line-height:22px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; }
+#arrow { width:100%; bottom:0; position:sticky; height:24px; background:ButtonFace; text-align:center; line-height:22px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; }
 #arrow * { pointer-events:none; }
+#msg big * { padding:0; }
 pre { display:inline; }
 details { display:inline-block; vertical-align:top; margin-left:1em; }
 summary { cursor:default; margin-left:-1em; }
@@ -69,7 +73,7 @@ summary { cursor:default; margin-left:-1em; }
 #help { padding:0 5px; line-height:13pt; }
 #help > div { padding:1px 0; }
 #help > div > div { margin:5px 0; white-space:pre; }
-kbd { border-radius:4px; padding:2px; border:1px solid #999; }
+kbd { border-radius:4px; padding:2px; border:1px solid #888; }
 var { opacity:.6; font-style:inherit; font-family:inherit; }
 
 #msgform { bottom:0; position:fixed; width:100%; height:50px; display:flex; padding:0 1px 1px 1px; }
@@ -202,23 +206,37 @@ socket.once('start', (myname, rooms) => {
 	onhashchange = () => {
 		socket.emit('join', decodeURI(location.hash));
 	}
+	const scrollmsg = onscroll = msg => {
+		msg.classList.remove('scrollup', 'scrolldown');
+		if(msg.scrollHeight > msg.clientHeight) {
+			if(msg.scrollTop > 3) {
+				msg.classList.add('scrollup');
+			}
+			if(Math.abs(msg.scrollHeight - msg.clientHeight - msg.scrollTop) > 3) {
+				msg.classList.add('scrolldown');
+			}
+		}
+	}
+	get('codebox').onmousemove = onresize = () => {
+		get('arrow').classList[get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 3? 'remove': 'add']('hidden');
+		const msgs = get('log').getElementsByClassName('msg');
+		for(let i = 0; i < msgs.length; i++) {
+			scrollmsg(msgs[i]);
+		}
+	}
 	let ignorescroll;
 	get('log').onscroll = () => {
 		if(ignorescroll) {
 			ignorescroll = false;
 			return;
 		}
-		get('arrow').classList[get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 1? 'remove': 'add']('hidden');
-	}
-	get('codebox').onmousemove = onresize = () => {
-		get('arrow').classList[get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 1? 'remove': 'add']('hidden');
+		get('arrow').classList[get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 3? 'remove': 'add']('hidden');
 	}
 	const scrolldown = () => {
 		if(!get('arrow').classList.contains('hidden')) return;
 		ignorescroll = true;
 		get('log').scrollTop = get('log').scrollHeight;
 	}
-	get('log').onclick = () => setTimeout(scrolldown, 1);
 	const addsysmsg = msg => {
 		const div = document.createElement('div');
 		div.classList.add('sysmsg');
@@ -228,7 +246,7 @@ socket.once('start', (myname, rooms) => {
 			get('arrow').before(div);
 			scrolldown();
 		} else {
-			document.querySelector('#rooms > div')?.remove();
+			document.querySelector('#rooms > .sysmsg')?.remove();
 			get('roomform').after(div);
 		}
 		return div;
@@ -432,6 +450,8 @@ socket.once('start', (myname, rooms) => {
 					e.target.previousSibling.type = e.target.checked? 'text': 'password';
 				} else if(e.target.tagName == 'LABEL') {
 					e.target.nextElementSibling?.focus();
+				} else if(e.target.tagName == 'SUMMARY') {
+					setTimeout(scrolldown, 1);
 				}
 			}
 			div.onkeydown = e => {
@@ -442,6 +462,8 @@ socket.once('start', (myname, rooms) => {
 				} e.target.click();
 			}
 			scrolldown();
+			scrollmsg(div);
+			div.onscroll = () => scrollmsg(div);
 			if(document.visibilityState == 'visible') {
 				if(!get('arrow').classList.contains('hidden')) {
 					get('arrow').innerHTML = div.innerHTML;
