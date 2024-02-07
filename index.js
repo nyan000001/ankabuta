@@ -277,9 +277,9 @@ io.on('connection', async socket => {
 			rooms[socket.room].admin.emit('join', socket.name, socket.hash, !!name);
 			socket.on('say', msg => {
 				if(!validstring(msg)) return;
-				msg = msg.replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));
+				msg = msg.slice(0, 5000).replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));
 				log('say', msg);
-				rooms[socket.room].admin.emit('hear', msg.slice(0, 5000), socket.name, socket.hash);
+				rooms[socket.room].admin.emit('hear', msg, socket.name, socket.hash);
 			});
 		} else {
 			log('join', true);

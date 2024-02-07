@@ -51,6 +51,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .msg input[type=text], .msg input[type=password] { width:100px; max-width:100%; }
 .msg input, .msg select { margin:1px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+del { text-decoration:line-through; opacity:.5; }
 .msg .big, .msg .big *, #help .big { font-size:17pt; }
 .msg .big input, .msg .big select { font-size:17pt; line-height:30px; }
 .msg .small, .msg .small *, #help .small { font-size:8pt; }
@@ -152,7 +153,7 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 <div><code>[*sample text*]</code> <b>sample text</b></div>
 <div><code>[/sample text/]</code> <i>sample text</i></div>
 <div><code>[_sample text_]</code> <span style="text-decoration:underline">sample text</span></div>
-<div><code>[-sample text-]</code> <span style="text-decoration:line-through">sample text</span></div>
+<div><code>[-sample text-]</code> <del>sample text</del></div>
 <div><code>[&lt;sample text&gt;]</code> <span class="big">sample text</span></div>
 <div><code>[&gt;sample text&lt;]</code> <span class="small">sample text</span></div>
 <div><code>[#f00sample text#]</code> <span style="color:#f00">sample text</span></div>
@@ -409,7 +410,7 @@ socket.once('start', (myname, rooms) => {
 							replace(/\[\*(.*?)\*\]/gs, '<b>$1</b>').
 							replace(/\[\/(.*?)\/\]/gs, '<i>$1</i>').
 							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
-							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
+							replace(/\[-(.*?)-\]/gs, '<del>$1</del>').
 							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
 							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>');
 					} while(temp != text);
@@ -744,10 +745,17 @@ socket.once('start', (myname, rooms) => {
 			iframe.contentWindow.kick = (name, msg) => socket.emit('kick', name, msg);
 			iframe.contentWindow.ban = (hash, mins, msg) => socket.emit('ban', hash, mins, msg);
 			iframe.contentWindow.lock = mins => socket.emit('lock', mins);
-			iframe.contentWindow.print = addmsg;
 			iframe.contentWindow.save = (name, value) => localStorage.setItem(name, JSON.stringify(value));
 			iframe.contentWindow.load = name => localStorage.getItem(name);
 			const convert = x => x == undefined || Array.isArray(x)? x: [x];
+			iframe.contentWindow.print = (...arr) => {
+				if(typeof arr[0] == 'boolean') {
+					arr[1] = convert(arr[1]);
+					change(...arr);
+				} else {
+					addmsg(arr[0]);
+				}
+			}
 			iframe.contentWindow.sendOnly = (...arr) => {
 				if(arr[0] === 1) {
 					arr[0] = true;
