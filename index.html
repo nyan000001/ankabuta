@@ -31,7 +31,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .joined #wrapper { height:calc(100% - 50px); }
 #wrapper > * { margin:1px; }
 #wrapper > *:not(#log, #help) { padding:5px; }
-#wrapper > *:not(#codebox, #help), #help > div > div { white-space:pre-wrap; word-break:break-word; }
+#wrapper > *:not(#codebox, #help), #help > div > div { white-space:pre-wrap; word-break:break-all; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
 #codebox { width:300px; resize:horizontal; }
 #codebox, pre { font-size:9pt; line-height:17px; white-space:pre; }
@@ -69,7 +69,7 @@ summary { cursor:default; margin-left:-1em; }
 #divvideo { max-height:min(35vw, 250px); overflow-y:auto; }
 #video { position:sticky; top:0; width:100%; aspect-ratio:16 / 9; }
 #divvideo > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
-#sidebar a.disabled { pointer-events:auto; }
+#sidebar a.disabled { pointer-events:none; cursor:auto; }
 
 #help { padding:0 5px; line-height:13pt; }
 #help > div { padding:1px 0; }
@@ -263,6 +263,7 @@ socket.once('start', (myname, rooms) => {
 		document.title = 'ankabuta#'+myroom;
 	}
 	socket.once('disconnect', () => {
+		onbeforeunload = null;
 		stopanimation();
 		document.title = 'ankabuta☠️'+myroom;
 		get('room').readOnly = get('name').readOnly = get('go').disabled = get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
