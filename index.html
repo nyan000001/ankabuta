@@ -111,7 +111,7 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 	a.disabled, #rooms.disabled > a { color:#fff; }
 }
 
-@media (prefers-color-scheme:no-preference) {
+@media (prefers-color-scheme:light) {
 	.color { text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
 }
 
@@ -644,9 +644,10 @@ socket.once('start', (myname, rooms) => {
 			return;
 		}
 		get('codebox').value =
-			`function join(name, hash, customname) {
+			`const users = persistent.users;
+			function join(name, hash, customname) {
 				sendAll('[*'+name+' has joined'+'*]');
-				sendAll(true, name, name, Object.keys(persistent.users));
+				sendAll(true, name, name, Object.keys(users));
 			}
 			function leave(msg, name) {
 				sendAll('[*'+name+' '+msg+'*]');
@@ -655,15 +656,23 @@ socket.once('start', (myname, rooms) => {
 			function hear(msg, name) {
 				if(msg[0] == '/') {
 					const arr = msg.split(' ');
-					if(msg[1] == '!' && persistent.users[name].admin) {
+					if(msg[1] == '!' && users[name].admin) {
 						const cmd = arr.shift().slice(2);
 						if(['kick', 'ban', 'lock'].includes(cmd)) {
 							this[cmd](...arr);
 						} else sendOnly('Invalid command: /!'+cmd, name);
 					} else {
 						const cmd = arr.shift().slice(1);
+						const name2 = cmd == 'pm'? arr.shift(): '';
 						msg = arr.join(' ');
-						if(cmd == 'pat' || cmd == 'hug') {
+						if(cmd == 'pm') {
+							if(users[name2]) {
+								sendOnly('[/(to '+name2+')/] [*'+name+'*]: '+msg, name);
+								sendOnly('[/(private)/] [*'+name+'*]: '+msg, name2);
+							} else {
+								sendOnly('No such user', name);
+							}
+						} else if(cmd == 'pat' || cmd == 'hug') {
 							sendAll('* '+name+' '+cmd+'s '+msg);
 						} else if(cmd == 'me') {
 							sendAll('* '+name+' '+msg);

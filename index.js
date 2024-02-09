@@ -1,14 +1,9 @@
 const app = require('express')();
 const http = require('http').createServer(app, { cookie:true });
 const io = require('socket.io')(http, { pingInterval:50000, pingTimeout:50000 });
-app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
-app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
-//app.get('/', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true, sameSite:'strict' }).sendFile(__dirname + '/index.html'));
-//app.get('/blank', (req, res) => res.cookie('test', 'test', { maxAge:300000, httpOnly:true, sameSite:'strict' }).sendFile(__dirname + '/blank.html'));
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
 app.get('/NotoColorEmoji.woff2', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.woff2'));
 app.get('/NotoColorEmoji.ttf', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.ttf'));
-app.use((req, res) => res.redirect('/'));
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const client = new MongoClient(process.env.URI, { serverApi:{ version:ServerApiVersion.v1, strict:true, deprecationErrors:true } });
@@ -21,54 +16,57 @@ const crypto = require('crypto');
 const cookie = require('cookie');
 const users = {};
 const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
-let promise;
-io.engine.on('initial_headers', (headers, request) => {
-	promise = new Promise(async resolve => {
-		//if(!request.headers.cookie) return;
-		let ip = request.headers['x-forwarded-for'];
-		let uid;
-		let hash;
-		if(ip) {
-			const doc = await hashes.findOne({ ip:ip });
-			if(doc) {
-				users[doc._id] = { uid:doc.uid, ip:doc.ip, bannedUntil:doc.bannedUntil };
-				headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', doc.uid, { maxAge:345600, sameSite:'strict' });
-				resolve();
-				return;
-			}
+const makecookie = async (req, res) => {
+	let ip = req.headers['x-forwarded-for'];
+	let uid;
+	let hash;
+	if(ip) {
+		const doc = await hashes.findOne({ ip:ip });
+		if(doc) {
+			users[doc._id] = { uid:doc.uid, ip:doc.ip, banneduntil:doc.banneduntil };
+			res.setHeader('Set-Cookie', cookie.serialize('uid', doc.uid, { maxAge:345600, sameSite:'strict', httpOnly:true }));
+			return;
 		}
-		if(request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
-			uid = cookie.parse(request.headers.cookie).uid;
-			hash = makehash(uid);
-			const doc = await hashes.findOne({ _id:hash });
-			if(doc) {
-				users[hash] = { uid:doc.uid, ip:doc.ip, bannedUntil:doc.bannedUntil };
-				if(ip) {
-					users[hash].ip = ip;
-					hashes.updateOne({ _id:hash }, { $set:{ ip:ip } });
-				}
-				resolve();
-				return;
+	}
+	if(req.headers.cookie && cookie.parse(req.headers.cookie).uid) {
+		uid = cookie.parse(req.headers.cookie).uid;
+		hash = makehash(uid);
+		const doc = await hashes.findOne({ _id:hash });
+		if(doc) {
+			users[hash] = { uid:doc.uid, ip:doc.ip, banneduntil:doc.banneduntil };
+			if(ip) {
+				users[hash].ip = ip;
+				hashes.updateOne({ _id:hash }, { $set:{ ip:ip } });
 			}
+			return;
 		}
-		let doc;
-		do {
-			uid = crypto.randomBytes(32).toString('base64');
-			hash = makehash(uid);
-			doc = await hashes.findOne({ _id:hash });
-		} while(doc);
-		headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:345600, sameSite:'strict' });
-		users[hash] = { uid:uid, bannedUntil:0 };
-		if(ip) users[hash].ip = ip;
-		hashes.insertOne({ _id:hash, createdAt:new Date(), ...users[hash] });
-		resolve();
-	});
+	}
+	let doc;
+	do {
+		uid = crypto.randomBytes(32).toString('base64');
+		hash = makehash(uid);
+		doc = await hashes.findOne({ _id:hash });
+	} while(doc);
+	res.setHeader('Set-Cookie', cookie.serialize('uid', uid, { maxAge:345600, sameSite:'strict', httpOnly:true }));
+	users[hash] = { uid:uid, banneduntil:0 };
+	if(ip) users[hash].ip = ip;
+	hashes.insertOne({ _id:hash, createdAt:new Date(), ...users[hash] });
+}
+app.use(async (req, res) => {
+	if(req.path != '/' && req.path != '/blank') {
+		res.redirect('/');
+	}
+	await makecookie(req, res);
+	if(req.path == '/blank') {
+		res.sendFile(__dirname + '/blank.html');
+	} else {
+		res.sendFile(__dirname + '/index.html');
+	}
 });
 const rooms = {};
-let lockedUntil = 0;
-let regexstring;
+let lockeduntil = 0;
+let currentregex;
 io.on('connection', async socket => {
-	await promise;
 	//if(!socket.handshake.headers.cookie) return;
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 	const user = users[socket.hash];
@@ -87,7 +85,7 @@ io.on('connection', async socket => {
 			io.to('admin').emit('log', { room:socket2.room, msg:'Autokicked '+socket2.name });
 			socket2.disconnect();
 		}
-		hashes.updateOne({ _id:socket.hash }, { $set:{ bannedUntil:Date.now() + 60000 } });
+		hashes.updateOne({ _id:socket.hash }, { $set:{ banneduntil:Date.now() + 60000 } });
 	});
 	socket.join(socket.hash);
 	const validstring = string => string && typeof string == 'string';
@@ -104,7 +102,7 @@ io.on('connection', async socket => {
 		}
 		socket.removeAllListeners('LOGIN');
 		const records = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) } }).toArray();
-		socket.emit('log', records.map(x => ({ room:x.room, name:x.name, hash:x.hash, cmd:x.cmd, arr:x.arr })), regexstring);
+		socket.emit('log', records.map(x => ({ room:x.room, name:x.name, hash:x.hash, cmd:x.cmd, arr:x.arr })), currentregex);
 		socket.join('admin');
 		socket.on('BAN', async (hash, mins) => {
 			log('BAN', hash, mins);
@@ -119,7 +117,7 @@ io.on('connection', async socket => {
 				socket2.disconnect();
 			}
 			if(validnumber(mins)) {
-				hashes.updateOne({ _id:hash }, { $set:{ bannedUntil:Date.now() + mins * 60000 } });
+				hashes.updateOne({ _id:hash }, { $set:{ banneduntil:Date.now() + mins * 60000 } });
 			}
 		});
 		socket.on('LOCK', mins => {
@@ -128,7 +126,7 @@ io.on('connection', async socket => {
 				io.to('admin').emit('log', { room:socket.room, msg:'Invalid time' });
 				return;
 			}
-			lockedUntil = Date.now() + mins * 60000;
+			lockeduntil = Date.now() + mins * 60000;
 		});
 		socket.on('REGEX', regex => {
 			log('REGEX', regex);
@@ -138,9 +136,9 @@ io.on('connection', async socket => {
 				io.to('admin').emit('log', { room:socket.room, msg:error });
 				return;
 			}
-			regexstring = regex;
+			currentregex = regex;
 			regex = new RegExp(regex);
-			io.to('admin').emit('log', { room:socket.room, regex:regexstring });
+			io.to('admin').emit('log', { room:socket.room, regex:currentregex });
 			for(const room in rooms) {
 				if(regex.test(room)) {
 					io.to('admin').emit('log', { room:socket.room, msg:'Kicked '+rooms[room].admin.name });
@@ -200,7 +198,7 @@ io.on('connection', async socket => {
 		socket.join(name);
 	}
 	getname();
-	if(lockedUntil > Date.now() || user.bannedUntil > Date.now()) return;
+	if(lockeduntil > Date.now() || user.banneduntil > Date.now()) return;
 	socket.emit('start', socket.name, Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == undefined && !rooms[room].banned[socket.hash]));
 	const leave = async (socket, msg1, msg2) => {
 		socket.emit('leaveroom', msg1);
@@ -242,7 +240,7 @@ io.on('connection', async socket => {
 	socket.on('join', async (room, name) => {
 		if(!validstring(room)) return;
 		room = room.trim().replace(/^#*/, '#').slice(0, 30).replace(/\s/g, '_');
-		if(regexstring && new RegExp(regexstring).test(room)) {
+		if(currentregex && new RegExp(currentregex).test(room)) {
 			io.to('admin').emit('log', { room:room, msg:'Kicked '+socket.name });
 			socket.disconnect();
 			return;
