@@ -31,7 +31,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .joined #wrapper { height:calc(100% - 50px); }
 #wrapper > * { margin:1px; }
 #wrapper > *:not(#log, #help) { padding:5px; }
-#wrapper > *:not(#codebox, #help), #help > div > div { white-space:pre-wrap; word-break:break-all; }
+#wrapper > *:not(#codebox, #help), #help > div > div { white-space:pre-wrap; overflow-wrap:break-word; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
 #codebox { width:300px; resize:horizontal; }
 #codebox, pre { font-size:9pt; line-height:17px; white-space:pre; }
@@ -46,8 +46,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .scrollup { background:linear-gradient(rgba(127.5, 127.5, 127.5, .2), transparent) no-repeat top; background-size:100% 10px; }
 .scrolldown { background:linear-gradient(transparent, rgba(127.5, 127.5, 127.5, .2)) no-repeat bottom; background-size:100% 10px; }
 .scrollup.scrolldown { background:linear-gradient(rgba(127.5, 127.5, 127.5, .2), transparent) no-repeat top, linear-gradient(transparent, rgba(127.5, 127.5, 127.5, .2)) no-repeat bottom; background-size:100% 10px; }
-.msg form { display:inline-block; }
-.msg form { border:1px solid #aaa; border-radius:4px; padding:1px; }
+.msg form { display:inline-block; border:1px solid #aaa; border-radius:4px; padding:1px; }
 .msg input[type=text], .msg input[type=password] { width:100px; max-width:100%; }
 .msg input, .msg select { margin:1px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
@@ -63,6 +62,8 @@ del { text-decoration:line-through; opacity:.5; }
 pre { display:inline; }
 details { display:inline-block; vertical-align:top; margin-left:1em; }
 summary { cursor:default; margin-left:-1em; }
+i * { font-style:italic; }
+b * { font-weight:bold; }
 
 #sidebar { max-width:min(35vw, 250px); }
 #sidebar:empty { display:none; }
@@ -375,6 +376,42 @@ socket.once('start', (myname, rooms) => {
 			get('msgbox').focus();
 		}
 		get('leave').onclick = () => socket.emit('leave');
+		get('log').onclick = get('sidebar').onclick = e => {
+			if(e.target.type == 'button' || e.target.type == 'submit') {
+				if(e.target.type == 'submit') {
+					const form = e.target.closest('form');
+					if(!form) return;
+					msg = [e.target.value];
+					const inputs = [...form.querySelectorAll('input[type=text], input[type=password], select')];
+					for(const input of inputs) {
+						msg.push(input.nextSibling?.type == 'checkbox'? 'hash:'+input.value: input.value);
+						input.value = '';
+					}
+					msg = '/'+msg.join(' ');
+				} else msg = '/'+e.target.value;
+				if(iframe) {
+					console.log(myname+': '+msg);
+					iframe.contentWindow.hear(msg, myname, adminhash);
+				} else {
+					socket.emit('say', msg);
+				}
+				get('msgbox').focus();
+			} else if(e.target.type == 'checkbox') {
+				e.target.previousSibling.type = e.target.checked? 'text': 'password';
+			} else if(e.target.tagName == 'LABEL') {
+				e.target.nextElementSibling?.focus();
+			} else if(e.target.tagName == 'SUMMARY') {
+				setTimeout(scrolldown, 1);
+			}
+		}
+		get('log').onkeydown = get('sidebar').onkeydown = e => {
+			if(e.key != 'Enter') return;
+			e.preventDefault();
+			if(e.target.type == 'text' || e.target.type == 'password' || e.target.tagName == 'SELECT') {
+				e.target.closest('form')?.querySelector('input[type=submit]')?.click();
+			} e.target.click();
+		}
+		get('log').onsubmit = get('sidebar').onsubmit = e => e.preventDefault();
 		const gethtml = text => {
 			let html = '';
 			const arr = text.split(/\[\{(.*)\}\]/s);
@@ -427,42 +464,6 @@ socket.once('start', (myname, rooms) => {
 			div.classList.add('msg');
 			div.innerHTML = gethtml(msg);
 			get('arrow').before(div);
-			div.onsubmit = e => e.preventDefault();
-			div.onclick = e => {
-				if(e.target.type == 'button' || e.target.type == 'submit') {
-					if(e.target.type == 'submit') {
-						const form = e.target.closest('form');
-						if(!form) return;
-						msg = [e.target.value];
-						const inputs = [...form.querySelectorAll('input[type=text], input[type=password], select')];
-						for(const input of inputs) {
-							msg.push(input.nextSibling?.type == 'checkbox'? 'hash:'+input.value: input.value);
-							input.value = '';
-						}
-						msg = '/'+msg.join(' ');
-					} else msg = '/'+e.target.value;
-					if(iframe) {
-						console.log(myname+': '+msg);
-						iframe.contentWindow.hear(msg, myname, adminhash);
-					} else {
-						socket.emit('say', msg);
-					}
-					get('msgbox').focus();
-				} else if(e.target.type == 'checkbox') {
-					e.target.previousSibling.type = e.target.checked? 'text': 'password';
-				} else if(e.target.tagName == 'LABEL') {
-					e.target.nextElementSibling?.focus();
-				} else if(e.target.tagName == 'SUMMARY') {
-					setTimeout(scrolldown, 1);
-				}
-			}
-			div.onkeydown = e => {
-				if(e.key != 'Enter') return;
-				e.preventDefault();
-				if(e.target.type == 'text' || e.target.type == 'password' || e.target.tagName == 'SELECT') {
-					e.target.closest('form')?.querySelector('input[type=submit]')?.click();
-				} e.target.click();
-			}
 			scrolldown();
 			scrollmsg(div);
 			div.onscroll = () => scrollmsg(div);
