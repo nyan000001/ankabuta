@@ -495,6 +495,9 @@ socket.once('start', (myname, rooms) => {
 			e.preventDefault();
 			const msg = get('msgbox').value;
 			if(!msg) return;
+			if(msgindex < msghistory.length) {
+				msghistory.length = ++msgindex;
+			}
 			if(msghistory.at(-1) != msg) {
 				msghistory.push(msg);
 				msgindex++;

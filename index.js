@@ -1,9 +1,12 @@
 const app = require('express')();
 const http = require('http').createServer(app, { cookie:true });
 const io = require('socket.io')(http, { pingInterval:50000, pingTimeout:50000 });
+app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
 app.get('/NotoColorEmoji.woff2', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.woff2'));
 app.get('/NotoColorEmoji.ttf', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.ttf'));
+app.use((req, res) => res.redirect('/'));
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const client = new MongoClient(process.env.URI, { serverApi:{ version:ServerApiVersion.v1, strict:true, deprecationErrors:true } });
@@ -16,58 +19,53 @@ const crypto = require('crypto');
 const cookie = require('cookie');
 const users = {};
 const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
-const makecookie = async (req, res) => {
-	let ip = req.headers['x-forwarded-for'];
-	let uid;
-	let hash;
-	if(ip) {
-		const doc = await hashes.findOne({ ip:ip });
-		if(doc) {
-			users[doc._id] = { uid:doc.uid, ip:doc.ip, banneduntil:doc.banneduntil };
-			res.setHeader('Set-Cookie', cookie.serialize('uid', doc.uid, { maxAge:345600, sameSite:'strict', httpOnly:true }));
-			return;
-		}
-	}
-	if(req.headers.cookie && cookie.parse(req.headers.cookie).uid) {
-		uid = cookie.parse(req.headers.cookie).uid;
-		hash = makehash(uid);
-		const doc = await hashes.findOne({ _id:hash });
-		if(doc) {
-			users[hash] = { uid:doc.uid, ip:doc.ip, banneduntil:doc.banneduntil };
-			if(ip) {
-				users[hash].ip = ip;
-				hashes.updateOne({ _id:hash }, { $set:{ ip:ip } });
+let promise;
+io.engine.on('initial_headers', (headers, request) => {
+	promise = new Promise(async resolve => {
+		let ip = request.headers['x-forwarded-for'];
+		let uid;
+		let hash;
+		if(ip) {
+			const doc = await hashes.findOne({ ip:ip });
+			if(doc) {
+				users[doc._id] = { uid:doc.uid, ip:doc.ip, banneduntil:doc.banneduntil };
+				headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', doc.uid, { maxAge:345600, sameSite:'strict', httpOnly:true });
+				resolve();
+				return;
 			}
-			return;
 		}
-	}
-	let doc;
-	do {
-		uid = crypto.randomBytes(32).toString('base64');
-		hash = makehash(uid);
-		doc = await hashes.findOne({ _id:hash });
-	} while(doc);
-	res.setHeader('Set-Cookie', cookie.serialize('uid', uid, { maxAge:345600, sameSite:'strict', httpOnly:true }));
-	users[hash] = { uid:uid, banneduntil:0 };
-	if(ip) users[hash].ip = ip;
-	hashes.insertOne({ _id:hash, createdAt:new Date(), ...users[hash] });
-}
-app.use(async (req, res) => {
-	if(req.path != '/' && req.path != '/blank') {
-		res.redirect('/');
-	}
-	await makecookie(req, res);
-	if(req.path == '/blank') {
-		res.sendFile(__dirname + '/blank.html');
-	} else {
-		res.sendFile(__dirname + '/index.html');
-	}
+		if(request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
+			uid = cookie.parse(request.headers.cookie).uid;
+			hash = makehash(uid);
+			const doc = await hashes.findOne({ _id:hash });
+			if(doc) {
+				users[hash] = { uid:doc.uid, ip:doc.ip, banneduntil:doc.banneduntil };
+				if(ip) {
+					users[hash].ip = ip;
+					hashes.updateOne({ _id:hash }, { $set:{ ip:ip } });
+				}
+				resolve();
+				return;
+			}
+		}
+		let doc;
+		do {
+			uid = crypto.randomBytes(32).toString('base64');
+			hash = makehash(uid);
+			doc = await hashes.findOne({ _id:hash });
+		} while(doc);
+		headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:345600, sameSite:'strict', httpOnly:true });
+		users[hash] = { uid:uid, banneduntil:0 };
+		if(ip) users[hash].ip = ip;
+		hashes.insertOne({ _id:hash, createdAt:new Date(), ...users[hash] });
+		resolve();
+	});
 });
 const rooms = {};
 let lockeduntil = 0;
 let currentregex;
 io.on('connection', async socket => {
-	//if(!socket.handshake.headers.cookie) return;
+	await promise;
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 	const user = users[socket.hash];
 	if(!user.sockets) {
@@ -79,7 +77,7 @@ io.on('connection', async socket => {
 		user.spam.unshift(Date.now());
 		if(user.spam.length <= 20) return;
 		user.spam.pop();
-		if(user.spam[0] - user.spam[20] > 500) return;
+		if(user.spam[0] - user.spam[19] > 500) return;
 		sockets = await io.in(socket.hash).fetchSockets();
 		for(const socket2 of sockets) {
 			io.to('admin').emit('log', { room:socket2.room, msg:'Autokicked '+socket2.name });
@@ -214,7 +212,7 @@ io.on('connection', async socket => {
 				socket2.emit('leaveroom', 'Admin '+msg2+'!');
 				socket2.leave(socket.room);
 				delete socket2.room;
-				for(const listener of ['say', 'leave', 'disconnect']) {
+				for(const listener of ['say', 'leave']) {
 					socket2.removeAllListeners(listener);
 				}
 			}
@@ -224,13 +222,13 @@ io.on('connection', async socket => {
 			} else {
 				io.emit('rmvroom', socket.room);
 			}
-			for(const listener of ['say', 'sendOnly', 'sendAll', 'kick', 'lock', 'leave', 'disconnect']) {
+			for(const listener of ['say', 'sendOnly', 'sendAll', 'kick', 'lock', 'leave']) {
 				socket.removeAllListeners(listener);
 			}
 		} else {
 			log('leave', false);
 			rooms[socket.room].admin.emit('leave', msg2, socket.name, socket.hash);
-			for(const listener of ['say', 'leave', 'disconnect']) {
+			for(const listener of ['say', 'leave']) {
 				socket.removeAllListeners(listener);
 			}
 		}
@@ -403,13 +401,15 @@ io.on('connection', async socket => {
 			});
 		}
 		socket.on('leave', () => leave(socket, '', 'has left'));
-		socket.on('disconnect', () => {
-			leave(socket, '', 'has disconnected')
-			user.sockets--;
-			if(!user.sockets) {
-				delete users[socket.hash];
-			}
-		});
+	});
+	socket.on('disconnect', () => {
+		if(socket.room) {
+			leave(socket, '', 'has disconnected');
+		}
+		user.sockets--;
+		if(!user.sockets) {
+			delete users[socket.hash];
+		}
 	});
 });
 http.listen(process.env.PORT ?? 3000);
