@@ -107,6 +107,7 @@ const login = password => {
 socket.once('disconnect', () => {
 	get('bottom').className = 'disconnected';
 	get('bottom').textContent = 'Connection lost!';
+	socket.disconnect();
 });
 socket.once('log', (records, regex) => {
 	document.body.classList.remove('blank');

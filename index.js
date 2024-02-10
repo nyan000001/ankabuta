@@ -1,12 +1,9 @@
 const app = require('express')();
 const http = require('http').createServer(app, { cookie:true });
 const io = require('socket.io')(http, { pingInterval:50000, pingTimeout:50000 });
-app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
-app.get('/blank', (req, res) => res.sendFile(__dirname + '/blank.html'));
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
 app.get('/NotoColorEmoji.woff2', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.woff2'));
 app.get('/NotoColorEmoji.ttf', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.ttf'));
-app.use((req, res) => res.redirect('/'));
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const client = new MongoClient(process.env.URI, { serverApi:{ version:ServerApiVersion.v1, strict:true, deprecationErrors:true } });
@@ -19,59 +16,71 @@ const crypto = require('crypto');
 const cookie = require('cookie');
 const users = {};
 const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
-let promise;
-io.engine.on('initial_headers', (headers, request) => {
-	promise = new Promise(async resolve => {
-		let ip = request.headers['x-forwarded-for'];
-		let uid;
-		let hash;
-		if(ip) {
-			const doc = await hashes.findOne({ ip:ip });
-			if(doc) {
-				users[doc._id] = { uid:doc.uid, ip:doc.ip, banneduntil:doc.banneduntil };
-				headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', doc.uid, { maxAge:345600, sameSite:'strict', httpOnly:true });
-				resolve();
-				return;
-			}
+const makeuser = (hash, uid, ip, banneduntil) => {
+	if(users[hash]) {
+		users[hash].sockets++;
+	} else {
+		users[hash] = { uid:uid, banneduntil:banneduntil, sockets:1, spam:[] };
+	}
+	if(ip) {
+		users[hash].ip = ip;
+	}
+}
+const makecookie = async (req, res) => {
+	let ip = req.headers['x-forwarded-for'];
+	let uid;
+	let hash;
+	if(ip) {
+		const doc = await hashes.findOne({ ip:ip });
+		if(doc) {
+			makeuser(doc._id, doc.uid, doc.ip, doc.banneduntil);
+			res.setHeader('Set-Cookie', cookie.serialize('uid', doc.uid, { maxAge:345600, sameSite:'strict', httpOnly:true }));
+			return;
 		}
-		if(request.headers.cookie && cookie.parse(request.headers.cookie).uid) {
-			uid = cookie.parse(request.headers.cookie).uid;
-			hash = makehash(uid);
-			const doc = await hashes.findOne({ _id:hash });
-			if(doc) {
-				users[hash] = { uid:doc.uid, ip:doc.ip, banneduntil:doc.banneduntil };
-				if(ip) {
-					users[hash].ip = ip;
-					hashes.updateOne({ _id:hash }, { $set:{ ip:ip } });
-				}
-				resolve();
-				return;
+	}
+	if(req.headers.cookie && cookie.parse(req.headers.cookie).uid) {
+		uid = cookie.parse(req.headers.cookie).uid;
+		hash = makehash(uid);
+		const doc = await hashes.findOne({ _id:hash });
+		if(doc) {
+			makeuser(hash, doc.uid, doc.ip, doc.banneduntil);
+			if(ip) {
+				users[hash].ip = ip;
+				hashes.updateOne({ _id:hash }, { $set:{ ip:ip } });
 			}
+			return;
 		}
-		let doc;
-		do {
-			uid = crypto.randomBytes(32).toString('base64');
-			hash = makehash(uid);
-			doc = await hashes.findOne({ _id:hash });
-		} while(doc);
-		headers['set-cookie'] = request.headers.cookie = cookie.serialize('uid', uid, { maxAge:345600, sameSite:'strict', httpOnly:true });
-		users[hash] = { uid:uid, banneduntil:0 };
-		if(ip) users[hash].ip = ip;
-		hashes.insertOne({ _id:hash, createdAt:new Date(), ...users[hash] });
-		resolve();
-	});
+	}
+	let doc;
+	do {
+		uid = crypto.randomBytes(32).toString('base64');
+		hash = makehash(uid);
+		doc = await hashes.findOne({ _id:hash });
+	} while(doc);
+	res.setHeader('Set-Cookie', cookie.serialize('uid', uid, { maxAge:345600, sameSite:'strict', httpOnly:true }));
+	makeuser(hash, uid, ip, 0);
+	const obj = { _id:hash, createdAt:new Date(), uid:uid, banneduntil:0 };
+	if(ip) obj.ip = ip;
+	hashes.insertOne(obj);
+}
+app.use(async (req, res) => {
+	if(req.path != '/' && req.path != '/blank') {
+		res.redirect('/');
+		return;
+	}
+	await makecookie(req, res);
+	if(req.path == '/blank') {
+		res.sendFile(__dirname + '/blank.html');
+	} else {
+		res.sendFile(__dirname + '/index.html');
+	}
 });
 const rooms = {};
 let lockeduntil = 0;
 let currentregex;
-io.on('connection', async socket => {
-	await promise;
+io.on('connection', socket => {
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 	const user = users[socket.hash];
-	if(!user.sockets) {
-		user.sockets = 1;
-		user.spam = [];
-	} else user.sockets++;
 	socket.onAny(async cmd => {
 		if(cmd == 'sendOnly' || cmd == 'sendAll') return;
 		user.spam.unshift(Date.now());
