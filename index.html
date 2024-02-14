@@ -749,7 +749,6 @@ socket.once('start', (myname, rooms) => {
 				codeindex++;
 			}
 			if(iframe.src) {
-				localStorage.setItem('code', runningcode);
 				change(false);
 				socket.emit('sendAll', false);
 			}
@@ -882,12 +881,6 @@ socket.once('start', (myname, rooms) => {
 			}
 		}
 		get('run').click();
-		const pastcode = localStorage.getItem('code');
-		if(pastcode) {
-			lastcode = get('codebox').value = pastcode;
-			codehistory.push(pastcode);
-			codeindex++;
-		}
 		get('codebox').focus();
 	}
 	socket.once('joinroom', join);
