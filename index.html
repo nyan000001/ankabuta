@@ -402,7 +402,7 @@ socket.once('start', (myname, rooms) => {
 				e.target.previousSibling.type = e.target.checked? 'text': 'password';
 			} else if(e.target.tagName == 'LABEL') {
 				e.target.nextElementSibling?.focus();
-			} else if(e.target.tagName == 'SUMMARY') {
+			} else if(e.target.closest('DETAILS')) {
 				setTimeout(scrolldown, 1);
 			}
 		}
