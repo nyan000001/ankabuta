@@ -155,11 +155,21 @@ io.on('connection', socket => {
 		});
 	});
 	const getallsockets = () => [...io.sockets.sockets.values()];
-	const getname = () => {
+	const getname = name => {
+		const sockets = getallsockets().filter(socket2 => socket2.name && socket2.room == socket.room);
+		if(sockets.some(socket2 => socket2.name == socket.name)) {
+			let i = 0;
+			do i++;
+			while(sockets.some(socket2 => socket2.name == name+i));
+			name += i;
+		}
+		socket.name = name;
+		socket.join(name);
+	}
+	const getrandomname = () => {
 		const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
 		const sockets = getallsockets();
 		let name;
-		let taken = true;
 		const issimilar = (name1, name2) => {
 			if(!name2) return false;
 			if(name1 == name2 || name1.slice(0, 3) == name2.slice(0, 3)) return true;
@@ -174,13 +184,13 @@ io.on('connection', socket => {
 			name = rand([...'bfhklmnpstwxy', 'ch', 'fl', 'ny', 'sh']) + rand('aeiou');
 			if(Math.random() < .9) {
 				name = rand([
-					name + rand(['bbo', 'ffy', 'ggo', 'll', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
-					name + rand([...'mnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou'),
-					name + rand([rand('dlnrstw') + rand('aeiou')], .1) + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
-					rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], .2)
+					name + rand(['bbo', 'ffy', 'ggo', 'll', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'pper', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
+					name + rand([...'bmnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou')
 				]);
 			} else {
 				name = rand([
+					rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], .2),
+					name + rand('dlnrstw') + rand('aeiou') + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
 					rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + 'tl',
 					rand('bkw') + 'a' + rand('hlz') + 'oo',
 					rand([...'bhkltwy', 'ch', 'xi']) + 'ao',
@@ -190,21 +200,14 @@ io.on('connection', socket => {
 			}
 			if(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[tw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|pet|s[aeiou]+x|sh[aeiou]+[gt]|w.nk|[jy]i|nye|.w[ei]|wu|huo.+tl/.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
-			if(sockets.every(socket2 => socket2 == socket || !issimilar(name, socket2.name))) {
-				taken = false;
-				break;
-			}
+			if(sockets.every(socket2 => !issimilar(name, socket2.name))) break;
 		}
-		if(taken) {
-			let i;
-			do i = ~~(Math.random()*1000);
-			while(sockets.some(socket2 => socket2 != socket && socket2.name == name+i));
-			name += i;
-		}
-		socket.name = name;
-		socket.join(name);
+		getname(name);
 	}
-	getname();
+	if(socket.handshake.headers.referer.includes('blank')) {
+		getrandomname();
+		return;
+	}
 	if(lockeduntil > Date.now() || user.banneduntil > Date.now()) return;
 	socket.emit('start', socket.name, Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == undefined && !rooms[room].banned[socket.hash]));
 	const leave = async (socket, msg1, msg2) => {
@@ -243,6 +246,7 @@ io.on('connection', socket => {
 		}
 		socket.leave(socket.room);
 		delete socket.room;
+		delete socket.name;
 	}
 	socket.on('join', async (room, name) => {
 		if(!validstring(room)) return;
@@ -262,17 +266,10 @@ io.on('connection', socket => {
 		}
 		socket.leave(socket.name);
 		if(validstring(name)) {
-			name = name.trim().slice(0, 30).replace(/\s/g, '_');
-			let i = '';
-			const sockets = getallsockets().filter(socket2 => socket2.room == room);
-			while(sockets.some(socket2 => socket2.name == name+i)) {
-				i = (i || 1) + 1;
-			}
-			socket.name = name+i;
-			socket.join(name+i);
+			getname(name.trim().slice(0, 30).replace(/\s/g, '_'));
 		} else {
 			name = undefined;
-			getname();
+			getrandomname();
 		}
 		socket.room = room;
 		if(rooms[socket.room]) {
