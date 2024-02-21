@@ -8,19 +8,21 @@
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 * { box-sizing:border-box; }
 html, body, #top { height:100%; }
-body { font-size:7pt; font-family:'Noto Color Emoji', sans-serif; padding:0; margin:0; line-height:13px; }
+body { font-size:8pt; font-family:'Noto Color Emoji', sans-serif; padding:0; margin:0; line-height:13px; }
 body.blank * { display:none; }
 #top { display:flex; }
 #top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
 #top > div.closed { opacity:.5; }
 #top > div.closed:hover { opacity:1; }
-#top input, #top select { pointer-events:none; font-size:7pt; }
+#top input, #top select { pointer-events:none; font-size:8pt; }
 #top input[type=text], #top input[type=password] { width:100px; max-width:100%; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
 h1.room, p { cursor:pointer; }
 p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-.highlight { color:#fff; background:#f00; text-shadow:1px 1px 1px #000, -1px 1px 1px #000, -1px -1px 1px #000, 1px -1px 1px #000; }
+del { text-decoration:line-through; opacity:.8; }
+p:hover del { text-decoration:none; }
+.highlight { color:#fff; background:#f00; text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
 #bottom form { display:inline-block; margin:8px; }
 #bottom input[type=number] { width:40px; }
@@ -37,6 +39,9 @@ input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 	::-webkit-scrollbar-track { background:#222; }
 	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
 	::-webkit-scrollbar-corner { background:#333; }
+}
+@media (prefers-color-scheme:light) {
+	.color { text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
 }
 </style>
 </head>
@@ -165,12 +170,12 @@ socket.once('log', (records, regex) => {
 							}).
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details open><summary>$1</summary>$2</details>').
 							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
-							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span style="color:#$1">$2</span>').
-							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span style="color:hsl($1, 100%, 50%)">$2</span>').
+							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span class="color" style="color:#$1">$2</span>').
+							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span class="color" style="color:hsl($1, 100%, 50%)">$2</span>').
 							replace(/\[\*(.*?)\*\]/gs, '<b>$1</b>').
 							replace(/\[\/(.*?)\/\]/gs, '<i>$1</i>').
 							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
-							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
+							replace(/\[-(.*?)-\]/gs, '<del>$1</del>').
 							replace(/\[&lt;(.*?)&gt;\]/gs, '$1').replace(/\[&gt;(.*?)&lt;\]/gs, '$1');
 					} while(temp != text);
 					html += text;
