@@ -19,6 +19,7 @@ body.blank * { display:none; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
 h1.room, p { cursor:pointer; }
 p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; }
+p:hover:before { content:attr(data-time); background:#ccc; padding:2px; margin-right:5px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 del { text-decoration:line-through; opacity:.8; }
 p:hover del { text-decoration:none; }
@@ -30,6 +31,7 @@ input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 .disconnected { font-size:12pt; margin-bottom:10px; }
 @media (prefers-color-scheme:dark) {
 	body, h1, input, select { background:#000; color:#fff; }
+	p:hover:before { background:#333; }
 	input, select { border:1px solid #fff; }
 	input[type=submit] { background:#222; }
 	input:focus, select:focus { outline-color:#ccc; }
@@ -182,6 +184,7 @@ socket.once('log', (records, regex) => {
 				}
 			}
 			p.innerHTML = html;
+			p.dataset.time = new Date(record.time).toLocaleTimeString();
 			if(!room) room = '(not in a room)';
 			if(!roomdivs[room]) addroom(room);
 			roomdivs[room].append(p);

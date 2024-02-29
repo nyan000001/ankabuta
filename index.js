@@ -20,7 +20,7 @@ const makeuser = (hash, uid, ip, banneduntil) => {
 	if(users[hash]) {
 		users[hash].sockets++;
 	} else {
-		users[hash] = { uid:uid, banneduntil:banneduntil, sockets:1, spam:[] };
+		users[hash] = { uid, banneduntil, sockets:1, spam:[] };
 	}
 	if(ip) {
 		users[hash].ip = ip;
@@ -31,7 +31,7 @@ const makecookie = async (req, res) => {
 	let uid;
 	let hash;
 	if(ip) {
-		const doc = await hashes.findOne({ ip:ip });
+		const doc = await hashes.findOne({ ip });
 		if(doc) {
 			makeuser(doc._id, doc.uid, doc.ip, doc.banneduntil);
 			res.setHeader('Set-Cookie', cookie.serialize('uid', doc.uid, { maxAge:345600, sameSite:'strict', httpOnly:true }));
@@ -46,7 +46,7 @@ const makecookie = async (req, res) => {
 			makeuser(hash, doc.uid, doc.ip, doc.banneduntil);
 			if(ip) {
 				users[hash].ip = ip;
-				hashes.updateOne({ _id:hash }, { $set:{ ip:ip } });
+				hashes.updateOne({ _id:hash }, { $set:{ ip } });
 			}
 			return;
 		}
@@ -59,7 +59,7 @@ const makecookie = async (req, res) => {
 	} while(doc);
 	res.setHeader('Set-Cookie', cookie.serialize('uid', uid, { maxAge:345600, sameSite:'strict', httpOnly:true }));
 	makeuser(hash, uid, ip, 0);
-	const obj = { _id:hash, createdAt:new Date(), uid:uid, banneduntil:0 };
+	const obj = { _id:hash, createdAt:new Date(), uid, banneduntil:0 };
 	if(ip) obj.ip = ip;
 	hashes.insertOne(obj);
 }
@@ -98,8 +98,8 @@ io.on('connection', socket => {
 	const validstring = string => string && typeof string == 'string';
 	const validnumber = num => num >= 0;
 	const log = (cmd, ...arr) => {
-		io.to('admin').emit('log', { room:socket.room, name:socket.name, hash:socket.hash, cmd:cmd, arr:arr });
-		logs.insertOne({ createdAt:new Date(), ip:user.ip, room:socket.room, name:socket.name, hash:socket.hash, cmd:cmd, arr:arr });
+		io.to('admin').emit('log', { room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
+		logs.insertOne({ createdAt:new Date(), ip:user.ip, room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
 	}
 	socket.on('LOGIN', async password => {
 		log('LOGIN', password);
@@ -108,8 +108,12 @@ io.on('connection', socket => {
 			return;
 		}
 		socket.removeAllListeners('LOGIN');
-		const records = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) } }).toArray();
-		socket.emit('log', records.map(x => ({ room:x.room, name:x.name, hash:x.hash, cmd:x.cmd, arr:x.arr })), currentregex);
+		const records = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) } },  { _id:0, createdAt:1, room:1, name:1, hash:1, cmd:1, arr:1 }).toArray();
+		for(const i in records) {
+			records[i].time = Date.parse(records[i].createdAt);
+			delete records[i].createdAt;
+		}
+		socket.emit('log', records, currentregex);
 		socket.join('admin');
 		socket.on('BAN', async (hash, mins) => {
 			log('BAN', hash, mins);
@@ -252,7 +256,7 @@ io.on('connection', socket => {
 		if(!validstring(room)) return;
 		room = room.trim().replace(/^#*/, '#').slice(0, 30).replace(/\s/g, '_');
 		if(currentregex && new RegExp(currentregex).test(room)) {
-			io.to('admin').emit('log', { room:room, msg:'Kicked '+socket.name });
+			io.to('admin').emit('log', { room, msg:'Kicked '+socket.name });
 			socket.disconnect();
 			return;
 		}
