@@ -89,7 +89,7 @@ io.on('connection', socket => {
 		if(user.spam[0] - user.spam[19] > 500) return;
 		sockets = await io.in(socket.hash).fetchSockets();
 		for(const socket2 of sockets) {
-			io.to('admin').emit('log', { room:socket2.room, msg:'Autokicked '+socket2.name });
+			io.to('admin').emit('log', { time:Date.now(), room:socket2.room, msg:'Autokicked '+socket2.name });
 			socket2.disconnect();
 		}
 		hashes.updateOne({ _id:socket.hash }, { $set:{ banneduntil:Date.now() + 60000 } });
@@ -98,13 +98,13 @@ io.on('connection', socket => {
 	const validstring = string => string && typeof string == 'string';
 	const validnumber = num => num >= 0;
 	const log = (cmd, ...arr) => {
-		io.to('admin').emit('log', { room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
+		io.to('admin').emit('log', { time:Date.now(), room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
 		logs.insertOne({ createdAt:new Date(), ip:user.ip, room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
 	}
 	socket.on('LOGIN', async password => {
 		log('LOGIN', password);
 		if(password != process.env.PASSWORD) {
-			io.to('admin').emit('log', { room:socket.room, msg:'Invalid password' });
+			io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Invalid password' });
 			return;
 		}
 		socket.removeAllListeners('LOGIN');
@@ -119,12 +119,12 @@ io.on('connection', socket => {
 			log('BAN', hash, mins);
 			if(!validstring(hash)) return;
 			if(!users[hash]) {
-				io.to('admin').emit('log', { room:socket.room, msg:'Hash not found' });
+				io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Hash not found' });
 				return;
 			}
 			sockets = await io.in(hash).fetchSockets();
 			for(const socket2 of sockets) {
-				io.to('admin').emit('log', { room:socket.room, msg:'Kicked '+socket2.name });
+				io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Kicked '+socket2.name });
 				socket2.disconnect();
 			}
 			if(validnumber(mins)) {
@@ -134,7 +134,7 @@ io.on('connection', socket => {
 		socket.on('LOCK', mins => {
 			log('LOCK', mins);
 			if(validnumber(mins)) {
-				io.to('admin').emit('log', { room:socket.room, msg:'Invalid time' });
+				io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Invalid time' });
 				return;
 			}
 			lockeduntil = Date.now() + mins * 60000;
@@ -144,15 +144,15 @@ io.on('connection', socket => {
 			try {
 				new RegExp(regex);
 			} catch(error) {
-				io.to('admin').emit('log', { room:socket.room, msg:error });
+				io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:error });
 				return;
 			}
 			currentregex = regex;
 			regex = new RegExp(regex);
-			io.to('admin').emit('log', { room:socket.room, regex:currentregex });
+			io.to('admin').emit('log', { time:Date.now(), room:socket.room, regex:currentregex });
 			for(const room in rooms) {
 				if(regex.test(room)) {
-					io.to('admin').emit('log', { room:socket.room, msg:'Kicked '+rooms[room].admin.name });
+					io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Kicked '+rooms[room].admin.name });
 					rooms[room].admin.disconnect();
 				}
 			}
@@ -256,7 +256,7 @@ io.on('connection', socket => {
 		if(!validstring(room)) return;
 		room = room.trim().replace(/^#*/, '#').slice(0, 30).replace(/\s/g, '_');
 		if(currentregex && new RegExp(currentregex).test(room)) {
-			io.to('admin').emit('log', { room, msg:'Kicked '+socket.name });
+			io.to('admin').emit('log', { time:Date.now(), room, msg:'Kicked '+socket.name });
 			socket.disconnect();
 			return;
 		}
@@ -346,7 +346,7 @@ io.on('connection', socket => {
 					socket.emit('notify', 'Name not found');
 					return;
 				}
-				io.to('admin').emit('log', { room:socket.room, msg:'Kicked '+socket2.name });
+				io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Kicked '+socket2.name });
 				msg = validstring(msg)? ' '+msg: '!';
 				leave(socket2, 'You\'ve been kicked'+msg, 'has been kicked'+msg);
 			});
@@ -360,7 +360,7 @@ io.on('connection', socket => {
 				}
 				msg = validstring(msg)? ' '+msg: '!';
 				for(const socket2 of sockets) {
-					io.to('admin').emit('log', { room:socket.room, msg:'Kicked '+socket2.name });
+					io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Kicked '+socket2.name });
 					await leave(socket2, 'You\'ve been banned from '+socket.room+msg, 'has been banned'+msg);
 				}
 				if(!validnumber(mins)) return;
