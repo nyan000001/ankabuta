@@ -17,13 +17,14 @@ body.blank * { display:none; }
 #top input, #top select { pointer-events:none; font-size:8pt; }
 #top input[type=text], #top input[type=password] { width:100px; max-width:100%; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
-h1.room, p { cursor:pointer; }
-p { white-space:pre-wrap; padding:3px; margin:0; word-wrap:break-word; }
-p:hover:before { content:attr(data-time); background:#ccc; padding:2px; margin-right:5px; }
+.clickable { cursor:pointer; }
+p { white-space:pre-wrap; padding:3px; margin:0; overflow-wrap:break-word; }
+p:hover::before { content:attr(data-time); background:#ccc; padding:2px; margin-right:5px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 del { text-decoration:line-through; opacity:.8; }
 p:hover del { text-decoration:none; }
 .highlight { color:#fff; background:#f00; text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
+.highlight:hover::before { background:#600; }
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
 #bottom form { display:inline-block; margin:8px; }
 #bottom input[type=number] { width:40px; }
@@ -129,7 +130,7 @@ socket.once('log', (records, regex) => {
 		get('top').append(div);
 		roomdivs[room] = div;
 		if(room != '(not in a room)') {
-			h1.className = 'room';
+			h1.className = 'clickable';
 			if(get('regex').value && new RegExp(get('regex').value).test(room)) {
 				h1.classList.add('highlight');
 			}
@@ -141,7 +142,7 @@ socket.once('log', (records, regex) => {
 		const isboolean = typeof arr[0] == 'boolean';
 		[room, name, hash, cmd, ...arr] = [room, name, hash, cmd, ...arr].
 			map(x => x? JSON.stringify(x).replace(/(?<!\\)"/g, '').replace(/\\"/g, '"'): '');
-		const addtext = (text, bool) => {
+		const addtext = text => {
 			const p = document.createElement('p');
 			let html = '';
 			const arr = text.split(/\[\{(.*)\}\]/s);
@@ -188,8 +189,8 @@ socket.once('log', (records, regex) => {
 			if(!room) room = '(not in a room)';
 			if(!roomdivs[room]) addroom(room);
 			roomdivs[room].append(p);
-			if(bool) {
-				p.className = hash;
+			if(hash) {
+				p.classList.add(hash, 'clickable');
 				if(hash == get('hash').value) {
 					p.classList.add('highlight');
 				}
@@ -209,13 +210,13 @@ socket.once('log', (records, regex) => {
 				roomdivs[room].classList.add('closed');
 			}
 		} else if(cmd == 'join') {
-			addtext(boldname+' has joined', true);
-			if(arr[0]) roomdivs[room].classList.remove('closed');
+			addtext(boldname+' has joined');
+			roomdivs[room].classList.remove('closed');
 		} else if(cmd == 'leave') {
-			addtext(boldname+' has left', true);
+			addtext(boldname+' has left');
 			if(arr[0]) roomdivs[room].classList.add('closed');
 		} else if(cmd == 'say') {
-			addtext(boldname+': '+arr[0], true);
+			addtext(boldname+': '+arr[0]);
 		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
 			let verb = 'says to';
 			if(isboolean) verb = ['removes from', 'adds to'][arr.shift()? 1: 0];
@@ -231,9 +232,9 @@ socket.once('log', (records, regex) => {
 			if(arr[2]) {
 				text += '\n'+boldname+' '+verb+' '+excluded+': '+arr[2];
 			}
-			addtext(text, true);
+			addtext(text);
 		} else {
-			addtext(boldname+' '+cmd+' '+arr.join(' '), true);
+			addtext(boldname+' '+cmd+' '+arr.join(' '));
 		}
 	}
 	for(const record of records) addrecord(record);

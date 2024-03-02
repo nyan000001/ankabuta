@@ -16,7 +16,7 @@ const crypto = require('crypto');
 const cookie = require('cookie');
 const users = {};
 const makehash = uid => crypto.createHash('sha256').update(uid).digest('base64');
-const makeuser = (hash, uid, ip, banneduntil) => {
+const makeuser = (hash, uid, ip, banneduntil = 0) => {
 	if(users[hash]) {
 		users[hash].sockets++;
 	} else {
@@ -79,8 +79,17 @@ const rooms = {};
 let lockeduntil = 0;
 let currentregex;
 io.on('connection', socket => {
+	if(!socket.handshake.headers.cookie) return;
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 	const user = users[socket.hash];
+	const logsys = (msg, room = socket.room) => {
+		io.to('admin').emit('log', { time:Date.now(), room, msg });
+		logs.insertOne({ createdAt:new Date(), room, msg });
+	}
+	const loguser = (cmd, ...arr) => {
+		io.to('admin').emit('log', { time:Date.now(), room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
+		logs.insertOne({ createdAt:new Date(), ip:user.ip, room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
+	}
 	socket.onAny(async cmd => {
 		if(cmd == 'sendOnly' || cmd == 'sendAll') return;
 		user.spam.unshift(Date.now());
@@ -89,7 +98,7 @@ io.on('connection', socket => {
 		if(user.spam[0] - user.spam[19] > 500) return;
 		sockets = await io.in(socket.hash).fetchSockets();
 		for(const socket2 of sockets) {
-			io.to('admin').emit('log', { time:Date.now(), room:socket2.room, msg:'Autokicked '+socket2.name });
+			logsys('Autokicked '+socket2.name, socket2.room);
 			socket2.disconnect();
 		}
 		hashes.updateOne({ _id:socket.hash }, { $set:{ banneduntil:Date.now() + 60000 } });
@@ -97,18 +106,14 @@ io.on('connection', socket => {
 	socket.join(socket.hash);
 	const validstring = string => string && typeof string == 'string';
 	const validnumber = num => num >= 0;
-	const log = (cmd, ...arr) => {
-		io.to('admin').emit('log', { time:Date.now(), room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
-		logs.insertOne({ createdAt:new Date(), ip:user.ip, room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
-	}
 	socket.on('LOGIN', async password => {
-		log('LOGIN', password);
+		loguser('LOGIN', password);
 		if(password != process.env.PASSWORD) {
-			io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Invalid password' });
+			logsys('Invalid password');
 			return;
 		}
 		socket.removeAllListeners('LOGIN');
-		const records = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) } },  { _id:0, createdAt:1, room:1, name:1, hash:1, cmd:1, arr:1 }).toArray();
+		const records = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) } },  { _id:0, createdAt:1, room:1, name:1, hash:1, cmd:1, arr:1, msg:1 }).toArray();
 		for(const i in records) {
 			records[i].time = Date.parse(records[i].createdAt);
 			delete records[i].createdAt;
@@ -116,15 +121,14 @@ io.on('connection', socket => {
 		socket.emit('log', records, currentregex);
 		socket.join('admin');
 		socket.on('BAN', async (hash, mins) => {
-			log('BAN', hash, mins);
-			if(!validstring(hash)) return;
-			if(!users[hash]) {
-				io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Hash not found' });
+			loguser('BAN', hash, mins);
+			if(!validstring(hash)) {
+				logsys('Invalid hash');
 				return;
 			}
 			sockets = await io.in(hash).fetchSockets();
 			for(const socket2 of sockets) {
-				io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Kicked '+socket2.name });
+				logsys('Kicked '+socket2.name);
 				socket2.disconnect();
 			}
 			if(validnumber(mins)) {
@@ -132,19 +136,19 @@ io.on('connection', socket => {
 			}
 		});
 		socket.on('LOCK', mins => {
-			log('LOCK', mins);
+			loguser('LOCK', mins);
 			if(validnumber(mins)) {
-				io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Invalid time' });
+				logsys('Invalid time');
 				return;
 			}
 			lockeduntil = Date.now() + mins * 60000;
 		});
 		socket.on('REGEX', regex => {
-			log('REGEX', regex);
+			loguser('REGEX', regex);
 			try {
 				new RegExp(regex);
 			} catch(error) {
-				io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:error });
+				logsys(error);
 				return;
 			}
 			currentregex = regex;
@@ -152,7 +156,7 @@ io.on('connection', socket => {
 			io.to('admin').emit('log', { time:Date.now(), room:socket.room, regex:currentregex });
 			for(const room in rooms) {
 				if(regex.test(room)) {
-					io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Kicked '+rooms[room].admin.name });
+					logsys('Kicked '+room);
 					rooms[room].admin.disconnect();
 				}
 			}
@@ -217,7 +221,7 @@ io.on('connection', socket => {
 	const leave = async (socket, msg1, msg2) => {
 		socket.emit('leaveroom', msg1);
 		if(rooms[socket.room].admin == socket) {
-			log('leave', true);
+			loguser('leave', true);
 			clearTimeout(rooms[socket.room].timeout);
 			for(const i in rooms[socket.room].banned) {
 				clearTimeout(rooms[socket.room].banned[i]);
@@ -242,7 +246,7 @@ io.on('connection', socket => {
 				socket.removeAllListeners(listener);
 			}
 		} else {
-			log('leave', false);
+			loguser('leave');
 			rooms[socket.room].admin.emit('leave', msg2, socket.name, socket.hash);
 			for(const listener of ['say', 'leave']) {
 				socket.removeAllListeners(listener);
@@ -250,16 +254,12 @@ io.on('connection', socket => {
 		}
 		socket.leave(socket.room);
 		delete socket.room;
+		socket.leave(socket.name);
 		delete socket.name;
 	}
 	socket.on('join', async (room, name) => {
 		if(!validstring(room)) return;
 		room = room.trim().replace(/^#*/, '#').slice(0, 30).replace(/\s/g, '_');
-		if(currentregex && new RegExp(currentregex).test(room)) {
-			io.to('admin').emit('log', { time:Date.now(), room, msg:'Kicked '+socket.name });
-			socket.disconnect();
-			return;
-		}
 		if(socket.room) {
 			if(socket.room == room) return;
 			await leave(socket, '', 'has left');
@@ -268,7 +268,6 @@ io.on('connection', socket => {
 			socket.emit('notify', room+' is unavailable');
 			return;
 		}
-		socket.leave(socket.name);
 		if(validstring(name)) {
 			getname(name.trim().slice(0, 30).replace(/\s/g, '_'));
 		} else {
@@ -276,20 +275,24 @@ io.on('connection', socket => {
 			getrandomname();
 		}
 		socket.room = room;
+		loguser('join');
 		if(rooms[socket.room]) {
-			log('join', false);
 			socket.join(socket.room);
 			socket.emit('joinroom', socket.room, socket.name);
 			rooms[socket.room].admin.emit('join', socket.name, socket.hash, !!name);
 			socket.on('say', msg => {
 				if(!validstring(msg)) return;
 				msg = msg.slice(0, 5000).replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));
-				log('say', msg);
+				loguser('say', msg);
 				rooms[socket.room].admin.emit('hear', msg, socket.name, socket.hash);
 			});
 		} else {
-			log('join', true);
 			rooms[socket.room] = { 'admin':socket, banned:{} };
+			if(currentregex && new RegExp(currentregex).test(room)) {
+				logsys('Autokicked');
+				socket.disconnect();
+				return;
+			}
 			if(!socket.room.includes('hidden')) {
 				socket.broadcast.emit('addroom', socket.room);
 			}
@@ -315,7 +318,7 @@ io.on('connection', socket => {
 				return true;
 			}
 			socket.on('sendOnly', (...arr) => {
-				log('sendOnly', ...arr);
+				loguser('sendOnly', ...arr);
 				if(typeof arr[0] == 'boolean') {
 					const [add, msg1, names, msg2] = arr;
 					send(msg1, names, msg2, true, add);
@@ -325,7 +328,7 @@ io.on('connection', socket => {
 				}
 			});
 			socket.on('sendAll', async (...arr) => {
-				log('sendAll', ...arr);
+				loguser('sendAll', ...arr);
 				if(typeof arr[0] == 'boolean') {
 					const [add, msg1, names, msg2] = arr;
 					if(!await send(msg1, names, msg2, false, add)) {
@@ -339,29 +342,35 @@ io.on('connection', socket => {
 				}
 			});
 			socket.on('kick', async (name, msg) => {
-				log('kick', name, msg);
-				if(!validstring(name) || socket.name == name) return;
+				loguser('kick', name, msg);
+				if(socket.name == name) return;
+				if(!validstring(name)) {
+					socket.emit('notify', 'Invalid name');
+					return;
+				}
 				const socket2 = (await io.in(socket.room).fetchSockets()).find(socket2 => socket2.name == name);
 				if(!socket2) {
 					socket.emit('notify', 'Name not found');
 					return;
 				}
-				io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Kicked '+socket2.name });
+				logsys('Kicked '+socket2.name);
 				msg = validstring(msg)? ' '+msg: '!';
 				leave(socket2, 'You\'ve been kicked'+msg, 'has been kicked'+msg);
 			});
 			socket.on('ban', async (hash, mins = 0, msg) => {
-				log('ban', hash, mins, msg);
-				if(!validstring(hash) || socket.hash == hash) return;
-				let sockets = (await io.in(socket.room).fetchSockets()).filter(socket2 => socket2.hash == hash);
-				if(!sockets.length) {
-					socket.emit('notify', 'Hash not found');
+				loguser('ban', hash, mins, msg);
+				if(socket.hash == hash) return;
+				if(!validstring(hash))  {
+					socket.emit('notify', 'Invalid hash');
 					return;
 				}
-				msg = validstring(msg)? ' '+msg: '!';
-				for(const socket2 of sockets) {
-					io.to('admin').emit('log', { time:Date.now(), room:socket.room, msg:'Kicked '+socket2.name });
-					await leave(socket2, 'You\'ve been banned from '+socket.room+msg, 'has been banned'+msg);
+				let sockets = (await io.in(socket.room).fetchSockets()).filter(socket2 => socket2.hash == hash);
+				if(sockets.length) {
+					msg = validstring(msg)? ' '+msg: '!';
+					for(const socket2 of sockets) {
+						logsys('Kicked '+socket2.name);
+						await leave(socket2, 'You\'ve been banned from '+socket.room+msg, 'has been banned'+msg);
+					}
 				}
 				if(!validnumber(mins)) return;
 				clearTimeout(rooms[socket.room].banned[hash]);
@@ -378,7 +387,7 @@ io.on('connection', socket => {
 				}, mins * 60000);
 			});
 			socket.on('lock', async mins => {
-				log('lock', mins);
+				loguser('lock', mins);
 				if(!validnumber(mins)) {
 					socket.emit('notify', 'Invalid time');
 					return;
