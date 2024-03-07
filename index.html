@@ -194,7 +194,7 @@ if(!Array.prototype.at) {
 		return num < 0? this[this.length+num]: this[num];
 	}
 }
-socket.once('start', (myname, rooms) => {
+socket.once('start', rooms => {
 	const get = id => document.getElementById(id);
 	let animation;
 	let msgcount = 0;
@@ -356,11 +356,10 @@ socket.once('start', (myname, rooms) => {
 	socket.on('notify', addsysmsg);
 	socket.on('addroom', addroom);
 	socket.on('rmvroom', room => get(room).remove());
-	const join = (room, name, adminhash, customname) => {
+	const join = (room, myname, adminhash, customname) => {
 		onbeforeunload = () => true;
 		document.querySelector('#rooms > div')?.remove();
 		myroom = room.slice(1);
-		myname = name;
 		socket.on('hideroom', () => get(room).textContent = '('+room+')');
 		socket.on('showroom', () => get(room).textContent = room);
 		let iframe;

@@ -6,9 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
-* { box-sizing:border-box; }
+* { box-sizing:border-box; font-family:'Noto Color Emoji', sans-serif; }
 html, body, #top { height:100%; }
-body { font-size:8pt; font-family:'Noto Color Emoji', sans-serif; padding:0; margin:0; line-height:13px; }
+body { font-size:8pt; padding:0; margin:0; line-height:13px; }
 body.blank * { display:none; }
 #top { display:flex; }
 #top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
@@ -19,20 +19,23 @@ body.blank * { display:none; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
 .clickable { cursor:pointer; }
 p { white-space:pre-wrap; padding:3px; margin:0; overflow-wrap:break-word; }
-p:hover::before { content:attr(data-time); background:#ccc; padding:2px; margin-right:5px; }
+p:hover { background:#eee; }
+p:hover::before { content:attr(data-time); background:#fff; outline:#ccc solid 1px; padding:2px; margin-right:5px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 del { text-decoration:line-through; opacity:.8; }
 p:hover del { text-decoration:none; }
 .highlight { color:#fff; background:#f00; text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
-.highlight:hover::before { background:#600; }
-#bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; }
+.highlight:hover { background:#700; }
+.highlight:hover::before { background:#900; outline:#500 solid 1px; }
+#bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; font-size:12pt; }
 #bottom form { display:inline-block; margin:8px; }
 #bottom input[type=number] { width:40px; }
 input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
-.disconnected { font-size:12pt; margin-bottom:10px; }
+input:disabled { opacity:.5; }
 @media (prefers-color-scheme:dark) {
 	body, h1, input, select { background:#000; color:#fff; }
-	p:hover:before { background:#333; }
+	p:hover { background:#111; }
+	p:hover::before { background:#000; outline:#333 solid 1px; }
 	input, select { border:1px solid #fff; }
 	input[type=submit] { background:#222; }
 	input:focus, select:focus { outline-color:#ccc; }
@@ -114,8 +117,13 @@ const login = password => {
 	}
 }
 socket.once('disconnect', () => {
-	get('bottom').className = 'disconnected';
-	get('bottom').textContent = 'Connection lost!';
+	const inputs = get('bottom').getElementsByTagName('input');
+	for(let i = 0; i < inputs.length; i++) {
+		inputs[i].disabled = true;
+	}
+	const div = document.createElement('div');
+	div.textContent = 'Connection lost!';
+	get('bottom').prepend(div);
 	document.title += '☠️';
 	socket.disconnect();
 });
@@ -213,26 +221,27 @@ socket.once('log', (records, regex) => {
 			addtext(boldname+' has joined');
 			roomdivs[room].classList.remove('closed');
 		} else if(cmd == 'leave') {
-			addtext(boldname+' has left');
-			if(arr[0]) roomdivs[room].classList.add('closed');
+			arr[1] = arr[1]? ' ('+arr[1]+')': '';
+			addtext(boldname+' has left'+arr[1]);
+			if(arr[0]) {
+				roomdivs[room].classList.add('closed');
+				roomdivs[room].append(document.createElement('hr'));
+				roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
+			}
 		} else if(cmd == 'say') {
 			addtext(boldname+': '+arr[0]);
 		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
 			let verb = 'says to';
 			if(isboolean) verb = ['removes from', 'adds to'][arr.shift()? 1: 0];
 			if(!arr[0]) return;
-			let included = arr[1];
-			let excluded = 'others';
-			if(cmd == 'sendAll') {
-				included = arr[1]? 'everyone but '+arr[1]: 'everyone';
-				excluded = arr[1];
+			if((!arr[1] && cmd == 'sendAll') || JSON.stringify(arr[0]) == JSON.stringify(arr[2])) {
+				addtext(boldname+' '+verb+' everyone: '+arr[0]);
+			} else if(arr[1]) {
+				if(cmd == 'sendAll') {
+					[arr[0], arr[2]] = [arr[2], arr[0]];
+				}
+				addtext(boldname+' '+verb+' '+arr[1]+': '+arr[0]+(arr[2]? '\n'+boldname+' '+verb+' everyone else: '+arr[2]: ''));
 			}
-			if(!included) return;
-			let text = boldname+' '+verb+' '+included+': '+arr[0];
-			if(arr[2]) {
-				text += '\n'+boldname+' '+verb+' '+excluded+': '+arr[2];
-			}
-			addtext(text);
 		} else {
 			addtext(boldname+' '+cmd+' '+arr.join(' '));
 		}

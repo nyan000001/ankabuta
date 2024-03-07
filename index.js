@@ -82,11 +82,12 @@ io.on('connection', socket => {
 	if(!socket.handshake.headers.cookie) return;
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 	const user = users[socket.hash];
-	const logsys = (msg, room = socket.room) => {
+	if(!user) return;
+	const logmsg = (msg, room = socket.room) => {
 		io.to('admin').emit('log', { time:Date.now(), room, msg });
 		logs.insertOne({ createdAt:new Date(), room, msg });
 	}
-	const loguser = (cmd, ...arr) => {
+	const logaction = (cmd, ...arr) => {
 		io.to('admin').emit('log', { time:Date.now(), room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
 		logs.insertOne({ createdAt:new Date(), ip:user.ip, room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
 	}
@@ -98,7 +99,7 @@ io.on('connection', socket => {
 		if(user.spam[0] - user.spam[19] > 500) return;
 		sockets = await io.in(socket.hash).fetchSockets();
 		for(const socket2 of sockets) {
-			logsys('Autokicked '+socket2.name, socket2.room);
+			socket2.msg = 'Kicked for spamming';
 			socket2.disconnect();
 		}
 		hashes.updateOne({ _id:socket.hash }, { $set:{ banneduntil:Date.now() + 60000 } });
@@ -107,9 +108,9 @@ io.on('connection', socket => {
 	const validstring = string => string && typeof string == 'string';
 	const validnumber = num => num >= 0;
 	socket.on('LOGIN', async password => {
-		loguser('LOGIN', password);
+		logaction('LOGIN', password);
 		if(password != process.env.PASSWORD) {
-			logsys('Invalid password');
+			logmsg('Invalid password');
 			return;
 		}
 		socket.removeAllListeners('LOGIN');
@@ -121,14 +122,14 @@ io.on('connection', socket => {
 		socket.emit('log', records, currentregex);
 		socket.join('admin');
 		socket.on('BAN', async (hash, mins) => {
-			loguser('BAN', hash, mins);
+			logaction('BAN', hash, mins);
 			if(!validstring(hash)) {
-				logsys('Invalid hash');
+				logmsg('Invalid hash');
 				return;
 			}
 			sockets = await io.in(hash).fetchSockets();
 			for(const socket2 of sockets) {
-				logsys('Kicked '+socket2.name);
+				socket2.msg = 'Banned by '+socket.name;
 				socket2.disconnect();
 			}
 			if(validnumber(mins)) {
@@ -136,19 +137,19 @@ io.on('connection', socket => {
 			}
 		});
 		socket.on('LOCK', mins => {
-			loguser('LOCK', mins);
+			logaction('LOCK', mins);
 			if(validnumber(mins)) {
-				logsys('Invalid time');
+				logmsg('Invalid time');
 				return;
 			}
 			lockeduntil = Date.now() + mins * 60000;
 		});
 		socket.on('REGEX', regex => {
-			loguser('REGEX', regex);
+			logaction('REGEX', regex);
 			try {
 				new RegExp(regex);
 			} catch(error) {
-				logsys(error);
+				logmsg(error);
 				return;
 			}
 			currentregex = regex;
@@ -156,7 +157,7 @@ io.on('connection', socket => {
 			io.to('admin').emit('log', { time:Date.now(), room:socket.room, regex:currentregex });
 			for(const room in rooms) {
 				if(regex.test(room)) {
-					logsys('Kicked '+room);
+					rooms[room].admin.msg = 'Kicked by regex:'+regex;
 					rooms[room].admin.disconnect();
 				}
 			}
@@ -206,22 +207,22 @@ io.on('connection', socket => {
 					rand([...'bdghjklmnpstwxyz', 'ch', 'tx']) + rand([...'aiou', 'ai'])
 				]);
 			}
-			if(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[tw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|pet|s[aeiou]+x|sh[aeiou]+[gt]|w.nk|[jy]i|nye|.w[ei]|wu|huo.+tl/.test(name)) continue;
+			if(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[htw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|pet|s[aeiou]+x|sh[aeiou]+[gt]|w.nk|[jy]i|nye|.w[ei]|wu|huo.+tl/.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
 			if(sockets.every(socket2 => !issimilar(name, socket2.name))) break;
 		}
 		getname(name);
 	}
-	if(socket.handshake.headers.referer.includes('blank')) {
+	if(socket.handshake.headers.referer?.includes('blank')) {
 		getrandomname();
 		return;
 	}
 	if(lockeduntil > Date.now() || user.banneduntil > Date.now()) return;
-	socket.emit('start', socket.name, Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == undefined && !rooms[room].banned[socket.hash]));
-	const leave = async (socket, msg1, msg2) => {
+	socket.emit('start', Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == undefined && !rooms[room].banned[socket.hash]));
+	const leave = async (socket, msg1, msg2, msg3) => {
 		socket.emit('leaveroom', msg1);
 		if(rooms[socket.room].admin == socket) {
-			loguser('leave', true);
+			logaction('leave', true, msg3);
 			clearTimeout(rooms[socket.room].timeout);
 			for(const i in rooms[socket.room].banned) {
 				clearTimeout(rooms[socket.room].banned[i]);
@@ -246,7 +247,7 @@ io.on('connection', socket => {
 				socket.removeAllListeners(listener);
 			}
 		} else {
-			loguser('leave');
+			logaction('leave', false, msg3);
 			rooms[socket.room].admin.emit('leave', msg2, socket.name, socket.hash);
 			for(const listener of ['say', 'leave']) {
 				socket.removeAllListeners(listener);
@@ -269,13 +270,13 @@ io.on('connection', socket => {
 			return;
 		}
 		if(validstring(name)) {
-			getname(name.trim().slice(0, 30).replace(/\s/g, '_'));
+			getname(name.trim().replace(/^#+/, '').slice(0, 30).replace(/\s/g, '_'));
 		} else {
 			name = undefined;
 			getrandomname();
 		}
 		socket.room = room;
-		loguser('join');
+		logaction('join');
 		if(rooms[socket.room]) {
 			socket.join(socket.room);
 			socket.emit('joinroom', socket.room, socket.name);
@@ -283,13 +284,13 @@ io.on('connection', socket => {
 			socket.on('say', msg => {
 				if(!validstring(msg)) return;
 				msg = msg.slice(0, 5000).replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));
-				loguser('say', msg);
+				logaction('say', msg);
 				rooms[socket.room].admin.emit('hear', msg, socket.name, socket.hash);
 			});
 		} else {
 			rooms[socket.room] = { 'admin':socket, banned:{} };
 			if(currentregex && new RegExp(currentregex).test(room)) {
-				logsys('Autokicked');
+				socket.msg = 'Kicked by regex:'+currentregex;
 				socket.disconnect();
 				return;
 			}
@@ -318,7 +319,7 @@ io.on('connection', socket => {
 				return true;
 			}
 			socket.on('sendOnly', (...arr) => {
-				loguser('sendOnly', ...arr);
+				logaction('sendOnly', ...arr);
 				if(typeof arr[0] == 'boolean') {
 					const [add, msg1, names, msg2] = arr;
 					send(msg1, names, msg2, true, add);
@@ -328,7 +329,7 @@ io.on('connection', socket => {
 				}
 			});
 			socket.on('sendAll', async (...arr) => {
-				loguser('sendAll', ...arr);
+				logaction('sendAll', ...arr);
 				if(typeof arr[0] == 'boolean') {
 					const [add, msg1, names, msg2] = arr;
 					if(!await send(msg1, names, msg2, false, add)) {
@@ -342,7 +343,7 @@ io.on('connection', socket => {
 				}
 			});
 			socket.on('kick', async (name, msg) => {
-				loguser('kick', name, msg);
+				logaction('kick', name, msg);
 				if(socket.name == name) return;
 				if(!validstring(name)) {
 					socket.emit('notify', 'Invalid name');
@@ -353,12 +354,11 @@ io.on('connection', socket => {
 					socket.emit('notify', 'Name not found');
 					return;
 				}
-				logsys('Kicked '+socket2.name);
 				msg = validstring(msg)? ' '+msg: '!';
-				leave(socket2, 'You\'ve been kicked'+msg, 'has been kicked'+msg);
+				leave(socket2, 'You\'ve been kicked'+msg, 'has been kicked'+msg, 'Kicked by host');
 			});
 			socket.on('ban', async (hash, mins = 0, msg) => {
-				loguser('ban', hash, mins, msg);
+				logaction('ban', hash, mins, msg);
 				if(socket.hash == hash) return;
 				if(!validstring(hash))  {
 					socket.emit('notify', 'Invalid hash');
@@ -368,8 +368,7 @@ io.on('connection', socket => {
 				if(sockets.length) {
 					msg = validstring(msg)? ' '+msg: '!';
 					for(const socket2 of sockets) {
-						logsys('Kicked '+socket2.name);
-						await leave(socket2, 'You\'ve been banned from '+socket.room+msg, 'has been banned'+msg);
+						await leave(socket2, 'You\'ve been banned from '+socket.room+msg, 'has been banned'+msg, 'Banned by host');
 					}
 				}
 				if(!validnumber(mins)) return;
@@ -387,7 +386,7 @@ io.on('connection', socket => {
 				}, mins * 60000);
 			});
 			socket.on('lock', async mins => {
-				loguser('lock', mins);
+				logaction('lock', mins);
 				if(!validnumber(mins)) {
 					socket.emit('notify', 'Invalid time');
 					return;
@@ -423,7 +422,9 @@ io.on('connection', socket => {
 	});
 	socket.on('disconnect', () => {
 		if(socket.room) {
-			leave(socket, '', 'has disconnected');
+			leave(socket, '', 'has disconnected', socket.msg);
+		} else if(socket.msg) {
+			logaction('leave', false, socket.msg);
 		}
 		user.sockets--;
 		if(!user.sockets) {
