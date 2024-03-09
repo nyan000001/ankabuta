@@ -69,6 +69,7 @@ app.use(async (req, res) => {
 		return;
 	}
 	await makecookie(req, res);
+	res.set('Cache-Control', 'no-store');
 	if(req.path == '/blank') {
 		res.sendFile(__dirname + '/blank.html');
 	} else {
@@ -166,7 +167,7 @@ io.on('connection', socket => {
 	const getallsockets = () => [...io.sockets.sockets.values()];
 	const getname = name => {
 		const sockets = getallsockets().filter(socket2 => socket2.name && socket2.room == socket.room);
-		if(sockets.some(socket2 => socket2.name == socket.name)) {
+		if(sockets.some(socket2 => socket2.name == name)) {
 			let i = 0;
 			do i++;
 			while(sockets.some(socket2 => socket2.name == name+i));
@@ -262,20 +263,19 @@ io.on('connection', socket => {
 		if(!validstring(room)) return;
 		room = room.trim().replace(/^#*/, '#').slice(0, 30).replace(/\s/g, '_');
 		if(socket.room) {
-			if(socket.room == room) return;
 			await leave(socket, '', 'has left');
 		}
 		if(rooms[room] && (rooms[room].timeout != undefined || rooms[room].banned[socket.name] || rooms[room].banned[socket.hash])) {
 			socket.emit('notify', room+' is unavailable');
 			return;
 		}
+		socket.room = room;
 		if(validstring(name)) {
 			getname(name.trim().replace(/^#+/, '').slice(0, 30).replace(/\s/g, '_'));
 		} else {
 			name = undefined;
 			getrandomname();
 		}
-		socket.room = room;
 		logaction('join');
 		if(rooms[socket.room]) {
 			socket.join(socket.room);

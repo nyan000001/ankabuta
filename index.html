@@ -46,15 +46,16 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .scrollup { background:linear-gradient(rgba(127.5, 127.5, 127.5, .2), transparent) no-repeat top; background-size:100% 20px; }
 .scrolldown { background:linear-gradient(transparent, rgba(127.5, 127.5, 127.5, .2)) no-repeat bottom; background-size:100% 20px; }
 .scrollup.scrolldown { background:linear-gradient(rgba(127.5, 127.5, 127.5, .2), transparent) no-repeat top, linear-gradient(transparent, rgba(127.5, 127.5, 127.5, .2)) no-repeat bottom; background-size:100% 20px; }
-.msg form { display:inline-block; border:1px solid #aaa; border-radius:4px; padding:1px; }
-.msg input[type=text], .msg input[type=password] { width:100px; max-width:100%; }
-.msg input, .msg select { margin:1px; }
+.msg form, #sidebar form { display:inline-block; border:1px solid #aaa; border-radius:4px; padding:1px; }
+.msg input[type=text], #sidebar input[type=text] { width:100px; max-width:100%; }
+.msg input[type=password], #sidebar input[type=password] { width:100px; max-width:calc(100% - 20px); }
+.msg input, .msg select, #sidebar input, #sidebar select { margin:1px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 del { text-decoration:line-through; opacity:.5; }
-.msg .big, .msg .big *, #help .big { font-size:17pt; }
-.msg .big input, .msg .big select { font-size:17pt; line-height:30px; }
-.msg .small, .msg .small *, #help .small { font-size:8pt; }
-.msg .small input, .msg .small select { font-size:8pt; line-height:10px; }
+.msg .big, #sidebar .big, #help .big { font-size:17pt !important; }
+.msg .big input, .msg .big select, #sidebar .big input, #sidebar .big select { line-height:30px; }
+.msg .small, #sidebar .small, #help .small { font-size:8pt !important; }
+.msg .small input, .msg .small select, #sidebar .small input, #sidebar .small select  { line-height:10px; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; height:24px; background:ButtonFace; text-align:center; line-height:22px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; cursor:default; user-select:none; }
 #arrow * { pointer-events:none; }
@@ -841,7 +842,7 @@ socket.once('start', rooms => {
 			}
 			socket.on('join', (name, hash, customname) => {
 				if(!persistent.users[name]) {
-					console.log(name+' has joined');
+					console.log(hash+' '+name+' has joined');
 					persistent.users[name] = { hash:hash, customname:customname };
 				}
 				iframe.contentWindow.join(name, hash, customname);
