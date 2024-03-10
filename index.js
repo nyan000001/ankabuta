@@ -77,6 +77,7 @@ app.use(async (req, res) => {
 	}
 });
 const rooms = {};
+let lastaction;
 let lockeduntil = 0;
 let currentregex;
 io.on('connection', socket => {
@@ -89,8 +90,12 @@ io.on('connection', socket => {
 		logs.insertOne({ createdAt:new Date(), room, msg });
 	}
 	const logaction = (cmd, ...arr) => {
-		io.to('admin').emit('log', { time:Date.now(), room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
-		logs.insertOne({ createdAt:new Date(), ip:user.ip, room:socket.room, name:socket.name, hash:socket.hash, cmd, arr });
+		const obj = { room:socket.room, name:socket.name, hash:socket.hash, cmd, arr };
+		const json = JSON.stringify(obj);
+		if(json == lastaction) return;
+		lastaction = json;
+		io.to('admin').emit('log', { time:Date.now(), ...obj });
+		logs.insertOne({ createdAt:new Date(), ip:user.ip, ...obj });
 	}
 	socket.onAny(async cmd => {
 		if(cmd == 'sendOnly' || cmd == 'sendAll') return;

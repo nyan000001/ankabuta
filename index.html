@@ -652,40 +652,84 @@ socket.once('start', rooms => {
 		}
 		get('codebox').value =
 			`const users = persistent.users;
-			function join(name, hash, customname) {
-				sendAll('[*'+name+' has joined'+'*]');
-				sendAll(true, name, name, Object.keys(users));
+			persistent.colors = persistent.colors ?? ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
+			persistent.id = persistent.id ?? 0;
+			const help = 'Available commands: /help /nick /pm /me /pat /hug /poke /cookie /cupcake /donut';
+			function join(name, hash) {
+				const user = users[name];
+				if(!user.alias) {
+					const color = persistent.colors.shift();
+					persistent.colors.push(color);
+					user.alias = '[*[#'+color+name+'#]*]';
+					user.id = persistent.id++;
+				}
+				sendAll('[*'+user.alias+' has joined*]');
+				sendOnly(help, name);
+				sendAll(true, name+' '+user.id+' '+user.alias,
+					name, Object.keys(users).map(name2 => name2+' '+users[name2].id+' '+users[name2].alias));
 			}
-			function leave(msg, name) {
-				sendAll('[*'+name+' '+msg+'*]');
+			function leave(msg, name, hash) {
+				const user = users[name];
+				sendAll('[*'+user.alias+' '+msg+'*]');
 				sendAll(false, name);
 			}
-			function hear(msg, name) {
+			function hear(msg, name, hash) {
+				const user = users[name];
 				if(msg[0] == '/') {
-					const arr = msg.split(' ');
-					if(msg[1] == '!' && users[name].admin) {
-						const cmd = arr.shift().slice(2);
-						if(['kick', 'ban', 'lock'].includes(cmd)) {
-							this[cmd](...arr);
-						} else sendOnly('Invalid command: /!'+cmd, name);
+					const words = msg.split(' ');
+					let cmd = words.shift().slice(1);
+					if(cmd[0] == '!' && user.admin) {
+						cmd = cmd.slice(1);
+						if(['kick', 'k'].includes(cmd)) {
+							kick(words.shift(), words.join(' '));
+						} else if(['ban', 'b'].includes(cmd)) {
+							ban(words.shift(), words.shift(), words.join(' '));
+						} else if(['lock', 'l'].includes(cmd)) {
+							lock(words[0]);
+						} else {
+							sendOnly('Invalid command', name);
+						}
+					} else if(['help', 'h'].includes(cmd)) {
+						sendOnly(help, name);
+					} else if(['nick', 'name', 'n'].includes(cmd)) {
+						const oldalias = user.alias;
+						user.alias = words.join('_');
+						sendAll('[*'+oldalias+' is now known as '+user.alias+'*]');
+						sendAll(true, name+' '+user.id+' '+user.alias);
+					} else if(['pm', 'whisper', 'dm'].includes(cmd)) {
+						const id = words.shift();
+						const name2 = Object.entries(users).find(user2 => user2[1].id == id)?.[0];
+						if(name2) {
+							msg = words.join(' ');
+							sendOnly('[/(private) '+user.alias+': '+msg+'/]', name2);
+							sendOnly('[/'+user.alias+' (to '+users[name2].alias+'): '+msg+'/]', name);
+						} else {
+							sendOnly('Invalid id', name);
+						}
 					} else {
-						const cmd = arr.shift().slice(1);
-						const name2 = cmd == 'pm'? arr.shift(): '';
-						msg = arr.join(' ');
-						if(cmd == 'pm') {
-							if(users[name2]) {
-								sendOnly('[/(to '+name2+')/] [*'+name+'*]: '+msg, name);
-								sendOnly('[/(private)/] [*'+name+'*]: '+msg, name2);
-							} else {
-								sendOnly('No such user', name);
+						msg = words.join(' ').split(/(\\b)/);
+						const arr = Object.values(users);
+						for(let i = 0; i < msg.length; i += 2) {
+							for(const user2 of arr) {
+								if(parseInt(msg[i]) != user2.id) continue;
+								msg[i] = user2.alias;
+								break;
 							}
-						} else if(cmd == 'pat' || cmd == 'hug') {
-							sendAll('* '+name+' '+cmd+'s '+msg);
-						} else if(cmd == 'me') {
-							sendAll('* '+name+' '+msg);
-						} else sendOnly('Invalid command: /'+cmd, name);
+						}
+						msg = msg.join('');
+						if(['me', 'self', 'action'].includes(cmd)) {
+							sendAll('[/* '+user.alias+' '+msg+'/]');
+						} else if(['pat', 'hug', 'poke'].includes(cmd)) {
+							sendAll('[/* '+user.alias+' '+cmd+'s '+msg+'/]');
+						} else if(['cookie', 'cupcake', 'donut'].includes(cmd) || /^\\p{Emoji}+$/u.test(cmd)) {
+							sendAll('[/* '+user.alias+' gives '+msg+' a '+cmd+'/]');
+						} else {
+							sendOnly('Invalid command', name);
+						}
 					}
-				} else sendAll('[*'+name+'*]: '+msg);
+				} else {
+					sendAll(user.alias+': '+msg);
+				}
 			}`.replace(/^\t\t\t/gm, '');
 		const codehistory = [];
 		let codeindex = 0;
@@ -842,7 +886,7 @@ socket.once('start', rooms => {
 			}
 			socket.on('join', (name, hash, customname) => {
 				if(!persistent.users[name]) {
-					console.log(hash+' '+name+' has joined');
+					console.log(hash+'\n'+name+' has joined');
 					persistent.users[name] = { hash:hash, customname:customname };
 				}
 				iframe.contentWindow.join(name, hash, customname);
