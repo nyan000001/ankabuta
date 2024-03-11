@@ -286,6 +286,7 @@ socket.once('start', rooms => {
 		addroom(room);
 	}
 	onkeydown = e => {
+		const scroll = get('arrow').classList.contains('hidden');
 		if(e.ctrlKey && e.key == 'o') {
 			get('rooms').classList.toggle('hidden');
 		} else if(e.ctrlKey && e.key == 'h') {
@@ -298,6 +299,10 @@ socket.once('start', rooms => {
 			get('leave').focus();
 		} else return;
 		e.preventDefault();
+		if(scroll) {
+			ignorescroll = true;
+			get('log').scrollTop = get('log').scrollHeight;
+		}
 	}
 	ontouchstart = e => {
 		if(e.target == get('codebox')) return;
