@@ -70,7 +70,7 @@ b * { font-weight:bold; }
 #sidebar:empty { display:none; }
 #divvideo { max-height:min(35vw, 250px); overflow-y:auto; }
 #video { position:sticky; top:0; width:100%; aspect-ratio:16 / 9; }
-#divvideo > a { white-space:pre; text-overflow:ellipsis; overflow:hidden; }
+#divvideo > a { line-height:15px; padding:2px; }
 #sidebar a.disabled { pointer-events:none; cursor:auto; }
 
 #help { padding:0 5px; line-height:13pt; }
@@ -636,8 +636,7 @@ socket.once('start', rooms => {
 					}
 					div.append(a);
 					a.scrollIntoView();
-					fetch('https://noembed.com/embed?url='+a.href).
-						then(x => x.json()).then(x => a.textContent = a.title = x.title);
+					fetch('https://noembed.com/embed?url='+a.href).then(x => x.json()).then(x => a.textContent = x.title);
 				} else {
 					div.textContent = '';
 					div.innerHTML = gethtml(text);
