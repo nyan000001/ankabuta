@@ -604,7 +604,7 @@ socket.once('start', rooms => {
 				}
 				const div = get(divid) || document.createElement('div');
 				const match = {
-					'youtube':text.match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/)[0-9A-Za-z_-]{11}/),
+					'youtube':text.match(/(?<=^|\.be\/|\/v\/|\?v=|\/embed\/|\/shorts\/)[0-9A-Za-z_-]{11}/),
 					'dailymotion':text.match(/(?<=\/video\/)[0-9A-Za-z_-]+/),
 					'vimeo':text.match(/\d+/)
 				}[id];
@@ -904,7 +904,7 @@ socket.once('start', rooms => {
 				console.log(name+': '+msg);
 				iframe.contentWindow.hear(msg, name, hash);
 			});
-			const adderrormsg = onerror = (event, source, line, col) => {
+			const adderrormsg = iframe.contentWindow.onerror = onerror = (event, source, line, col) => {
 				const arr = runningcode.split('\n');
 				let index = col - 1;
 				for(let i = 0; i < line - 1; i++) {
@@ -917,7 +917,7 @@ socket.once('start', rooms => {
 					get('codebox').focus();
 				}
 			}
-			iframe.contentWindow.onunhandledrejection = event => {
+			iframe.contentWindow.onunhandledrejection = onunhandledrejection = event => {
 				const numbers = event.reason.stack.split(/\D+/);
 				if(numbers[4] != undefined && numbers[5] != undefined) {
 					adderrormsg(event.reason.message, null, numbers[4], numbers[5]);
