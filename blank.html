@@ -15,18 +15,15 @@ body.blank * { display:none; }
 #top > div.closed { opacity:.5; }
 #top > div.closed:hover { opacity:1; }
 #top input, #top select { pointer-events:none; font-size:8pt; }
-#top input[type=text], #top input[type=password] { width:100px; max-width:100%; }
 h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
 .clickable { cursor:pointer; }
 p { white-space:pre-wrap; padding:3px; margin:0; overflow-wrap:break-word; }
-p:hover { background:#eee; }
-p:hover::before { content:attr(data-time); background:#fff; outline:#ccc solid 1px; padding:2px; margin-right:5px; }
+p:hover { background:#eee; outline:#ccc solid 1px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 del { text-decoration:line-through; opacity:.8; }
 p:hover del { text-decoration:none; }
 .highlight { color:#fff; background:#f00; text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
 .highlight:hover { background:#700; }
-.highlight:hover::before { background:#900; outline:#500 solid 1px; }
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; font-size:12pt; }
 #bottom form { display:inline-block; margin:8px; }
 #bottom input[type=number] { width:40px; }
@@ -34,8 +31,7 @@ input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 input:disabled { opacity:.5; }
 @media (prefers-color-scheme:dark) {
 	body, h1, input, select { background:#000; color:#fff; }
-	p:hover { background:#111; }
-	p:hover::before { background:#000; outline:#333 solid 1px; }
+	p:hover { background:#191919; outline:#333 solid 1px; }
 	input, select { border:1px solid #fff; }
 	input[type=submit] { background:#222; }
 	input:focus, select:focus { outline-color:#ccc; }
@@ -165,15 +161,16 @@ socket.once('log', (records, regex) => {
 						text = text.
 							replace(/\[\[([^\[\[]*?)\]\]/gs, (_, tag) => {
 								if(tag.startsWith('select|')) return ('<select><option>'+tag.slice(7).replace(/\|/g, '</option><option>')+'</option></select>').replace(/"/g, '&quot;').replace(/>([^<]*?):([^<]*?)</g, ' value="$1">$2<');
-								tag = tag.replace(/^(long)?input/, '$1text');
-								if(tag == 'text' || tag == 'password') return '<input type="'+tag+'">';
-								if(tag == 'longtext') return '<input type="text" style="width:300px">';
+								let style = tag.startsWith('long')? 'width:100px;': tag.startsWith('short')? 'width:20px;': 'width:50px;';
+								tag = tag.replace(/^(long|short)/, '');
+								if(tag == 'text') return '<input type="'+tag+'" style="'+style+'; max-width:calc(100% - 2px)">';
+								if(tag == 'password') return '<input type="'+tag+'" style="'+style+'; max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
 								if(tag == 'button' || tag == 'submit') return '<input type="'+tag+'" value="send">';
 								const match = tag.match(/^(?<tag>\w+):(?<value>.*)/)?.groups;
 								if(match) {
 									match.value = match.value.replace(/"/g, '&quot;');
-									if(match.tag == 'text' || match.tag == 'password') return '<input type="'+match.tag+'" placeholder="'+match.value+'">';
-									if(match.tag == 'longtext') return '<input type="text" placeholder="'+match.value+'" style="width:300px">';
+									if(match.tag == 'text') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+'; max-width:calc(100% - 2px)">';
+									if(match.tag == 'password') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+'; max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
 									if(match.tag == 'button' || match.tag == 'submit') return '<input type="'+match.tag+'" value="'+match.value+'">';
 									if(match.tag == 'label') return '<label>'+match.value+'</label>';
 								}
@@ -193,7 +190,7 @@ socket.once('log', (records, regex) => {
 				}
 			}
 			p.innerHTML = html;
-			p.dataset.time = new Date(record.time).toLocaleTimeString();
+			p.title = new Date(record.time).toLocaleTimeString();
 			if(!room) room = '(not in a room)';
 			if(!roomdivs[room]) addroom(room);
 			roomdivs[room].append(p);
