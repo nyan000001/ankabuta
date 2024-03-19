@@ -407,6 +407,12 @@ socket.once('start', rooms => {
 				e.target.nextElementSibling?.focus();
 			} else if(e.target.closest('DETAILS')) {
 				setTimeout(scrolldown, 1);
+			} else if(e.detail == 3 && e.target.tagName == 'PRE') {
+				const selection = window.getSelection();
+				selection.removeAllRanges();
+				const range = document.createRange();
+				range.selectNodeContents(e.target);
+				selection.addRange(range);
 			}
 		}
 		get('log').onkeydown = get('sidebar').onkeydown = e => {
