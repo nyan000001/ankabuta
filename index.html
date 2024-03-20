@@ -24,7 +24,7 @@ a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 #roomform > input[type=text] { padding:0 4px; width:100%; margin-bottom:4px; }
 #rooms > a { display:inline-block; padding:10px 20px; margin:2px; line-height:12px; }
 .joined #rooms > a { display:block; padding:6px; padding-left:6px; text-indent:-6px; }
-a:hover { color:#f55; }
+a:hover, a:focus-visible { color:#f55; outline:none; }
 a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
 #wrapper { display:flex; position:fixed; width:100%; padding:1px 1px 0 1px; height:100%; }
@@ -82,6 +82,8 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 #msgform > input { width:80px; }
 #msgbox { flex-grow:1; resize:none; padding:5px; }
 
+.shortcut { position:fixed; line-height:20px; width:20px; text-align:center; pointer-events:none; background:#000; color:#fff; font-weight:bold; }
+
 @media (max-width:900px) {
 	.admin:has(#help:not(.hidden)) #wrapper > * { height:calc(50% - 30px); }
 	.admin:has(#help:not(.hidden)) #codebox { position:fixed; bottom:50px; height:50%; width:calc(100% - 4px) !important; resize:none; }
@@ -109,6 +111,7 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 	::-webkit-resizer { border-width:8px; border-style:solid; border-color:transparent #999 #999 transparent; }
 	textarea { cursor:auto; }
 	a.disabled, #rooms.disabled > a { color:#fff; }
+	.shortcut { background:#ccc; color:#000; box-shadow:0 0 5px #000; }
 }
 
 @media (prefers-color-scheme:light) {
@@ -130,7 +133,7 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 <label for="name">Username (optional)</label>
 <input type="text" id="name" maxlength="30">
 <input type="submit" id="go" value="Go"></form></div>
-<textarea id="codebox" spellcheck="false"></textarea>
+<textarea id="codebox" spellcheck="false" aria-keyshortcuts="Alt+C"></textarea>
 <div id="log" role="log"><div id="arrow" class="hidden">↓</div></div>
 <div id="sidebar" role="log"></div>
 <div id="help" class="hidden">
@@ -147,8 +150,6 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 	<i>Save and run the code</i></div>
 <div class="hidden"><kbd>ctrl</kbd> + <kbd>e</kbd>
 	<i>Click the first error message</i></div>
-<div><kbd>ctrl</kbd> + <kbd>l</kbd>
-	<i>Set focus on the leave button</i></div>
 </div><div>
 <div><code>[{sample text}]</code> <pre>sample text</pre></div>
 <div><code>[!sample text!]</code> <span class="rainbow">sample text</span></div>
@@ -182,10 +183,10 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 </div>
 </div>
 <form id="msgform">
-<input type="button" id="leave" value="Leave">
-<input type="button" id="run" value="Run">
-<textarea id="msgbox" aria-label="Message" maxlength="5000"></textarea>
-<input type="submit" id="say" value="Say">
+<input type="button" id="leave" value="Leave" aria-keyshortcuts="Alt+L">
+<input type="button" id="run" value="Run" aria-keyshortcuts="Alt+R">
+<textarea id="msgbox" aria-label="Message" maxlength="5000" aria-keyshortcuts="Alt+M"></textarea>
+<input type="submit" id="say" value="Say" aria-keyshortcuts="Alt+S">
 </form>
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -286,23 +287,52 @@ socket.once('start', rooms => {
 		addroom(room);
 	}
 	onkeydown = e => {
-		if(!e.ctrlKey) return;
-		const scroll = get('arrow').classList.contains('hidden');
-		if(e.key == 'o') {
-			get('rooms').classList.toggle('hidden');
-		} else if(e.key == 'h') {
-			get('help').classList.toggle('hidden');
-		} else if(e.key == 's' && document.body.classList.contains('admin')) {
-			get('run').click();
-		} else if(e.key == 'e') {
-			document.getElementsByClassName('clickable')[0]?.click();
-		} else if(e.key == 'l') {
-			get('leave').focus();
-		} else return;
-		e.preventDefault();
-		if(scroll) {
-			ignorescroll = true;
-			get('log').scrollTop = get('log').scrollHeight;
+		if(e.altKey) {
+			if(e.key == 'c') {
+				get('codebox').focus();
+			} else if(e.key == 'l') {
+				get('leave').focus();
+			} else if(e.key == 'r') {
+				get('run').focus();
+			} else if(e.key == 'm') {
+				get('msgbox').focus();
+			} else if(e.key == 's') {
+				get('say').focus();
+			} else {
+				if(document.getElementsByClassName('shortcut').length) return;
+				for(const el of ['codebox', 'leave', 'run', 'msgbox', 'say']) {
+					const rect = get(el).getBoundingClientRect();
+					const div = document.createElement('div');
+					div.className = 'shortcut';
+					div.style.left = rect.left+'px';
+					div.style.top = rect.top+'px';
+					div.textContent = el[0];
+					document.body.append(div);
+				}
+			}
+		} else if(e.ctrlKey) {
+			const scroll = get('arrow').classList.contains('hidden');
+			if(e.key == 'o') {
+				get('rooms').classList.toggle('hidden');
+			} else if(e.key == 'h') {
+				get('help').classList.toggle('hidden');
+			} else if(e.key == 's' && document.body.classList.contains('admin')) {
+				get('run').click();
+			} else if(e.key == 'e') {
+				document.getElementsByClassName('clickable')[0]?.click();
+			} else return;
+			e.preventDefault();
+			if(scroll) {
+				ignorescroll = true;
+				get('log').scrollTop = get('log').scrollHeight;
+			}
+		}
+	}
+	onkeyup = onblur = e => {
+		if(e.key && e.key != 'Alt') return;
+		const shortcuts = document.getElementsByClassName('shortcut');
+		while(shortcuts[0]) {
+			shortcuts[0].remove();
 		}
 	}
 	ontouchstart = e => {
