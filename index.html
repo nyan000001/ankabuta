@@ -147,6 +147,8 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 	<i>Save and run the code</i></div>
 <div class="hidden"><kbd>ctrl</kbd> + <kbd>e</kbd>
 	<i>Click the first error message</i></div>
+<div><kbd>ctrl</kbd> + <kbd>l</kbd>
+	<i>Set focus on the leave button</i></div>
 </div><div>
 <div><code>[{sample text}]</code> <pre>sample text</pre></div>
 <div><code>[!sample text!]</code> <span class="rainbow">sample text</span></div>
@@ -284,16 +286,17 @@ socket.once('start', rooms => {
 		addroom(room);
 	}
 	onkeydown = e => {
+		if(!e.ctrlKey) return;
 		const scroll = get('arrow').classList.contains('hidden');
-		if(e.ctrlKey && e.key == 'o') {
+		if(e.key == 'o') {
 			get('rooms').classList.toggle('hidden');
-		} else if(e.ctrlKey && e.key == 'h') {
+		} else if(e.key == 'h') {
 			get('help').classList.toggle('hidden');
-		} else if(e.ctrlKey && e.key == 's' && document.body.classList.contains('admin')) {
+		} else if(e.key == 's' && document.body.classList.contains('admin')) {
 			get('run').click();
-		} else if(e.ctrlKey && e.key == 'e') {
+		} else if(e.key == 'e') {
 			document.getElementsByClassName('clickable')[0]?.click();
-		} else if(e.key == 'Escape') {
+		} else if(e.key == 'l') {
 			get('leave').focus();
 		} else return;
 		e.preventDefault();
