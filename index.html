@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <title>ankabuta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -413,7 +413,13 @@ socket.once('start', rooms => {
 			scrolldown();
 			get('msgbox').focus();
 		}
-		get('leave').onclick = () => socket.emit('leave');
+		get('leave').onclick = () => {
+			if(get('leave').value.endsWith('?')) {
+				socket.emit('leave');
+			} else {
+				get('leave').value += '?';
+			}
+		}
 		get('log').onclick = get('sidebar').onclick = e => {
 			if(e.target.type == 'button' || e.target.type == 'submit') {
 				if(e.target.type == 'submit') {
@@ -581,6 +587,7 @@ socket.once('start', rooms => {
 		addsysmsg('You have joined '+room);
 		socket.once('leaveroom', msg => {
 			onbeforeunload = null;
+			get('leave').value = get('leave').value.replace('?', '');
 			stopanimation();
 			get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 			history.replaceState(null, '', document.location.pathname);
