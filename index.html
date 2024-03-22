@@ -705,16 +705,16 @@ socket.once('start', rooms => {
 		}
 		get('codebox').value =
 			`const users = persistent.users;
-			persistent.colors = persistent.colors ?? ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
-			persistent.id = persistent.id ?? 0;
+			const colors = ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
+			let id = 0;
 			const help = 'Available commands: /help /nick /pm /me /pat /hug /poke /cookie /cupcake /donut';
 			function join(name, hash) {
 				const user = users[name];
 				if(!user.alias) {
-					const color = persistent.colors.shift();
-					persistent.colors.push(color);
+					const color = colors.shift();
+					colors.push(color);
 					user.alias = '[*[#'+color+name+'#]*]';
-					user.id = persistent.id++;
+					user.id = id++;
 				}
 				sendAll('[*'+user.alias+' has joined*]');
 				sendOnly(help, name);
