@@ -442,10 +442,12 @@ socket.once('start', rooms => {
 				get('msgbox').focus();
 			} else if(e.target.type == 'checkbox') {
 				e.target.previousSibling.type = e.target.checked? 'text': 'password';
+				e.target.previousSibling.focus();
 			} else if(e.target.tagName == 'LABEL') {
 				e.target.nextElementSibling?.focus();
 			} else if(e.target.closest('DETAILS')) {
 				setTimeout(scrolldown, 1);
+				get('msgbox').focus();
 			} else if(e.detail == 3 && e.target.tagName == 'PRE') {
 				const selection = window.getSelection();
 				selection.removeAllRanges();
