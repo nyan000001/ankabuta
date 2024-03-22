@@ -74,8 +74,8 @@ b * { font-weight:bold; }
 #help { padding:0 5px; line-height:13pt; }
 #help > div { padding:1px 0; }
 #help > div > div { margin:5px 0; white-space:pre; }
-kbd { border-radius:4px; padding:2px; border:1px solid #888; }
-var { opacity:.6; font-style:inherit; font-family:inherit; }
+kbd { border-radius:4px; padding:2px; border:1px solid #888; display:inline-block; min-width:20px; text-align:center; }
+var { opacity:.5; font-style:inherit; font-family:inherit; }
 
 #msgform { bottom:0; position:fixed; width:100%; height:50px; display:flex; padding:0 1px 1px 1px; }
 #msgform > * { margin:1px; }
@@ -150,6 +150,9 @@ var { opacity:.6; font-style:inherit; font-family:inherit; }
 	<i>Save and run the code</i></div>
 <div class="hidden"><kbd>ctrl</kbd> + <kbd>e</kbd>
 	<i>Click the first error message</i></div>
+<div><kbd>alt</kbd> + <kbd>c</kbd> / <kbd>l</kbd> / <kbd>r</kbd> / <kbd>m</kbd> / <kbd>s</kbd>
+	<i>Set focus to specific elements
+	(Hold down <kbd>alt</kbd> to see the labels)</i></div>
 </div><div>
 <div><code>[{sample text}]</code> <pre>sample text</pre></div>
 <div><code>[!sample text!]</code> <span class="rainbow">sample text</span></div>
@@ -956,12 +959,13 @@ socket.once('start', rooms => {
 				for(let i = 0; i < line - 1; i++) {
 					index += arr[i].length + 1; // +1 for the linebreak
 				}
-				const div = addsysmsg(event);
+				const div = addsysmsg(event+' at '+line+':'+col);
 				div.classList.add('error', 'clickable');
 				div.onclick = () => {
 					get('codebox').selectionStart = get('codebox').selectionEnd = index;
 					get('codebox').focus();
 				}
+				return true;
 			}
 			iframe.contentWindow.onunhandledrejection = onunhandledrejection = event => {
 				const numbers = event.reason.stack.split(/\D+/);
@@ -971,6 +975,7 @@ socket.once('start', rooms => {
 					const div = addsysmsg(event.reason.message);
 					div.classList.add('error');
 				}
+				event.preventDefault();
 			}
 			iframe.contentWindow.eval(runningcode);
 			for(const name in persistent.users) {
