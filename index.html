@@ -801,6 +801,14 @@ socket.once('start', rooms => {
 			get('codebox').classList[get('codebox').value == runningcode? 'remove': 'add']('changed');
 		}
 		get('codebox').onkeydown = e => {
+			setTimeout(() => {
+				if(get('codebox').scrollLeft < 7) {
+					get('codebox').scrollLeft = 0;
+				}
+				if(get('codebox').scrollTop < 7) {
+					get('codebox').scrollTop = 0;
+				}
+			});
 			if(e.ctrlKey && e.key == 'ArrowUp') {
 				codeindex = Math.max(codeindex-1, 0);
 				if(get('codebox').value == codehistory[codeindex]) {
