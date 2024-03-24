@@ -4,7 +4,7 @@
 <title>ankabuta</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-@font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
+@font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-2B04, U+2B96-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 * { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
 textarea, input, select, #arrow { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
@@ -134,7 +134,7 @@ var { opacity:.5; font-style:inherit; font-family:inherit; }
 <input type="text" id="name" maxlength="30">
 <input type="submit" id="go" value="Go"></form></div>
 <textarea id="codebox" spellcheck="false" aria-keyshortcuts="Alt+C"></textarea>
-<div id="log" role="log"><div id="arrow" class="hidden">↓</div></div>
+<div id="log" role="log"><div id="arrow" class="hidden">⬇</div></div>
 <div id="sidebar" role="log"></div>
 <div id="help" class="hidden">
 <div>
@@ -142,9 +142,9 @@ var { opacity:.5; font-style:inherit; font-family:inherit; }
 	<i>Toggle the help menu</i></div>
 <div><kbd>ctrl</kbd> + <kbd>o</kbd>
 	<i>Show or hide the rooms</i></div>
-<div><kbd>ctrl</kbd> + <kbd>up</kbd>
+<div><kbd>ctrl</kbd> + <kbd>⬆</kbd>
 	<i>Previous message<span class="hidden"> or code</span></i></div>
-<div><kbd>ctrl</kbd> + <kbd>down</kbd>
+<div><kbd>ctrl</kbd> + <kbd>⬇</kbd>
 	<i>Next message<span class="hidden"> or code</span></i></div>
 <div class="hidden"><kbd>ctrl</kbd> + <kbd>s</kbd>
 	<i>Save and run the code</i></div>
@@ -291,15 +291,16 @@ socket.once('start', rooms => {
 	}
 	onkeydown = e => {
 		if(e.altKey) {
-			if(e.key == 'c') {
+			const key = e.key.toLowerCase();
+			if(key == 'c') {
 				get('codebox').focus();
-			} else if(e.key == 'l') {
+			} else if(key == 'l') {
 				get('leave').focus();
-			} else if(e.key == 'r') {
+			} else if(key == 'r') {
 				get('run').focus();
-			} else if(e.key == 'm') {
+			} else if(key == 'm') {
 				get('msgbox').focus();
-			} else if(e.key == 's') {
+			} else if(key == 's') {
 				get('say').focus();
 			} else {
 				if(document.getElementsByClassName('shortcut').length) return;
@@ -332,7 +333,7 @@ socket.once('start', rooms => {
 		}
 	}
 	onkeyup = onblur = e => {
-		if(e.key && e.key != 'Alt') return;
+		if(e.key && e.key != 'Alt' && e.key != 'Meta') return;
 		const shortcuts = document.getElementsByClassName('shortcut');
 		while(shortcuts[0]) {
 			shortcuts[0].remove();
@@ -528,7 +529,7 @@ socket.once('start', rooms => {
 					if(timeout) clearTimeout(timeout);
 					timeout = setTimeout(() => {
 						timeout = null;
-						get('arrow').textContent = '↓';
+						get('arrow').textContent = '⬇';
 					}, 2000);
 				}
 				return;
@@ -705,7 +706,7 @@ socket.once('start', rooms => {
 		}
 		get('codebox').value =
 			`const users = persistent.users;
-			const colors = ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
+			const colors = ['e09', 'f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f'];
 			let id = 0;
 			const help = 'Available commands: /help /nick /pm /me /pat /hug /poke /cookie /cupcake /donut';
 			function join(name, hash) {
