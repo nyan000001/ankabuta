@@ -103,7 +103,7 @@ var { opacity:.5; font-style:inherit; font-family:inherit; }
 	input[type=button]:focus, input[type=submit]:focus { background:#333; }
 	input[type=text]:read-only, textarea:read-only, input:disabled { background:#000; color:#444; }
 	input[type=checkbox] { filter:invert(100%); }
-	.msg form { border-color:#555; }
+	.msg form, #sidebar form  { border-color:#555; }
 	::-webkit-scrollbar { width:15px; height:15px; }
 	::-webkit-scrollbar-track { background:#222; }
 	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
@@ -706,16 +706,16 @@ socket.once('start', rooms => {
 		}
 		get('codebox').value =
 			`const users = persistent.users;
-			const colors = ['e09', 'f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f'];
-			let id = 0;
+			const colors = ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
+			persistent.id = persistent.id ?? 0;
 			const help = 'Available commands: /help /nick /pm /me /pat /hug /poke /cookie /cupcake /donut';
 			function join(name, hash) {
 				const user = users[name];
-				if(!user.alias) {
+				if(!user.id) {
 					const color = colors.shift();
 					colors.push(color);
 					user.alias = '[*[#'+color+name+'#]*]';
-					user.id = id++;
+					user.id = persistent.id++;
 				}
 				sendAll('[*'+user.alias+' has joined*]');
 				sendOnly(help, name);
@@ -731,7 +731,7 @@ socket.once('start', rooms => {
 				const user = users[name];
 				if(msg[0] == '/') {
 					const words = msg.split(' ');
-					let cmd = words.shift().slice(1);
+					let cmd = words.shift().slice(1).toLowerCase();
 					if(cmd[0] == '!' && user.admin) {
 						cmd = cmd.slice(1);
 						if(['kick', 'k'].includes(cmd)) {
