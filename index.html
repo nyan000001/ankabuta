@@ -9,6 +9,7 @@
 textarea, input, select, #arrow { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
+input[type=checkbox] { vertical-align:middle; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 .joined #rooms.hidden, .joined #rooms div, #codebox, #log, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave, .joined #msgbox, .joined #say { display:block; }
@@ -138,19 +139,19 @@ var { opacity:.5; font-style:inherit; font-family:inherit; }
 <div id="sidebar" role="log"></div>
 <div id="help" class="hidden">
 <div>
-<div><kbd>ctrl</kbd> + <kbd>h</kbd>
+<div><kbd>ctrl</kbd> + <kbd id="togglehelp">h</kbd>
 	<i>Toggle the help menu</i></div>
-<div><kbd>ctrl</kbd> + <kbd>o</kbd>
+<div><kbd>ctrl</kbd> + <kbd id="togglerooms">o</kbd>
 	<i>Show or hide the rooms</i></div>
 <div><kbd>ctrl</kbd> + <kbd>⬆</kbd>
 	<i>Previous message<span class="hidden"> or code</span></i></div>
 <div><kbd>ctrl</kbd> + <kbd>⬇</kbd>
 	<i>Next message<span class="hidden"> or code</span></i></div>
-<div class="hidden"><kbd>ctrl</kbd> + <kbd>s</kbd>
+<div class="hidden"><kbd>ctrl</kbd> + <kbd id="runcode">s</kbd>
 	<i>Save and run the code</i></div>
-<div class="hidden"><kbd>ctrl</kbd> + <kbd>e</kbd>
+<div class="hidden"><kbd>ctrl</kbd> + <kbd id="clickerror">e</kbd>
 	<i>Click the first error message</i></div>
-<div><kbd>alt</kbd> + <kbd>c</kbd> / <kbd>l</kbd> / <kbd>r</kbd> / <kbd>m</kbd> / <kbd>s</kbd>
+<div><kbd>alt</kbd> + <kbd id="focuscodebox">c</kbd> / <kbd id="focusleave">l</kbd> / <kbd id="focusrun">r</kbd> / <kbd id="focusmsgbox">m</kbd> / <kbd id="focussay">s</kbd>
 	<i>Set focus to specific elements
 	(Hold down <kbd>alt</kbd> to see the labels)</i></div>
 </div><div>
@@ -199,8 +200,18 @@ if(!Array.prototype.at) {
 		return num < 0? this[this.length+num]: this[num];
 	}
 }
+const get = id => document.getElementById(id);
+const kbds = document.getElementsByTagName('kbd');
+for(let i = 0; i < kbds.length; i++) {
+	if(kbds[i].id) kbds[i].textContent = localStorage.getItem(kbds[i].id) || kbds[i].textContent;
+}
+if(localStorage.getItem('showrooms')) get('rooms').classList.remove('hidden');
+if(localStorage.getItem('showhelp')) get('help').classList.remove('hidden');
+const style = localStorage.getItem('style');
+if(style) document.getElementsByTagName('style')[0].append(style);
+const script = localStorage.getItem('script');
+if(script) eval(script);
 socket.once('start', rooms => {
-	const get = id => document.getElementById(id);
 	let animation;
 	let msgcount = 0;
 	const msghistory = [];
@@ -292,15 +303,15 @@ socket.once('start', rooms => {
 	onkeydown = e => {
 		if(e.altKey) {
 			const key = e.key.toLowerCase();
-			if(key == 'c') {
+			if(key == (localStorage.getItem('focuscodebox') || 'c')) {
 				get('codebox').focus();
-			} else if(key == 'l') {
+			} else if(key == (localStorage.getItem('focusleave') || 'l')) {
 				get('leave').focus();
-			} else if(key == 'r') {
+			} else if(key == (localStorage.getItem('focusrun') || 'r')) {
 				get('run').focus();
-			} else if(key == 'm') {
+			} else if(key == (localStorage.getItem('focusmsgbox') || 'm')) {
 				get('msgbox').focus();
-			} else if(key == 's') {
+			} else if(key == (localStorage.getItem('focussay') || 's')) {
 				get('say').focus();
 			} else {
 				if(document.getElementsByClassName('shortcut').length) return;
@@ -310,25 +321,35 @@ socket.once('start', rooms => {
 					div.className = 'shortcut';
 					div.style.left = rect.left+'px';
 					div.style.top = rect.top+'px';
-					div.textContent = el[0];
+					div.textContent = localStorage.getItem('focus'+el) || el[0];
 					document.body.append(div);
 				}
 			}
 		} else if(e.ctrlKey) {
+			let flag;
 			const scroll = get('arrow').classList.contains('hidden');
-			if(e.key == 'o') {
+			if(e.key == (localStorage.getItem('togglerooms') || 'o')) {
 				get('rooms').classList.toggle('hidden');
-			} else if(e.key == 'h') {
+				flag = true;
+			}
+			if(e.key == (localStorage.getItem('togglehelp') || 'h')) {
 				get('help').classList.toggle('hidden');
-			} else if(e.key == 's' && document.body.classList.contains('admin')) {
+				flag = true;
+			}
+			if(e.key == (localStorage.getItem('runcode') || 's') && document.body.classList.contains('admin')) {
 				get('run').click();
-			} else if(e.key == 'e') {
+				flag = true;
+			}
+			if(e.key == (localStorage.getItem('clickerror') || 'e')) {
 				document.getElementsByClassName('clickable')[0]?.click();
-			} else return;
-			e.preventDefault();
-			if(scroll) {
-				ignorescroll = true;
-				get('log').scrollTop = get('log').scrollHeight;
+				flag = true;
+			}
+			if(flag) {
+				e.preventDefault();
+				if(scroll) {
+					ignorescroll = true;
+					get('log').scrollTop = get('log').scrollHeight;
+				}
 			}
 		}
 	}
@@ -410,6 +431,9 @@ socket.once('start', rooms => {
 		get(room).classList.add('disabled');
 		document.title = 'ankabuta'+room;
 		get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = false;
+		let focus = localStorage.getItem('focus');
+		if(['codebox', 'run'].includes(focus) && !adminhash) focus = 'msgbox';
+		setTimeout(() => get(focus || 'msgbox')?.focus());
 		history.replaceState(null, '', document.location.pathname+room);
 		document.body.classList.add('joined');
 		get('arrow').onclick = () => {
@@ -450,7 +474,7 @@ socket.once('start', rooms => {
 			} else if(e.target.tagName == 'LABEL') {
 				e.target.nextElementSibling?.focus();
 			} else if(e.target.closest('DETAILS')) {
-				setTimeout(scrolldown, 1);
+				setTimeout(scrolldown);
 				get('msgbox').focus();
 			} else if(e.detail == 3 && e.target.tagName == 'PRE') {
 				const selection = window.getSelection();
@@ -699,7 +723,6 @@ socket.once('start', rooms => {
 			scrolldown();
 		}
 		if(!adminhash) {
-			get('msgbox').focus();
 			socket.on('change', change);
 			socket.on('hear', addmsg);
 			return;
@@ -992,7 +1015,6 @@ socket.once('start', rooms => {
 			}
 		}
 		get('run').click();
-		get('codebox').focus();
 	}
 	socket.once('joinroom', join);
 	socket.on('log', (...arr) => console.log(...arr));

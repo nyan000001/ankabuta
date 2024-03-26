@@ -4,6 +4,7 @@ const io = require('socket.io')(http, { pingInterval:50000, pingTimeout:50000 })
 app.get('/favicon.ico', (req, res) => res.sendFile(__dirname + '/favicon.ico'));
 app.get('/NotoColorEmoji.woff2', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.woff2'));
 app.get('/NotoColorEmoji.ttf', (req, res) => res.sendFile(__dirname + '/NotoColorEmoji.ttf'));
+app.get('/settings', (req, res) => res.sendFile(__dirname + '/settings.html'));
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const client = new MongoClient(process.env.URI, { serverApi:{ version:ServerApiVersion.v1, strict:true, deprecationErrors:true } });
@@ -185,22 +186,22 @@ io.on('connection', socket => {
 		const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
 		const sockets = getallsockets();
 		let name;
-		const issimilar = (name1, name2) => {
+		const issimilar = (name1, name2, i) => {
 			if(!name2) return false;
+			if(i < 100 && name1[0] == name2[0]) return true;
 			if(name1 == name2 || name1.slice(0, 3) == name2.slice(0, 3)) return true;
-			if(name1[0] == name2[0] && name1.length == name2.length) return true;
-			let i = 0;
-			while(i < name1.length && i < name2.length && name1[i] == name2[i]) {
-				i++;
+			let j = 0;
+			while(j < name1.length && j < name2.length && name1[j] == name2[j]) {
+				j++;
 			}
-			return name1.slice(i + (name1.length >= name2.length)) == name2.slice(i + (name2.length >= name1.length));
+			return name1.slice(j + (name1.length >= name2.length)) == name2.slice(j + (name2.length >= name1.length));
 		}
 		for(let i = 0; i < 1000; i++) {
-			name = rand([...'bfhklmnpstwxy', 'ch', 'fl', 'ny', 'sh']) + rand('aeiou');
+			name = rand([...'bfhklmnpstwxy', 'bl', 'ch', 'fl', 'ny', 'sh', 'sn']) + rand('aeiou');
 			if(Math.random() < .9) {
 				name = rand([
-					name + rand(['bbo', 'ffy', 'ggo', 'll', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'pper', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
-					name + rand([...'bmnprtx', 'ch', 'ff', 'kk', 'pp']) + rand('aiou')
+					name + rand(['bbo', 'ffy', 'ggo', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'pper', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
+					name + rand([...'blmnprtx', 'ch', 'ff', 'kk', 'll', 'pp']) + rand('aiou')
 				]);
 			} else {
 				name = rand([
@@ -213,9 +214,9 @@ io.on('connection', socket => {
 					rand([...'bdghjklmnpstwxyz', 'ch', 'tx']) + rand([...'aiou', 'ai'])
 				]);
 			}
-			if(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[htw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|p[eu]t|napp|s[aeiou]+x|sh[aeiou]+[gt]|w.[nk]k|[jy]i|nazi|sep|ild|moro|nye|.w[ei]|wu|huo.+tl/.test(name)) continue;
+			if(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[htw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|p[eu]t|napp|s[hn]?[aeiou]+[gtx]|w.[nk]k|[jy]i|nazi|sep|ild|moro|nye|.w[ei]|wu|huo.+tl/.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
-			if(sockets.every(socket2 => !issimilar(name, socket2.name))) break;
+			if(sockets.every(socket2 => !issimilar(name, socket2.name, i))) break;
 		}
 		getname(name);
 	}
