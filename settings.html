@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>ankabuta/settings</title>
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-2B04, U+2B96-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
+* { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; box-sizing:border-box; tab-size:4; margin:0; }
+form { height:100vh; padding:2px; display:flex; flex-direction:column; }
+#shortcuts { display:flex; justify-content:space-around; margin:1px; }
+.flex { display:flex; justify-content:center; column-gap:20px; }
+label { display:block; white-space:nowrap; }
+input[type=text] { width:20px; text-align:center; }
+input, textarea { border:1px solid #000; border-radius:3px; }
+input:focus, textarea:focus { outline:1px solid #000; outline-offset:-2px; }
+textarea { resize:none; margin-top:2px; flex-grow:1; }
+input[type=checkbox], input[type=radio] { vertical-align:middle; }
+@media (max-width:950px) {
+	#shortcuts { flex-direction:column; row-gap:5px; margin-bottom:4px; }
+	.flex { justify-content:start; }
+}
+@media (max-width:550px) {
+	.flex { column-gap:5px; }
+}
+@media (prefers-color-scheme:dark) {
+	body { background:#000; color:#fff; }
+	input, textarea { background:#000; color:#fff; border-color:#ccc; }
+	input:focus, textarea:focus { outline-color:#ccc; background:#111; }
+	input { background:#222; }
+	input:focus { background:#333; }
+	input[type=checkbox], input[type=radio] { filter:invert(100%); }
+}
+</style>
+</head>
+<body>
+<form id="form">
+<div id="shortcuts">
+<div>
+<h2>Ctrl shortcuts</h2>
+<div class="flex">
+<div id="togglerooms">
+<label><input type="text" maxlength="1" placeholder="o"> Toggle rooms</label>
+<label><input type="checkbox"> Show</label>
+</div>
+<div id="togglehelp">
+<label><input type="text" maxlength="1" placeholder="h"> Toggle help</label>
+<label><input type="checkbox"> Show</label>
+</div>
+<div id="clickerror">
+<label><input type="text" maxlength="1" placeholder="e"> Click error msg</label>
+</div>
+<div id="runcode">
+<label><input type="text" maxlength="1" placeholder="s"> Run code</label>
+</div>
+</div>
+</div>
+<div>
+<h2>Alt shortcuts</h2>
+<div class="flex">
+<div id="focuscodebox">
+<label><input type="text" maxlength="1" placeholder="c"> codebox</label>
+<label><input type="radio" name="focus"> Focus</label>
+</div>
+<div id="focusleave">
+<label><input type="text" maxlength="1" placeholder="l"> leave</label>
+<label><input type="radio" name="focus"> Focus</label>
+</div>
+<div id="focusrun">
+<label><input type="text" maxlength="1" placeholder="r"> run</label>
+<label><input type="radio" name="focus"> Focus</label>
+</div>
+<div id="focusmsgbox">
+<label><input type="text" maxlength="1" placeholder="m"> msgbox</label>
+<label><input type="radio" name="focus" checked> Focus</label>
+</div>
+<div id="focussay">
+<label><input type="text" maxlength="1" placeholder="s"> send</label>
+<label><input type="radio" name="focus"> Focus</label>
+</div>
+</div>
+</div>
+</div>
+<textarea id="style" placeholder="style" spellcheck="false"></textarea>
+<textarea id="script" placeholder="script" spellcheck="false"></textarea>
+</form>
+<script>
+const get = id => document.getElementById(id);
+
+const textinputs = [...document.querySelectorAll('[type=text]')];
+textinputs.forEach(input => input.value = localStorage.getItem(input.closest('div').id));
+
+get('togglerooms').querySelector('[type=checkbox]').checked = localStorage.getItem('showrooms');
+get('togglehelp').querySelector('[type=checkbox]').checked = localStorage.getItem('showhelp');
+
+const radio = get('focus'+localStorage.getItem('focus'))?.querySelector('[type=radio]');
+if(radio) radio.checked = true;
+
+get('style').value = localStorage.getItem('style');
+get('script').value = localStorage.getItem('script');
+
+oninput = () => {
+	textinputs.forEach(input => localStorage.setItem(input.closest('div').id, input.value.toLowerCase()));
+	localStorage.setItem('showrooms', get('togglerooms').querySelector('[type=checkbox]').checked? '!': '');
+	localStorage.setItem('showhelp', get('togglehelp').querySelector('[type=checkbox]').checked? '!': '');
+	localStorage.setItem('focus', document.querySelector('[type=radio]:checked').closest('div').id.replace('focus', ''));
+	localStorage.setItem('style', get('style').value);
+	localStorage.setItem('script', get('script').value);
+}
+</script>
+</body>
+</html>
