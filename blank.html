@@ -7,9 +7,10 @@
 <style>
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-2B04, U+2B96-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 * { box-sizing:border-box; font-family:'Noto Color Emoji', sans-serif; }
+html, body, #top { height:100%; }
 body { font-size:8pt; padding:0; margin:0; line-height:13px; }
 body.blank * { display:none; }
-#top { display:flex; height:100vh; }
+#top { display:flex; }
 #top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
 #top > div.closed { opacity:.5; }
 #top > div.closed:hover { opacity:1; }
