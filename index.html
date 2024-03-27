@@ -134,7 +134,7 @@ var { opacity:.5; font-style:inherit; font-family:inherit; }
 <label for="name">Username (optional)</label>
 <input type="text" id="name" maxlength="30">
 <input type="submit" id="go" value="Go"></form></div>
-<textarea id="codebox" spellcheck="false" aria-keyshortcuts="Alt+C"></textarea>
+<textarea id="codebox" spellcheck="false"></textarea>
 <div id="log" role="log"><div id="arrow" class="hidden">⬇</div></div>
 <div id="sidebar" role="log"></div>
 <div id="help" class="hidden">
@@ -187,10 +187,10 @@ var { opacity:.5; font-style:inherit; font-family:inherit; }
 </div>
 </div>
 <form id="msgform">
-<input type="button" id="leave" value="Leave" aria-keyshortcuts="Alt+L">
-<input type="button" id="run" value="Run" aria-keyshortcuts="Alt+R">
-<textarea id="msgbox" aria-label="Message" maxlength="5000" aria-keyshortcuts="Alt+M"></textarea>
-<input type="submit" id="say" value="Say" aria-keyshortcuts="Alt+S">
+<input type="button" id="leave" value="Leave">
+<input type="button" id="run" value="Run">
+<textarea id="msgbox" aria-label="Message" maxlength="5000"></textarea>
+<input type="submit" id="say" value="Say">
 </form>
 <script src="/socket.io/socket.io.js"></script>
 <script>

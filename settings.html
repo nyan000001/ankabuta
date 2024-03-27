@@ -14,13 +14,16 @@ label { display:block; white-space:nowrap; }
 input[type=text] { width:20px; text-align:center; }
 input, textarea { border:1px solid #000; border-radius:3px; }
 input:focus, textarea:focus { outline:1px solid #000; outline-offset:-2px; }
+#textareas { display:flex; height:100%; }
 textarea { resize:none; margin-top:2px; flex-grow:1; }
 input[type=checkbox], input[type=radio] { vertical-align:middle; }
 @media (max-width:950px) {
 	#shortcuts { flex-direction:column; row-gap:5px; margin-bottom:4px; }
 	.flex { justify-content:start; }
+	#textareas { flex-direction:column; }
 }
 @media (max-width:550px) {
+	label { font-size:9pt; }
 	.flex { column-gap:5px; }
 }
 @media (prefers-color-scheme:dark) {
@@ -81,8 +84,10 @@ input[type=checkbox], input[type=radio] { vertical-align:middle; }
 </div>
 </div>
 </div>
-<textarea id="style" placeholder="style" spellcheck="false"></textarea>
-<textarea id="script" placeholder="script" spellcheck="false"></textarea>
+<div id="textareas">
+<textarea id="Style" placeholder="style" spellcheck="false" aria-label="Style"></textarea>
+<textarea id="Script" placeholder="script" spellcheck="false" aria-label="Script"></textarea>
+</div>
 </form>
 <script>
 const get = id => document.getElementById(id);

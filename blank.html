@@ -77,12 +77,16 @@ const reset = () => {
 	}
 	get('hash').value = get('regex').value = '';
 }
-const highlighthash = hash => {
+const highlighthash = (hash, roomdiv) => {
 	reset();
 	const elems = document.getElementsByTagName('p');
 	for(let i = 0; i < elems.length; i++) {
 		if(!elems[i].classList.contains(hash)) continue;
 		elems[i].classList.add('highlight');
+		const roomdiv2 = elems[i].parentNode;
+		if(roomdiv2 != roomdiv && roomdiv2.scrollHeight - roomdiv2.scrollTop - roomdiv2.clientHeight < 1) {
+			elems[i].scrollIntoView({ behavior: 'auto', block: 'center', inline: 'start' });
+		}
 	}
 	get('hash').value = hash;
 }
@@ -191,7 +195,9 @@ socket.once('log', (records, regex) => {
 				}
 			}
 			p.innerHTML = html;
-			p.title = new Date(record.time).toLocaleTimeString();
+			const span = document.createElement('span');
+			span.textContent = '['+new Date(record.time).toLocaleString()+'] ';
+			p.prepend(span);
 			if(!room) room = '(not in a room)';
 			if(!roomdivs[room]) addroom(room);
 			roomdivs[room].append(p);
@@ -200,9 +206,11 @@ socket.once('log', (records, regex) => {
 				if(hash == get('hash').value) {
 					p.classList.add('highlight');
 				}
-				p.onclick = () => highlighthash(hash);
+				p.onclick = () => highlighthash(hash, roomdivs[room]);
 			}
-			roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
+			if(roomdiv.scrollHeight - roomdiv.scrollTop - roomdiv.clientHeight < 1) {
+				roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
+			}
 		}
 		const boldname = '[*'+name+'*]';
 		if(!cmd) {
