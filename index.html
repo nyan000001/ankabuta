@@ -301,13 +301,14 @@ socket.once('start', rooms => {
 		addroom(room);
 	}
 	onkeydown = e => {
+		if(!document.body.classList.contains('joined')) return;
 		if(e.altKey) {
 			const key = e.key.toLowerCase();
-			if(key == (localStorage.getItem('focuscodebox') || 'c')) {
+			if(key == (localStorage.getItem('focuscodebox') || 'c') && document.body.classList.contains('admin')) {
 				get('codebox').focus();
 			} else if(key == (localStorage.getItem('focusleave') || 'l')) {
 				get('leave').focus();
-			} else if(key == (localStorage.getItem('focusrun') || 'r')) {
+			} else if(key == (localStorage.getItem('focusrun') || 'r') && document.body.classList.contains('admin')) {
 				get('run').focus();
 			} else if(key == (localStorage.getItem('focusmsgbox') || 'm')) {
 				get('msgbox').focus();
@@ -315,7 +316,11 @@ socket.once('start', rooms => {
 				get('say').focus();
 			} else {
 				if(document.getElementsByClassName('shortcut').length) return;
-				for(const el of ['codebox', 'leave', 'run', 'msgbox', 'say']) {
+				const arr = ['leave', 'msgbox', 'say'];
+				if(document.body.classList.contains('admin')) {
+					arr.push('codebox', 'run');
+				}
+				for(const el of arr) {
 					const rect = get(el).getBoundingClientRect();
 					const div = document.createElement('div');
 					div.className = 'shortcut';

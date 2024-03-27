@@ -200,16 +200,17 @@ socket.once('log', (records, regex) => {
 			p.prepend(span);
 			if(!room) room = '(not in a room)';
 			if(!roomdivs[room]) addroom(room);
-			roomdivs[room].append(p);
+			const roomdiv = roomdivs[room];
+			roomdiv.append(p);
 			if(hash) {
 				p.classList.add(hash, 'clickable');
 				if(hash == get('hash').value) {
 					p.classList.add('highlight');
 				}
-				p.onclick = () => highlighthash(hash, roomdivs[room]);
+				p.onclick = () => highlighthash(hash, roomdiv);
 			}
 			if(roomdiv.scrollHeight - roomdiv.scrollTop - roomdiv.clientHeight < 1) {
-				roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
+				roomdiv.scrollTo({ top:roomdiv.scrollHeight, left:0 });
 			}
 		}
 		const boldname = '[*'+name+'*]';
