@@ -121,7 +121,7 @@ io.on('connection', socket => {
 			return;
 		}
 		socket.removeAllListeners('LOGIN');
-		const records = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) } },  { _id:0, createdAt:1, room:1, name:1, hash:1, cmd:1, arr:1, msg:1 }).toArray();
+		const records = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) } },  { projection:{ _id:0 } }).toArray();
 		for(const i in records) {
 			records[i].time = Date.parse(records[i].createdAt);
 			delete records[i].createdAt;
@@ -170,9 +170,8 @@ io.on('connection', socket => {
 			}
 		});
 	});
-	const getallsockets = () => [...io.sockets.sockets.values()];
 	const getname = name => {
-		const sockets = getallsockets().filter(socket2 => socket2.name && socket2.room == socket.room);
+		const sockets = [...io.sockets.sockets.values()].filter(socket2 => socket2.name && socket2.room == socket.room);
 		if(sockets.some(socket2 => socket2.name == name)) {
 			let i = 0;
 			do i++;
@@ -182,20 +181,24 @@ io.on('connection', socket => {
 		socket.name = name;
 		socket.join(name);
 	}
-	const getrandomname = () => {
+	const getrandomname = async () => {
 		const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
-		const sockets = getallsockets();
-		let name;
-		const issimilar = (name1, name2, i) => {
-			if(!name2) return false;
-			if(i < 100 && name1[0] == name2[0]) return true;
-			if(name1 == name2 || name1.slice(0, 3) == name2.slice(0, 3)) return true;
-			let j = 0;
-			while(j < name1.length && j < name2.length && name1[j] == name2[j]) {
-				j++;
-			}
-			return name1.slice(j + (name1.length >= name2.length)) == name2.slice(j + (name2.length >= name1.length));
+		const arr = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) }, cmd:'join' }, { projection:{ _id:0, name:1 } }).toArray();
+		const sockets = [];
+		for(const name of arr) {
+			if(sockets.includes(name)) continue;
+			sockets.push(name);
 		}
+		const issimilar = (name1, name2) => {
+			if(name1 == name2 || name1.slice(0, 3) == name2.slice(0, 3)) return true;
+			let i = 0;
+			while(i < name1.length && i < name2.length && name1[i] == name2[i]) {
+				i++;
+			}
+			return name1.slice(i + (name1.length >= name2.length)) == name2.slice(i + (name2.length >= name1.length));
+		}
+		let name;
+		const bad = /([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[htw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|p[eu]t|napp|s[hn]?[aeiou]+[gtx]|w.[nk]k|[jy]i|nazi|sep|ild|moro|nye|.w[ei]|wu|huo.+tl/;
 		for(let i = 0; i < 1000; i++) {
 			name = rand([...'bfhklmnpstwxy', 'bl', 'ch', 'fl', 'ny', 'sh', 'sn']) + rand('aeiou');
 			if(Math.random() < .9) {
@@ -214,9 +217,13 @@ io.on('connection', socket => {
 					rand([...'bdghjklmnpstwxyz', 'ch', 'tx']) + rand([...'aiou', 'ai'])
 				]);
 			}
-			if(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[htw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|p[eu]t|napp|s[hn]?[aeiou]+[gtx]|w.[nk]k|[jy]i|nazi|sep|ild|moro|nye|.w[ei]|wu|huo.+tl/.test(name)) continue;
+			if(bad.test(name)) continue;
 			//name = name[0].toUpperCase() + name.slice(1);
-			if(sockets.every(socket2 => !issimilar(name, socket2.name, i))) break;
+			if(sockets.every(socket2 => !issimilar(name, socket2.name))) break;
+		}
+		if(bad.test(name)) {
+			getrandomname();
+			return;
 		}
 		getname(name);
 	}
@@ -280,7 +287,7 @@ io.on('connection', socket => {
 			getname(name.trim().replace(/^#+/, '').slice(0, 30).replace(/\s/g, '_'));
 		} else {
 			name = undefined;
-			getrandomname();
+			await getrandomname();
 		}
 		logaction('join');
 		if(rooms[socket.room]) {
@@ -400,7 +407,7 @@ io.on('connection', socket => {
 				clearTimeout(rooms[socket.room].timeout);
 				if(rooms[socket.room].timeout == undefined && !socket.room.includes('hidden')) {
 					socket.emit('hideroom');
-					for(const socket2 of getallsockets()) {
+					for(const socket2 of [...io.sockets.sockets.values()]) {
 						if(socket2.room == socket.room) {
 							socket2.emit('hideroom');
 						} else {
@@ -414,7 +421,7 @@ io.on('connection', socket => {
 					socket.emit('notify', 'Room unlocked');
 					if(socket.room.includes('hidden')) return;
 					socket.emit('showroom');
-					for(const socket2 of getallsockets()) {
+					for(const socket2 of [...io.sockets.sockets.values()]) {
 						if(socket2.room == socket.room) {
 							socket2.emit('showroom');
 						} else {
