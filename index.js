@@ -199,32 +199,30 @@ io.on('connection', socket => {
 		}
 		let name;
 		const bad = /([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[htw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|p[eu]t|napp|s[hn]?[aeiou]+[gtx]|w.[nk]k|[jy]i|nazi|sep|ild|moro|nye|.w[ei]|wu|huo.+tl/;
-		for(let i = 0; i < 1000; i++) {
-			name = rand([...'bfhklmnpstwxy', 'bl', 'ch', 'fl', 'ny', 'sh', 'sn']) + rand('aeiou');
-			if(Math.random() < .9) {
-				name = rand([
-					name + rand(['bbo', 'ffy', 'ggo', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'pper', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
-					name + rand([...'blmnprtx', 'ch', 'ff', 'kk', 'll', 'pp']) + rand('aiou')
-				]);
-			} else {
-				name = rand([
-					rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], .2),
-					name + rand('dlnrstw') + rand('aeiou') + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
-					rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + 'tl',
-					rand('bkw') + 'a' + rand('hlz') + 'oo',
-					rand([...'bhkltwy', 'ch', 'xi']) + 'ao',
-					rand('bhkltw') + 'ei',
-					rand([...'bdghjklmnpstwxyz', 'ch', 'tx']) + rand([...'aiou', 'ai'])
-				]);
+		do {
+			for(let i = 0; i < 1000; i++) {
+				name = rand([...'bfhklmnpstwxy', 'bl', 'ch', 'fl', 'ny', 'sh', 'sn']) + rand('aeiou');
+				if(Math.random() < .9) {
+					name = rand([
+						name + rand(['bbo', 'ffy', 'ggo', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'pper', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
+						name + rand([...'blmnprtx', 'ch', 'ff', 'kk', 'll', 'pp']) + rand('aiou')
+					]);
+				} else {
+					name = rand([
+						rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], .2),
+						name + rand('dlnrstw') + rand('aeiou') + rand([...'bklmnrsx', 'ch', 'lm', 'nd', 'ng', 'sh']) + rand('aiou'),
+						rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + 'tl',
+						rand('bkw') + 'a' + rand('hlz') + 'oo',
+						rand([...'bhkltwy', 'ch', 'xi']) + 'ao',
+						rand('bhkltw') + 'ei',
+						rand([...'bdghjklmnpstwxyz', 'ch', 'tx']) + rand([...'aiou', 'ai'])
+					]);
+				}
+				if(bad.test(name)) continue;
+				//name = name[0].toUpperCase() + name.slice(1);
+				if(sockets.every(socket2 => !issimilar(name, socket2.name))) break;
 			}
-			if(bad.test(name)) continue;
-			//name = name[0].toUpperCase() + name.slice(1);
-			if(sockets.every(socket2 => !issimilar(name, socket2.name))) break;
-		}
-		if(bad.test(name)) {
-			getrandomname();
-			return;
-		}
+		} while(bad.test(name));
 		getname(name);
 	}
 	if(socket.handshake.headers.referer?.includes('blank')) {
