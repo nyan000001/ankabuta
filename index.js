@@ -183,21 +183,22 @@ io.on('connection', socket => {
 	}
 	const getrandomname = async () => {
 		const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
-		const arr = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) }, cmd:'join' }, { projection:{ _id:0, name:1 } }).toArray();
-		const sockets = [];
-		for(const name of arr) {
-			if(sockets.includes(name)) continue;
-			sockets.push(name);
+		const arr = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 12*60*60*1000) }, cmd:'join' }, { projection:{ _id:0, name:1 } }).toArray();
+		const names = [];
+		for(const socket2 of arr) {
+			if(names.includes(socket2.name)) continue;
+			names.push(socket2.name);
 		}
-		const issimilar = (name1, name2) => {
-			if(name1 == name2 || name1.slice(0, 3) == name2.slice(0, 3)) return true;
+		const sockets = [...io.sockets.sockets.values()].filter(socket2 => socket2.name && socket2.room == socket.room);
+		let name;
+		const issimilar = (name2) => {
+			if(name == name2 || name.slice(0, 3) == name2.slice(0, 3)) return true;
 			let i = 0;
-			while(i < name1.length && i < name2.length && name1[i] == name2[i]) {
+			while(i < name.length && i < name2.length && name[i] == name2[i]) {
 				i++;
 			}
-			return name1.slice(i + (name1.length >= name2.length)) == name2.slice(i + (name2.length >= name1.length));
+			return name.slice(i + (name.length >= name2.length)) == name2.slice(i + (name2.length >= name.length));
 		}
-		let name;
 		const bad = /([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[htw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|p[eu]t|napp|s[hn]?[aeiou]+[gtx]|w.[nk]k|[jy]i|nazi|sep|ild|moro|nye|.w[ei]|wu|huo.+tl/;
 		do {
 			for(let i = 0; i < 1000; i++) {
@@ -220,7 +221,7 @@ io.on('connection', socket => {
 				}
 				if(bad.test(name)) continue;
 				//name = name[0].toUpperCase() + name.slice(1);
-				if(sockets.every(socket2 => !issimilar(name, socket2.name))) break;
+				if(names.every(name2 => !issimilar(name2)) && sockets.every(socket2 => socket2.name[0] != name[0])) break;
 			}
 		} while(bad.test(name));
 		getname(name);
@@ -309,49 +310,36 @@ io.on('connection', socket => {
 				socket.broadcast.emit('addroom', socket.room);
 			}
 			socket.emit('joinroom', socket.room, socket.name, socket.hash, !!name);
-			const send = async (msg1, names, msg2, only, add) => {
-				if(!Array.isArray(names)) return;
+			const send = async (msg1, names, msg2, add) => {
+				if(!Array.isArray(names)) names = [];
 				const sockets = await io.in(socket.room).fetchSockets();
 				for(const socket2 of sockets) {
 					if(add != undefined) {
-						if(names.includes(socket2.name) == only) {
-							socket2.emit('change', add, msg1);
-						} else if(msg2) {
-							socket2.emit('change', add, msg2);
+						if(names.includes(socket2.name)) {
+							msg1 && socket2.emit('change', add, msg1);
+						} else {
+							msg2 && socket2.emit('change', add, msg2);
 						}
 					} else {
-						if(names.includes(socket2.name) == only) {
-							socket2.emit('hear', msg1);
-						} else if(msg2) {
-							socket2.emit('hear', msg2);
+						if(names.includes(socket2.name)) {
+							msg1 && socket2.emit('hear', msg1);
+						} else {
+							msg2 && socket2.emit('hear', msg2);
 						}
 					}
 				}
-				return true;
 			}
 			socket.on('sendOnly', (...arr) => {
 				logaction('sendOnly', ...arr);
-				if(typeof arr[0] == 'boolean') {
-					const [add, msg1, names, msg2] = arr;
-					send(msg1, names, msg2, true, add);
-				} else {
-					const [msg1, names, msg2] = arr;
-					send(msg1, names, msg2, true);
-				}
+				const add = typeof arr[0] == 'boolean'? arr.shift(): undefined;
+				const [msg1, names, msg2] = arr;
+				send(msg1, names, msg2, add);
 			});
 			socket.on('sendAll', async (...arr) => {
 				logaction('sendAll', ...arr);
-				if(typeof arr[0] == 'boolean') {
-					const [add, msg1, names, msg2] = arr;
-					if(!await send(msg1, names, msg2, false, add)) {
-						io.to(socket.room).emit('change', add, msg1);
-					}
-				} else {
-					const [msg1, names, msg2] = arr;
-					if(!await send(msg1, names, msg2, false)) {
-						io.to(socket.room).emit('hear', msg1);
-					}
-				}
+				const add = typeof arr[0] == 'boolean'? arr.shift(): undefined;
+				const [msg1, names, msg2] = arr;
+				send(msg2, names, msg1, add);
 			});
 			socket.on('kick', async (name, msg) => {
 				logaction('kick', name, msg);
