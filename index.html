@@ -6,6 +6,7 @@
 <style>
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-2B04, U+2B96-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 * { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
+#log input, #sidebar input { user-select:all; }
 textarea, input, select, #arrow { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
@@ -579,6 +580,7 @@ socket.once('start', rooms => {
 		}
 		get('msgform').onsubmit = e => {
 			e.preventDefault();
+			get('msgbox').focus();
 			const msg = get('msgbox').value;
 			if(!msg) return;
 			if(msgindex < msghistory.length) {
