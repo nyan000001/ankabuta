@@ -87,7 +87,8 @@ const highlighthash = (hash, roomdiv) => {
 		elems[i].classList.add('highlight');
 		const roomdiv2 = elems[i].parentNode;
 		if(roomdiv2 != roomdiv && roomdiv2.scrollHeight - roomdiv2.scrollTop - roomdiv2.clientHeight < 1) {
-			elems[i].scrollIntoView({ behavior: 'auto', block: 'center', inline: 'start' });
+			roomdiv2.scrollTop = elems[i].getBoundingClientRect().top + roomdiv2.scrollHeight - roomdiv2.clientHeight * 1.5;
+			roomdiv2.scrollLeft = 0;
 		}
 	}
 	get('hash').value = hash;

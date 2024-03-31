@@ -514,14 +514,14 @@ socket.once('start', rooms => {
 								if(tag.startsWith('select|')) return ('<select><option>'+tag.slice(7).replace(/\|/g, '</option><option>')+'</option></select>').replace(/"/g, '&quot;').replace(/>([^<]*?):([^<]*?)</g, ' value="$1">$2<');
 								let style = tag.startsWith('long')? 'width:300px;': tag.startsWith('short')? 'width:40px;': 'width:100px;';
 								tag = tag.replace(/^(long|short)/, '');
-								if(tag == 'text') return '<input type="'+tag+'" style="'+style+'; max-width:calc(100% - 2px)">';
-								if(tag == 'password') return '<input type="'+tag+'" style="'+style+'; max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
+								if(tag == 'text') return '<input type="'+tag+'" style="'+style+' max-width:calc(100% - 2px)">';
+								if(tag == 'password') return '<input type="'+tag+'" style="'+style+' max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
 								if(tag == 'button' || tag == 'submit') return '<input type="'+tag+'" value="send">';
 								const match = tag.match(/^(?<tag>\w+):(?<value>.*)/)?.groups;
 								if(match) {
 									match.value = match.value.replace(/"/g, '&quot;');
-									if(match.tag == 'text') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+'; max-width:calc(100% - 2px)">';
-									if(match.tag == 'password') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+'; max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
+									if(match.tag == 'text') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+' max-width:calc(100% - 2px)">';
+									if(match.tag == 'password') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+' max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
 									if(match.tag == 'button' || match.tag == 'submit') return '<input type="'+match.tag+'" value="'+match.value+'">';
 									if(match.tag == 'label') return '<label>'+match.value+'</label>';
 								}
