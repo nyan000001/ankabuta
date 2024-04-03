@@ -52,7 +52,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .msg input, .msg select, #sidebar input, #sidebar select { margin:1px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 del { text-decoration:line-through; opacity:.5; }
-.msg .big, .msg .big *, #sidebar .big, #sidebar .big *, #help .big { font-size:17pt }
+.msg .big, .msg .big *, #sidebar .big, #sidebar .big *, #help .big { font-size:17pt; line-height:26px; }
 .msg .big input, .msg .big select, #sidebar .big input, #sidebar .big select { line-height:30px; }
 .msg .small, .msg .small *, #sidebar .small, #sidebar .small *, #help .small { font-size:8pt; }
 .msg .small input, .msg .small select, #sidebar .small input, #sidebar .small select  { line-height:10px; }
@@ -156,14 +156,14 @@ var { opacity:.5; font-style:inherit; font-family:inherit; }
 	<i>Set focus to specific elements
 	(Hold down <kbd>alt</kbd> to see the labels)</i></div>
 </div><div>
+<div><code>[&lt;sample text&gt;]</code> <span class="big">sample text</span></div>
+<div><code>[&gt;sample text&lt;]</code> <span class="small">sample text</span></div>
 <div><code>[{sample text}]</code> <pre>sample text</pre></div>
 <div><code>[!sample text!]</code> <span class="rainbow">sample text</span></div>
 <div><code>[*sample text*]</code> <b>sample text</b></div>
 <div><code>[/sample text/]</code> <i>sample text</i></div>
 <div><code>[_sample text_]</code> <span style="text-decoration:underline">sample text</span></div>
 <div><code>[-sample text-]</code> <del>sample text</del></div>
-<div><code>[&lt;sample text&gt;]</code> <span class="big">sample text</span></div>
-<div><code>[&gt;sample text&lt;]</code> <span class="small">sample text</span></div>
 <div><code>[#f00sample text#]</code> <span style="color:#f00">sample text</span></div>
 <div><code>[°360sample text°]</code> <span style="color:hsl(360, 100%, 50%)">sample text</span></div>
 <div><details><summary>[(sample text)]</summary>sample text</details></div>
@@ -736,16 +736,21 @@ socket.once('start', rooms => {
 		}
 		get('codebox').value =
 			`const users = persistent.users;
-			const colors = ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
-			persistent.id = persistent.id ?? 0;
+			persistent.colors = persistent.colors ?? ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
+			persistent.ids = persistent.ids ?? [0];
 			const help = 'Available commands: /help /nick /pm /me /pat /hug /poke /cookie /cupcake /donut';
 			function join(name, hash) {
 				const user = users[name];
-				if(!user.id) {
-					const color = colors.shift();
-					colors.push(color);
+				if(!user.alias) {
+					const color = persistent.colors.shift();
+					persistent.colors.push(color);
 					user.alias = '[*[#'+color+name+'#]*]';
-					user.id = persistent.id++;
+					if(persistent.ids.length == 1) {
+						user.id = persistent.ids[0]++;
+					} else {
+						persistent.ids.sort((a, b) => b - a);
+						user.id = persistent.ids.pop();
+					}
 				}
 				sendAll('[*'+user.alias+' has joined*]');
 				sendOnly(help, name);
@@ -756,6 +761,7 @@ socket.once('start', rooms => {
 				const user = users[name];
 				sendAll('[*'+user.alias+' '+msg+'*]');
 				sendAll(false, name);
+				persistent.ids.push(user.id);
 			}
 			function hear(msg, name, hash) {
 				const user = users[name];
