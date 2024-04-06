@@ -81,7 +81,7 @@ const rooms = {};
 let lastaction;
 let lockeduntil = 0;
 let currentregex;
-io.on('connection', socket => {
+io.on('connection', async socket => {
 	if(!socket.handshake.headers.cookie) return;
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 	const user = users[socket.hash];
@@ -231,17 +231,28 @@ io.on('connection', socket => {
 		return;
 	}
 	if(lockeduntil > Date.now() || user.banneduntil > Date.now()) return;
-	socket.emit('start', Object.keys(rooms).filter(room => !room.includes('hidden') && rooms[room].timeout == undefined && !rooms[room].banned[socket.hash]));
+	const visiblerooms = [];
+	for(const room in rooms) {
+		if(room.includes('hidden') || rooms[room].timeout != undefined || rooms[room].banned[socket.hash]) continue;
+		visiblerooms.push([room, (await io.in(room).fetchSockets()).length+1]);
+	}
+	socket.emit('start', visiblerooms);
+	const updateroom = (room, num) => {
+		if(rooms[room].timeout != undefined || room.includes('hidden')) {
+			socket.to(room).emit('updateroom', room, num);
+		} else {
+			for(const socket2 of [...io.sockets.sockets.values()]) {
+				if(!rooms[room].banned[socket2.hash]) {
+					socket2.emit('updateroom', room, num);
+				}
+			}
+		}
+	}
 	const leave = async (socket, msg1, msg2, msg3) => {
 		socket.emit('leaveroom', msg1);
 		if(rooms[socket.room].admin == socket) {
 			logaction(socket, 'leave', true, msg3);
-			clearTimeout(rooms[socket.room].timeout);
-			for(const i in rooms[socket.room].banned) {
-				clearTimeout(rooms[socket.room].banned[i]);
-			}
 			const sockets = await io.in(socket.room).fetchSockets();
-			delete rooms[socket.room];
 			for(const socket2 of sockets) {
 				socket2.emit('leaveroom', 'Admin '+msg2+'!');
 				socket2.leave(socket.room);
@@ -250,23 +261,25 @@ io.on('connection', socket => {
 					socket2.removeAllListeners(listener);
 				}
 			}
-			if(socket.room.includes('hidden')) {
-				socket.emit('rmvroom', socket.room);
-				socket.to(socket.room).emit('rmvroom', socket.room);
-			} else {
-				io.emit('rmvroom', socket.room);
-			}
 			for(const listener of ['say', 'sendOnly', 'sendAll', 'kick', 'lock', 'leave']) {
 				socket.removeAllListeners(listener);
 			}
+			updateroom(socket.room, 0);
+			clearTimeout(rooms[socket.room].timeout);
+			for(const i in rooms[socket.room].banned) {
+				clearTimeout(rooms[socket.room].banned[i]);
+			}
+			delete rooms[socket.room];
 		} else {
 			logaction(socket, 'leave', false, msg3);
 			rooms[socket.room].admin.emit('leave', msg2, socket.name, socket.hash);
 			for(const listener of ['say', 'leave']) {
 				socket.removeAllListeners(listener);
 			}
+			socket.leave(socket.room);
+			const num = (await io.in(socket.room).fetchSockets()).length+1;
+			updateroom(socket.room, num);
 		}
-		socket.leave(socket.room);
 		delete socket.room;
 		socket.leave(socket.name);
 		delete socket.name;
@@ -278,7 +291,7 @@ io.on('connection', socket => {
 			await leave(socket, '', 'has left');
 		}
 		if(rooms[room] && (rooms[room].timeout != undefined || rooms[room].banned[socket.name] || rooms[room].banned[socket.hash])) {
-			socket.emit('notify', room+' is unavailable');
+			socket.emit('notify', room+' is unavailable', true);
 			return;
 		}
 		socket.room = room;
@@ -293,6 +306,8 @@ io.on('connection', socket => {
 			socket.join(socket.room);
 			socket.emit('joinroom', socket.room, socket.name);
 			rooms[socket.room].admin.emit('join', socket.name, socket.hash, !!name);
+			const num = (await io.in(socket.room).fetchSockets()).length+1;
+			updateroom(socket.room, num);
 			socket.on('say', msg => {
 				if(!validstring(msg)) return;
 				msg = msg.slice(0, 5000).replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));
@@ -306,8 +321,10 @@ io.on('connection', socket => {
 				socket.disconnect();
 				return;
 			}
-			if(!socket.room.includes('hidden')) {
-				socket.broadcast.emit('addroom', socket.room);
+			if(socket.room.includes('hidden')) {
+				socket.emit('updateroom', socket.room, 1);
+			} else {
+				io.emit('updateroom', socket.room, 1);
 			}
 			socket.emit('joinroom', socket.room, socket.name, socket.hash, !!name);
 			const send = async (msg1, names, msg2, add) => {
@@ -316,9 +333,9 @@ io.on('connection', socket => {
 				for(const socket2 of sockets) {
 					if(add != undefined) {
 						if(names.includes(socket2.name)) {
-							msg1 && socket2.emit('change', add, msg1);
+							msg1 && socket2.emit('updatesidebar', add, msg1);
 						} else {
-							msg2 && socket2.emit('change', add, msg2);
+							msg2 && socket2.emit('updatesidebar', add, msg2);
 						}
 					} else {
 						if(names.includes(socket2.name)) {
@@ -363,25 +380,27 @@ io.on('connection', socket => {
 					socket.emit('notify', 'Invalid hash');
 					return;
 				}
-				let sockets = (await io.in(socket.room).fetchSockets()).filter(socket2 => socket2.hash == hash);
+				let sockets = await io.in(hash).fetchSockets();
 				if(sockets.length) {
 					msg = validstring(msg)? ' '+msg: '!';
 					for(const socket2 of sockets) {
+						if(!socket2.room != socket.room) continue;
 						await leave(socket2, 'You\'ve been banned from '+socket.room+msg, 'has been banned'+msg, 'Banned by host');
 					}
 				}
 				if(!validnumber(mins)) return;
 				clearTimeout(rooms[socket.room].banned[hash]);
-				sockets = await io.in(hash).fetchSockets();
 				for(const socket2 of sockets) {
-					socket2.emit('rmvroom', socket.room);
+					socket2.emit('updateroom', socket.room, 0);
 				}
 				rooms[socket.room].banned[hash] = setTimeout(async () => {
-					sockets = await io.in(hash).fetchSockets();
-					for(const socket2 of sockets) {
-						socket2.emit('addroom', socket.room);
-					}
 					delete rooms[socket.room].banned[hash];
+					if(rooms[socket.room].timeout != undefined || socket.room.includes('hidden')) return;
+					sockets = await io.in(hash).fetchSockets();
+					const num = (await io.in(socket.room).fetchSockets()).length+1;
+					for(const socket2 of sockets) {
+						socket2.emit('updateroom', socket.room, num);
+					}
 				}, mins * 60000);
 			});
 			socket.on('lock', async mins => {
@@ -392,26 +411,25 @@ io.on('connection', socket => {
 				}
 				clearTimeout(rooms[socket.room].timeout);
 				if(rooms[socket.room].timeout == undefined && !socket.room.includes('hidden')) {
-					socket.emit('hideroom');
 					for(const socket2 of [...io.sockets.sockets.values()]) {
 						if(socket2.room == socket.room) {
-							socket2.emit('hideroom');
-						} else {
-							socket2.emit('rmvroom', socket.room);
+							socket2.emit('lockroom');
+						} else if(!rooms[socket.room].banned[socket2.hash]) {
+							socket2.emit('updateroom', socket.room, 0);
 						}
 					}
 				}
 				socket.emit('notify', 'Room locked for '+mins+' minutes');
-				rooms[socket.room].timeout = setTimeout(() => {
+				rooms[socket.room].timeout = setTimeout(async () => {
 					delete rooms[socket.room].timeout;
 					socket.emit('notify', 'Room unlocked');
 					if(socket.room.includes('hidden')) return;
-					socket.emit('showroom');
+					const num = (await io.in(socket.room).fetchSockets()).length+1;
 					for(const socket2 of [...io.sockets.sockets.values()]) {
 						if(socket2.room == socket.room) {
-							socket2.emit('showroom');
-						} else {
-							socket2.emit('addroom', socket.room);
+							socket2.emit('unlockroom');
+						} else if(!rooms[socket.room].banned[socket2.hash]) {
+							socket2.emit('updateroom', socket.room, num);
 						}
 					}
 				}, mins * 60000);

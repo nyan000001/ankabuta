@@ -16,6 +16,8 @@ a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 .joined #log, .joined #sidebar, .joined #leave, .joined #msgbox, .joined #say { display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
 .admin #help span.hidden { display:inline; }
+#rooms a.hidden, #rooms a.locked { opacity:.5; }
+#rooms a.locked::after { content:'🔒'; }
 
 #rooms { flex-grow:1; flex-shrink:1; }
 .joined #rooms { width:100px; flex-grow:0; flex-shrink:0; }
@@ -292,14 +294,24 @@ socket.once('start', rooms => {
 		get('rooms').classList.add('disabled');
 		socket.disconnect();
 	});
-	const addroom = room => {
-		const a = document.createElement('a');
-		a.id = a.href = room;
-		a.textContent = room.includes('hidden')? '('+room+')': room;
-		get('rooms').append(a);
+	const updateroom = (room, num) => {
+		if(num == 0) {
+			get(room).remove();
+		} else {
+			let a = get(room);
+			if(!a) {
+				a = document.createElement('a');
+				a.id = a.href = room;
+				get('rooms').append(a);
+			}
+			if(room.includes('hidden')) {
+				a.classList.add('hidden');
+			}
+			a.textContent = room+' ('+num+')';
+		}
 	}
-	for(const room of rooms) {
-		addroom(room);
+	for(const arr of rooms) {
+		updateroom(arr[0], arr[1]);
 	}
 	onkeydown = e => {
 		if(!document.body.classList.contains('joined')) return;
@@ -421,19 +433,20 @@ socket.once('start', rooms => {
 			get('room').focus();
 		}
 	};
-	socket.on('notify', addsysmsg);
-	socket.on('addroom', addroom);
-	socket.on('rmvroom', room => get(room).remove());
+	socket.on('notify', (msg, kick) => {
+		addsysmsg(msg);
+		if(kick) {
+			history.replaceState(null, '', document.location.pathname);
+		}
+	});
+	socket.on('updateroom', updateroom);
 	const join = (room, myname, adminhash, customname) => {
 		onbeforeunload = () => true;
 		document.querySelector('#rooms > div')?.remove();
 		myroom = room.slice(1);
-		socket.on('hideroom', () => get(room).textContent = '('+room+')');
-		socket.on('showroom', () => get(room).textContent = room);
+		socket.on('lockroom', () => get(room).classList.add('locked'));
+		socket.on('unlockroom', () => get(room).classList.remove('locked'));
 		let iframe;
-		if(!get(room)) {
-			addroom(room);
-		}
 		get(room).classList.add('disabled');
 		document.title = 'ankabuta'+room;
 		get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = false;
@@ -628,8 +641,12 @@ socket.once('start', rooms => {
 			stopanimation();
 			get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 			history.replaceState(null, '', document.location.pathname);
-			get(room)?.classList.remove('disabled');
-			for(const event of ['showroom', 'hideroom', 'hear']) {
+			if(get(room).classList.contains('hidden') || get(room).classList.contains('locked')) {
+				updateroom(room, 0);
+			} else {
+				get(room).classList.remove('disabled');
+			}
+			for(const event of ['lockroom', 'unlockroom', 'hear']) {
 				socket.off(event);
 			}
 			if(adminhash) {
@@ -638,7 +655,7 @@ socket.once('start', rooms => {
 				iframe.remove();
 				iframe = null;
 			} else {
-				socket.off('change');
+				socket.off('updatesidebar');
 			}
 			let leave = () => {
 				myroom = '';
@@ -663,7 +680,7 @@ socket.once('start', rooms => {
 				socket.once('joinroom', join);
 			}
 		});
-		const change = (add, arr) => {
+		const updatesidebar = (add, arr) => {
 			if(add == false && arr == undefined) {
 				get('sidebar').textContent = '';
 				return;
@@ -730,7 +747,7 @@ socket.once('start', rooms => {
 			scrolldown();
 		}
 		if(!adminhash) {
-			socket.on('change', change);
+			socket.on('updatesidebar', updatesidebar);
 			socket.on('hear', addmsg);
 			return;
 		}
@@ -894,7 +911,7 @@ socket.once('start', rooms => {
 				codeindex++;
 			}
 			if(iframe.src) {
-				change(false);
+				updatesidebar(false);
 				socket.emit('sendAll', false);
 			}
 			iframe.src = 'about:blank';
@@ -909,7 +926,7 @@ socket.once('start', rooms => {
 			iframe.contentWindow.print = (...arr) => {
 				if(typeof arr[0] == 'boolean') {
 					arr[1] = convert(arr[1]);
-					change(...arr);
+					updatesidebar(...arr);
 				} else {
 					addmsg(arr[0]);
 				}
@@ -927,9 +944,9 @@ socket.once('start', rooms => {
 					names = convert(names);
 					msg2 = convert(msg2);
 					if(names.includes(myname)) {
-						change(add, msg1);
+						updatesidebar(add, msg1);
 					} else if(msg2) {
-						change(add, msg2);
+						updatesidebar(add, msg2);
 					}
 					if(names.some(name => name != myname) || msg2) {
 						socket.emit('sendOnly', add, msg1, names, msg2);
@@ -961,9 +978,9 @@ socket.once('start', rooms => {
 					names = convert(names);
 					msg2 = convert(msg2);
 					if(!names || !names.includes(myname)) {
-						change(add, msg1);
+						updatesidebar(add, msg1);
 					} else if(msg2) {
-						change(add, msg2);
+						updatesidebar(add, msg2);
 					}
 					socket.emit('sendAll', add, msg1, names, msg2);
 				} else {
