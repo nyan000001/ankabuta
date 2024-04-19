@@ -239,7 +239,7 @@ io.on('connection', async socket => {
 	socket.emit('start', visiblerooms);
 	const updateroom = (room, num) => {
 		if(rooms[room].timeout != undefined || room.includes('hidden')) {
-			socket.to(room).emit('updateroom', room, num);
+			io.to(room).emit('updateroom', room, num);
 		} else {
 			for(const socket2 of [...io.sockets.sockets.values()]) {
 				if(!rooms[room].banned[socket2.hash]) {
@@ -304,10 +304,10 @@ io.on('connection', async socket => {
 		logaction(socket, 'join');
 		if(rooms[socket.room]) {
 			socket.join(socket.room);
-			socket.emit('joinroom', socket.room, socket.name);
-			rooms[socket.room].admin.emit('join', socket.name, socket.hash, !!name);
 			const num = (await io.in(socket.room).fetchSockets()).length+1;
 			updateroom(socket.room, num);
+			socket.emit('joinroom', socket.room, socket.name);
+			rooms[socket.room].admin.emit('join', socket.name, socket.hash, !!name);
 			socket.on('say', msg => {
 				if(!validstring(msg)) return;
 				msg = msg.slice(0, 5000).replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));

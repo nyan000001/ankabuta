@@ -828,7 +828,7 @@ socket.once('start', rooms => {
 							sendAll('[/* '+user.alias+' '+msg+'/]');
 						} else if(['pat', 'hug', 'poke'].includes(cmd)) {
 							sendAll('[/* '+user.alias+' '+cmd+'s '+msg+'/]');
-						} else if(['cookie', 'cupcake', 'donut'].includes(cmd) || /^\\p{Emoji}+$/u.test(cmd)) {
+						} else if(['cookie', 'cupcake', 'donut'].includes(cmd) || /^\\p{Extended_Pictographic}+$/u.test(cmd)) {
 							sendAll('[/* '+user.alias+' gives '+msg+' a '+cmd+'/]');
 						} else {
 							sendOnly('Invalid command', name);

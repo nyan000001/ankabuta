@@ -212,9 +212,7 @@ socket.once('log', (records, regex) => {
 				}
 				p.onclick = () => highlighthash(hash, roomdiv);
 			}
-			if(roomdiv.scrollHeight - roomdiv.scrollTop - roomdiv.clientHeight < 1) {
-				roomdiv.scrollTo({ top:roomdiv.scrollHeight, left:0 });
-			}
+			roomdiv.scrollTo({ top:roomdiv.scrollHeight, left:0 });
 		}
 		const boldname = '[*'+name+'*]';
 		if(!cmd) {
