@@ -921,7 +921,7 @@ socket.once('start', rooms => {
 			iframe.contentWindow.ban = (hash, mins, msg) => socket.emit('ban', hash, mins, msg);
 			iframe.contentWindow.lock = mins => socket.emit('lock', mins);
 			iframe.contentWindow.save = (name, value) => localStorage.setItem(name, JSON.stringify(value));
-			iframe.contentWindow.load = name => localStorage.getItem(name);
+			iframe.contentWindow.load = name => JSON.parse(localStorage.getItem(name));
 			const convert = x => x == undefined || Array.isArray(x)? x: [x];
 			iframe.contentWindow.print = (...arr) => {
 				if(typeof arr[0] == 'boolean') {
