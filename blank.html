@@ -3,7 +3,7 @@
 <head>
 <title>ankabuta/blank</title>
 <meta name="robots" content="noindex">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <style>
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-2B04, U+2B96-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 * { box-sizing:border-box; font-family:'Noto Color Emoji', sans-serif; }
@@ -80,17 +80,13 @@ const reset = () => {
 	}
 	get('hash').value = get('regex').value = '';
 }
-const highlighthash = (hash, roomdiv) => {
+const highlighthash = hash => {
 	reset();
 	const elems = document.getElementsByTagName('p');
 	for(let i = 0; i < elems.length; i++) {
 		if(!elems[i].classList.contains(hash)) continue;
 		elems[i].classList.add('highlight');
-		const roomdiv2 = elems[i].parentNode;
-		if(roomdiv2 != roomdiv) {
-			roomdiv2.scrollTop = elems[i].getBoundingClientRect().top + roomdiv2.scrollHeight - roomdiv2.clientHeight * 1.5;
-			roomdiv2.scrollLeft = 0;
-		}
+		elems[i].parentNode.firstChild.classList.add('highlight');
 	}
 	get('hash').value = hash;
 }
@@ -211,7 +207,7 @@ socket.once('log', (records, regex) => {
 				if(hash == get('hash').value) {
 					p.classList.add('highlight');
 				}
-				p.onclick = () => highlighthash(hash, roomdiv);
+				p.onclick = () => highlighthash(hash);
 			}
 			roomdiv.scrollTo({ top:roomdiv.scrollHeight, left:0 });
 		}
