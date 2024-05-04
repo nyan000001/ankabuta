@@ -129,6 +129,7 @@ socket.once('disconnect', () => {
 	socket.disconnect();
 });
 socket.once('log', (records, regex) => {
+	let old = true;
 	document.body.classList.remove('blank');
 	const roomdivs = {};
 	const addroom = room => {
@@ -136,7 +137,7 @@ socket.once('log', (records, regex) => {
 		const h1 = document.createElement('h1');
 		h1.textContent = room;
 		div.append(h1);
-		get('top').append(div);
+		if(!old) get('top').append(div);
 		roomdivs[room] = div;
 		if(room != '(not in a room)') {
 			h1.className = 'clickable';
@@ -209,7 +210,7 @@ socket.once('log', (records, regex) => {
 				}
 				p.onclick = () => highlighthash(hash);
 			}
-			roomdiv.scrollTo({ top:roomdiv.scrollHeight, left:0 });
+			if(!old) roomdiv.scrollTo({ top:roomdiv.scrollHeight, left:0 });
 		}
 		const boldname = '[*'+name+'*]';
 		if(!cmd) {
@@ -252,6 +253,11 @@ socket.once('log', (records, regex) => {
 		}
 	}
 	for(const record of records) addrecord(record);
+	for(const room in roomdivs) {
+		get('top').append(roomdivs[room]);
+		roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
+	}
+	old = false;
 	socket.on('log', addrecord);
 });
 </script>

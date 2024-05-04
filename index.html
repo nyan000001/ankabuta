@@ -669,7 +669,7 @@ socket.once('start', rooms => {
 			}
 			if(msg) {
 				document.title = 'ankabuta☠️'+myroom;
-				addsysmsg(msg);
+				addmsg('[*'+msg+'*]');
 				get('leave').onclick = () => leave();
 				socket.once('joinroom', (...arr) => {
 					leave();
@@ -825,11 +825,11 @@ socket.once('start', rooms => {
 						}
 						msg = msg.join('');
 						if(['me', 'self', 'action'].includes(cmd)) {
-							sendAll('[/* '+user.alias+' '+msg+'/]');
+							sendAll('[/ * '+user.alias+' '+msg+'/]');
 						} else if(['pat', 'hug', 'poke'].includes(cmd)) {
-							sendAll('[/* '+user.alias+' '+cmd+'s '+msg+'/]');
+							sendAll('[/ * '+user.alias+' '+cmd+'s '+msg+'/]');
 						} else if(['cookie', 'cupcake', 'donut'].includes(cmd) || /^\\p{Extended_Pictographic}+$/u.test(cmd)) {
-							sendAll('[/* '+user.alias+' gives '+msg+' a '+cmd+'/]');
+							sendAll('[/ * '+user.alias+' gives '+msg+' a '+cmd+'/]');
 						} else {
 							sendOnly('Invalid command', name);
 						}

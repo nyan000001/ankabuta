@@ -298,7 +298,7 @@ io.on('connection', async socket => {
 		if(validstring(name)) {
 			getname(name.trim().replace(/^#+/, '').slice(0, 30).replace(/\s/g, '_'));
 		} else {
-			name = undefined;
+			name = null;
 			await getrandomname();
 		}
 		logaction(socket, 'join');
