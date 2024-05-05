@@ -515,7 +515,7 @@ socket.once('start', rooms => {
 			let html = '';
 			const arr = text.split(/\[\{(.*)\}\]/s);
 			for(let i = 0; i < arr.length; i++) {
-				text = arr[i].replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				text = arr[i].replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 				if(i % 2) {
 					html += '<pre>'+text+'</pre>';
 				} else {
@@ -523,7 +523,7 @@ socket.once('start', rooms => {
 					do {
 						temp = text;
 						text = text.
-							replace(/\[\[([^\[\[]*?)\]\]/gs, (_, tag) => {
+							replace(/\[\[([^\[]*?)\]\]/gs, (_, tag) => {
 								if(tag.startsWith('select|')) return ('<select><option>'+tag.slice(7).replace(/\|/g, '</option><option>')+'</option></select>').replace(/"/g, '&quot;').replace(/>([^<]*?):([^<]*?)</g, ' value="$1">$2<');
 								let style = tag.startsWith('long')? 'width:300px;': tag.startsWith('short')? 'width:40px;': 'width:100px;';
 								tag = tag.replace(/^(long|short)/, '');
@@ -532,7 +532,7 @@ socket.once('start', rooms => {
 								if(tag == 'button' || tag == 'submit') return '<input type="'+tag+'" value="send">';
 								const match = tag.match(/^(?<tag>\w+):(?<value>.*)/)?.groups;
 								if(match) {
-									match.value = match.value.replace(/"/g, '&quot;');
+									match.value = match.value.replace(/<.*?>/g, '').replaceAll('"', '&quot;');
 									if(match.tag == 'text') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+' max-width:calc(100% - 2px)">';
 									if(match.tag == 'password') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+' max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
 									if(match.tag == 'button' || match.tag == 'submit') return '<input type="'+match.tag+'" value="'+match.value+'">';
