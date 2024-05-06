@@ -8,14 +8,15 @@
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-2B04, U+2B96-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 * { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; box-sizing:border-box; tab-size:4; margin:0; }
 form { height:100vh; padding:2px; display:flex; flex-direction:column; }
-#shortcuts { display:flex; justify-content:space-around; margin:1px; }
 .flex { display:flex; justify-content:center; column-gap:20px; }
 label { display:block; white-space:nowrap; }
+#theme { display:flex; column-gap:10px; justify-content:center; }
+#textareas { display:flex; height:100%; }
+textarea { resize:none; margin-top:2px; flex-grow:1; }
+#shortcuts { display:flex; justify-content:space-around; margin:1px; }
 input[type=text] { width:20px; text-align:center; }
 input, textarea { border:1px solid #000; border-radius:3px; }
 input:focus, textarea:focus { outline:1px solid #000; outline-offset:-2px; }
-#textareas { display:flex; height:100%; }
-textarea { resize:none; margin-top:2px; flex-grow:1; }
 input[type=checkbox], input[type=radio] { vertical-align:middle; }
 @media (max-width:950px) {
 	#shortcuts { flex-direction:column; row-gap:5px; margin-bottom:4px; }
@@ -38,6 +39,15 @@ input[type=checkbox], input[type=radio] { vertical-align:middle; }
 </head>
 <body>
 <form id="form">
+<div id="theme">
+<label><input type="radio" name="theme" id="default" checked> Default</label>
+<label><input type="radio" name="theme" id="light"> Light</label>
+<label><input type="radio" name="theme" id="dark"> Dark</label>
+</div>
+<div id="textareas">
+<textarea id="style" placeholder="CSS" spellcheck="false" aria-label="Style"></textarea>
+<textarea id="script" placeholder="JavaScript" spellcheck="false" aria-label="Script"></textarea>
+</div>
 <div id="shortcuts">
 <div>
 <h2>Ctrl shortcuts</h2>
@@ -61,36 +71,38 @@ input[type=checkbox], input[type=radio] { vertical-align:middle; }
 <div>
 <h2>Alt shortcuts</h2>
 <div class="flex">
-<div id="focuscodebox">
+<div id="codebox">
 <label><input type="text" maxlength="1" placeholder="c"> codebox</label>
 <label><input type="radio" name="focus"> Focus</label>
 </div>
-<div id="focusleave">
+<div id="leave">
 <label><input type="text" maxlength="1" placeholder="l"> leave</label>
 <label><input type="radio" name="focus"> Focus</label>
 </div>
-<div id="focusrun">
+<div id="run">
 <label><input type="text" maxlength="1" placeholder="r"> run</label>
 <label><input type="radio" name="focus"> Focus</label>
 </div>
-<div id="focusmsgbox">
+<div id="msgbox">
 <label><input type="text" maxlength="1" placeholder="m"> msgbox</label>
 <label><input type="radio" name="focus" checked> Focus</label>
 </div>
-<div id="focussay">
-<label><input type="text" maxlength="1" placeholder="s"> send</label>
+<div id="say">
+<label><input type="text" maxlength="1" placeholder="s"> say</label>
 <label><input type="radio" name="focus"> Focus</label>
 </div>
 </div>
 </div>
-</div>
-<div id="textareas">
-<textarea id="style" placeholder="CSS" spellcheck="false" aria-label="Style"></textarea>
-<textarea id="script" placeholder="JavaScript" spellcheck="false" aria-label="Script"></textarea>
 </div>
 </form>
 <script>
 const get = id => document.getElementById(id);
+
+const theme = localStorage.getItem('theme');
+if(theme) get(theme).checked = true;
+
+get('style').value = localStorage.getItem('style');
+get('script').value = localStorage.getItem('script');
 
 const textinputs = [...document.querySelectorAll('[type=text]')];
 textinputs.forEach(input => input.value = localStorage.getItem(input.closest('div').id));
@@ -98,19 +110,17 @@ textinputs.forEach(input => input.value = localStorage.getItem(input.closest('di
 get('togglerooms').querySelector('[type=checkbox]').checked = localStorage.getItem('showrooms');
 get('togglehelp').querySelector('[type=checkbox]').checked = localStorage.getItem('showhelp');
 
-const radio = get('focus'+localStorage.getItem('focus'))?.querySelector('[type=radio]');
-if(radio) radio.checked = true;
-
-get('style').value = localStorage.getItem('style');
-get('script').value = localStorage.getItem('script');
+const focus = localStorage.getItem('focus');
+if(focus) get(focus).querySelector('[type=radio]').checked = true;
 
 oninput = () => {
+	localStorage.setItem('theme', get('theme').querySelector(':checked').id);
+	localStorage.setItem('style', get('style').value);
+	localStorage.setItem('script', get('script').value);
 	textinputs.forEach(input => localStorage.setItem(input.closest('div').id, input.value.toLowerCase()));
 	localStorage.setItem('showrooms', get('togglerooms').querySelector('[type=checkbox]').checked? '!': '');
 	localStorage.setItem('showhelp', get('togglehelp').querySelector('[type=checkbox]').checked? '!': '');
-	localStorage.setItem('focus', document.querySelector('[type=radio]:checked').closest('div').id.replace('focus', ''));
-	localStorage.setItem('style', get('style').value);
-	localStorage.setItem('script', get('script').value);
+	localStorage.setItem('focus', document.querySelector('[name=focus]:checked').closest('div').id);
 }
 </script>
 </body>
