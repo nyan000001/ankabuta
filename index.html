@@ -45,11 +45,10 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #log { flex-grow:1; }
 .msg:nth-last-child(2) { margin-bottom:-24px; }
 
-.msg { padding:3px; max-height:50%; overflow:auto; }
+.msg { padding:3px; }
 .clickable { cursor:pointer; }
-.scrollup { background:linear-gradient(rgba(127.5, 127.5, 127.5, .2), transparent) no-repeat top; background-size:100% 20px; }
-.scrolldown { background:linear-gradient(transparent, rgba(127.5, 127.5, 127.5, .2)) no-repeat bottom; background-size:100% 20px; }
-.scrollup.scrolldown { background:linear-gradient(rgba(127.5, 127.5, 127.5, .2), transparent) no-repeat top, linear-gradient(transparent, rgba(127.5, 127.5, 127.5, .2)) no-repeat bottom; background-size:100% 20px; }
+.long { overflow-y:auto; height:96px; border:1px solid #888; margin-bottom:1px; resize:vertical; }
+.unscrollable { overflow-y:hidden; border-color:#555; }
 .msg form, #sidebar form { display:inline-block; border:1px solid #aaa; border-radius:4px; padding:1px; max-width:100%; }
 .msg input, .msg select, #sidebar input, #sidebar select { margin:1px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
@@ -190,6 +189,8 @@ if(theme == 'dark') {
 	<i>Bans <var>hash</var> for <var>minutes</var></i></div>
 <div><code>lock(<var>minutes</var>)</code>
 	<i>Locks the room for <var>minutes</var></i></div>
+<div><code>save(<var>key</var>, <var>value</var>)</code></div>
+<div><code>load(<var>key</var>)</code></div>
 </div>
 </div>
 </div>
@@ -231,38 +232,34 @@ socket.once('start', rooms => {
 	onhashchange = () => {
 		socket.emit('join', decodeURI(location.hash));
 	}
-	const scrollmsg = onscroll = msg => {
-		msg.classList.remove('scrollup', 'scrolldown');
-		if(msg.scrollHeight > msg.clientHeight) {
-			if(msg.scrollTop > 3) {
-				msg.classList.add('scrollup');
-			}
-			if(Math.abs(msg.scrollHeight - msg.clientHeight - msg.scrollTop) > 3) {
-				msg.classList.add('scrolldown');
+	get('log').onscroll = () => {
+		if(get('log').scrollHeight > get('log').clientHeight && get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 3) {
+			get('arrow').classList.remove('hidden');
+		} else {
+			get('arrow').classList.add('hidden');
+		}
+	}
+	const scrolldown = () => {
+		if(!get('arrow').classList.contains('hidden')) return;
+		get('log').scrollTop = get('log').scrollHeight;
+	}
+	const collapse = msg => {
+		if(msg.scrollHeight <= 96) {
+			msg.classList.remove('long');
+			msg.onclick = null;
+		} else {
+			msg.classList.add('long');
+			msg.onclick = () => {
+				msg.classList.toggle('unscrollable');
 			}
 		}
 	}
 	get('codebox').onmousemove = onresize = () => {
-		if(get('arrow').classList.contains('hidden')) {
-			get('log').scrollTop = get('log').scrollHeight;
-		}
+		scrolldown();
 		const msgs = get('log').getElementsByClassName('msg');
 		for(let i = 0; i < msgs.length; i++) {
-			scrollmsg(msgs[i]);
+			collapse(msgs[i]);
 		}
-	}
-	let ignorescroll;
-	get('log').onscroll = () => {
-		if(ignorescroll) {
-			ignorescroll = false;
-			return;
-		}
-		get('arrow').classList[get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 3? 'remove': 'add']('hidden');
-	}
-	const scrolldown = () => {
-		if(!get('arrow').classList.contains('hidden')) return;
-		ignorescroll = true;
-		get('log').scrollTop = get('log').scrollHeight;
 	}
 	const addsysmsg = msg => {
 		const div = document.createElement('div');
@@ -346,10 +343,15 @@ socket.once('start', rooms => {
 					div.textContent = localStorage.getItem('focus'+el) || el[0];
 					document.body.append(div);
 				}
+				setTimeout(() => {
+					const shortcuts = document.getElementsByClassName('shortcut');
+					while(shortcuts[0]) {
+						shortcuts[0].remove();
+					}
+				}, 4000);
 			}
 		} else if(e.ctrlKey) {
 			let flag;
-			const scroll = get('arrow').classList.contains('hidden');
 			if(e.key == (localStorage.getItem('togglerooms') || 'o')) {
 				get('rooms').classList.toggle('hidden');
 				flag = true;
@@ -368,18 +370,8 @@ socket.once('start', rooms => {
 			}
 			if(flag) {
 				e.preventDefault();
-				if(scroll) {
-					ignorescroll = true;
-					get('log').scrollTop = get('log').scrollHeight;
-				}
+				scrolldown();
 			}
-		}
-	}
-	onkeyup = onblur = e => {
-		if(e.key && e.key != 'Alt' && e.key != 'Meta') return;
-		const shortcuts = document.getElementsByClassName('shortcut');
-		while(shortcuts[0]) {
-			shortcuts[0].remove();
 		}
 	}
 	ontouchstart = e => {
@@ -469,6 +461,7 @@ socket.once('start', rooms => {
 				socket.emit('leave');
 			} else {
 				get('leave').value += '?';
+				get('leave').onblur = () => get('leave').value = 'Leave';
 			}
 		}
 		get('log').onclick = get('sidebar').onclick = e => {
@@ -496,11 +489,13 @@ socket.once('start', rooms => {
 				e.target.previousSibling.focus();
 			} else if(e.target.tagName == 'LABEL') {
 				e.target.nextElementSibling?.focus();
-			} else if(e.target.closest('DETAILS')) {
+			} else if(e.target.closest('SUMMARY')) {
 				setTimeout(scrolldown);
-				get('msgbox').focus();
+				if(!getSelection()?.toString()) {
+					get('msgbox').focus();
+				}
 			} else if(e.detail == 3 && e.target.tagName == 'PRE') {
-				const selection = window.getSelection();
+				const selection = getSelection();
 				selection.removeAllRanges();
 				const range = document.createRange();
 				range.selectNodeContents(e.target);
@@ -568,8 +563,7 @@ socket.once('start', rooms => {
 			div.innerHTML = gethtml(msg);
 			get('arrow').before(div);
 			scrolldown();
-			scrollmsg(div);
-			div.onscroll = () => scrollmsg(div);
+			collapse(div);
 			if(document.visibilityState == 'visible') {
 				if(!get('arrow').classList.contains('hidden')) {
 					get('arrow').innerHTML = div.innerHTML;
@@ -819,9 +813,8 @@ socket.once('start', rooms => {
 						}
 					} else {
 						msg = words.join(' ').split(/(\\b)/);
-						const arr = Object.values(users);
 						for(let i = 0; i < msg.length; i += 2) {
-							for(const user2 of arr) {
+							for(const user2 of Object.values(users)) {
 								if(parseInt(msg[i]) != user2.id) continue;
 								msg[i] = user2.alias;
 								break;
