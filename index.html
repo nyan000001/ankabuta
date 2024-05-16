@@ -47,9 +47,9 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 
 .msg { padding:3px; }
 .clickable { cursor:pointer; }
-.long { overflow-y:auto; height:96px; border:1px solid #888; margin-bottom:1px; resize:vertical; }
+.long { overflow-y:auto; height:140px; border:1px solid #888; margin-bottom:1px; resize:vertical; }
 .unscrollable { overflow-y:hidden; border-color:#555; }
-.msg form, #sidebar form { display:inline-block; border:1px solid #aaa; border-radius:4px; padding:1px; max-width:100%; }
+.msg form, #sidebar form { display:inline-block; border:1px solid #aaa; border-radius:4px; padding:1px; max-width:100%; vertical-align:top; }
 .msg input, .msg select, #sidebar input, #sidebar select { margin:1px; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 .color { text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
@@ -244,7 +244,7 @@ socket.once('start', rooms => {
 		get('log').scrollTop = get('log').scrollHeight;
 	}
 	const collapse = msg => {
-		if(msg.scrollHeight <= 96) {
+		if(msg.scrollHeight <= 140) {
 			msg.classList.remove('long');
 			msg.onclick = null;
 		} else {
@@ -693,7 +693,11 @@ socket.once('start', rooms => {
 					id = text.replace(/\s.*/s, '');
 					text = text.replace(/.*?\s/s, '');
 				}
-				let divid = 'div'+(['youtube', 'dailymotion', 'vimeo'].includes(id)? 'video': id);
+				let divid = 'div'+id;
+				if(['#youtube', '#dailymotion', '#vimeo'].includes(id)) {
+					divid = 'divvideo';
+					id = id.slice(1);
+				}
 				if(!add) {
 					get(divid)?.remove();
 					continue;
@@ -757,9 +761,8 @@ socket.once('start', rooms => {
 			function join(name, hash) {
 				const user = users[name];
 				if(!user.alias) {
-					const color = persistent.colors.shift();
-					persistent.colors.push(color);
-					user.alias = '[*[#'+color+name+'#]*]';
+					user.color = persistent.colors.shift() ?? 'fff';
+					user.alias = '[*[#'+user.color+name+'#]*]';
 					if(persistent.ids.length == 1) {
 						user.id = persistent.ids[0]++;
 					} else {
@@ -777,6 +780,9 @@ socket.once('start', rooms => {
 				sendAll('[*'+user.alias+' '+msg+'*]');
 				sendAll(false, name);
 				persistent.ids.push(user.id);
+				if(user.color != 'fff') {
+					persistent.colors.push(user.color);
+				}
 			}
 			function hear(msg, name, hash) {
 				const user = users[name];
