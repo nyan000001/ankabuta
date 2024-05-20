@@ -284,7 +284,7 @@ io.on('connection', async socket => {
 		socket.leave(socket.name);
 		delete socket.name;
 	}
-	socket.on('join', async (room, name) => {
+	socket.on('join', async room => {
 		if(!validstring(room)) return;
 		room = room.trim().replace(/^#*/, '#').slice(0, 30).replace(/\s/g, '_');
 		if(socket.room) {
@@ -295,19 +295,14 @@ io.on('connection', async socket => {
 			return;
 		}
 		socket.room = room;
-		if(validstring(name)) {
-			getname(name.trim().replace(/^#+/, '').slice(0, 30).replace(/\s/g, '_'));
-		} else {
-			name = null;
-			await getrandomname();
-		}
+		await getrandomname();
 		logaction(socket, 'join');
 		if(rooms[socket.room]) {
 			socket.join(socket.room);
 			const num = (await io.in(socket.room).fetchSockets()).length+1;
 			updateroom(socket.room, num);
 			socket.emit('joinroom', socket.room, socket.name);
-			rooms[socket.room].admin.emit('join', socket.name, socket.hash, !!name);
+			rooms[socket.room].admin.emit('join', socket.name, socket.hash);
 			socket.on('say', msg => {
 				if(!validstring(msg)) return;
 				msg = msg.slice(0, 5000).replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));
@@ -326,12 +321,12 @@ io.on('connection', async socket => {
 			} else {
 				io.emit('updateroom', socket.room, 1);
 			}
-			socket.emit('joinroom', socket.room, socket.name, socket.hash, !!name);
+			socket.emit('joinroom', socket.room, socket.name, socket.hash);
 			const send = async (msg1, names, msg2, add) => {
 				if(!Array.isArray(names)) names = [];
 				const sockets = await io.in(socket.room).fetchSockets();
 				for(const socket2 of sockets) {
-					if(add != undefined) {
+					if(add != null) {
 						if(names.includes(socket2.name)) {
 							msg1 && socket2.emit('updatesidebar', add, msg1);
 						} else {
@@ -348,13 +343,13 @@ io.on('connection', async socket => {
 			}
 			socket.on('sendOnly', (...arr) => {
 				logaction(socket, 'sendOnly', ...arr);
-				const add = typeof arr[0] == 'boolean'? arr.shift(): undefined;
+				const add = typeof arr[0] == 'boolean'? arr.shift(): null;
 				const [msg1, names, msg2] = arr;
 				send(msg1, names, msg2, add);
 			});
 			socket.on('sendAll', async (...arr) => {
 				logaction(socket, 'sendAll', ...arr);
-				const add = typeof arr[0] == 'boolean'? arr.shift(): undefined;
+				const add = typeof arr[0] == 'boolean'? arr.shift(): null;
 				const [msg1, names, msg2] = arr;
 				send(msg2, names, msg1, add);
 			});
