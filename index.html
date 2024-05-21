@@ -44,8 +44,8 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #log { flex-grow:1; }
 .msg:nth-last-child(2) { margin-bottom:-24px; }
 
-.msg { padding:3px; max-height:78px; overflow-y:hidden; margin-bottom:1px; }
-.truncated { cursor:pointer; background-image:linear-gradient(transparent 80%, rgba(128, 128, 128, .5)); outline:1px solid #888; }
+.msg { padding:3px; margin-bottom:1px; }
+.truncated { max-height:137px; overflow-y:hidden; cursor:pointer; background-image:linear-gradient(transparent 80%, rgba(128, 128, 128, .5)); outline:1px solid #888; }
 .full { max-height:none; overflow-y:visible; outline:1px solid #888; }
 .showless { position:sticky; display:block; bottom:0; left:100%; user-select:none !important; }
 #log:has(#arrow:not(.hidden)) .showless { bottom:26px; }
@@ -243,7 +243,7 @@ socket.once('start', rooms => {
 		get('log').scrollTop = get('log').scrollHeight;
 	}
 	const updatemsg = (msg, noscroll) => {
-		if(msg.scrollHeight > 168 && !(msg.classList.contains('truncated') || msg.classList.contains('full'))) {
+		if(msg.scrollHeight > 155 && !(msg.classList.contains('truncated') || msg.classList.contains('full'))) {
 			msg.classList.add('truncated');
 			msg.onclick = () => {
 				msg.onclick = null;
@@ -264,8 +264,8 @@ socket.once('start', rooms => {
 				msg.append(showless);
 				if(!noscroll) togglearrow();
 			}
-		} else if(msg.scrollHeight <= 168 && (msg.classList.contains('truncated') || msg.classList.contains('full'))) {
-			msg.querySelector('showless')?.delete();
+		} else if(msg.scrollHeight <= 155 && (msg.classList.contains('truncated') || msg.classList.contains('full'))) {
+			msg.querySelector('.showless')?.remove();
 			msg.classList.remove('truncated', 'full');
 			msg.onclick = null;
 		}
@@ -483,8 +483,7 @@ socket.once('start', rooms => {
 		get('log').onclick = get('sidebar').onclick = e => {
 			if(e.target.type == 'button' || e.target.type == 'submit') {
 				if(e.target.type == 'submit') {
-					const form = e.target.closest('form');
-					if(!form) return;
+					const form = e.target.closest('form') ?? e.target.closest('div');
 					msg = [e.target.value];
 					const inputs = [...form.querySelectorAll('input[type=text], input[type=password], select')];
 					for(const input of inputs) {
@@ -506,9 +505,10 @@ socket.once('start', rooms => {
 			} else if(e.target.tagName == 'LABEL') {
 				e.target.nextElementSibling?.focus();
 			} else if(e.target.closest('SUMMARY')) {
-				setTimeout(() => {
-					updatemsg(e.target.closest('.msg'));
-				});
+				const div = e.target.closest('.msg');
+				if(div) {
+					setTimeout(() => updatemsg(div));
+				}
 				if(!getSelection()?.toString()) {
 					get('msgbox').focus();
 				}
@@ -766,20 +766,18 @@ socket.once('start', rooms => {
 		}
 		get('codebox').value =
 			`const users = persistent.users;
-			persistent.colors = persistent.colors ?? ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
-			persistent.ids = persistent.ids ?? [0];
+			const colors = ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
+			const ids = [0];
 			const help = 'Available commands: /help /nick /pm /me /pat /hug /poke /cookie /cupcake /donut';
 			function join(name, hash) {
 				const user = users[name];
-				if(!user.alias) {
-					user.color = persistent.colors.shift() ?? 'fff';
-					user.alias = '[*[#'+user.color+name+'#]*]';
-					if(persistent.ids.length == 1) {
-						user.id = persistent.ids[0]++;
-					} else {
-						persistent.ids.sort((a, b) => b - a);
-						user.id = persistent.ids.pop();
-					}
+				if(!user.name) user.name = name;
+				user.color = colors.shift() ?? 'fff';
+				user.alias = '[*[#'+user.color+user.name+'#]*]';
+				if(ids.length == 1) {
+					user.id = ids[0]++;
+				} else {
+					user.id = ids.sort((a, b) => b - a).pop();
 				}
 				sendAll('[*'+user.alias+' has joined*]');
 				sendOnly(help, name);
@@ -790,9 +788,9 @@ socket.once('start', rooms => {
 				const user = users[name];
 				sendAll('[*'+user.alias+' '+msg+'*]');
 				sendAll(false, name);
-				persistent.ids.push(user.id);
+				ids.push(user.id);
 				if(user.color != 'fff') {
-					persistent.colors.push(user.color);
+					colors.push(user.color);
 				}
 			}
 			function hear(msg, name, hash) {
@@ -853,20 +851,29 @@ socket.once('start', rooms => {
 				}
 			}`.replace(/^\t\t\t/gm, '');
 		const codehistory = [];
-		let codeindex = 0;
+		let codeindex = -1;
 		let runningcode;
 		let lastcode;
 		document.body.classList.add('admin');
 		persistent = { users:{ [myname]:{ hash:adminhash, admin:true } } };
-		get('codebox').oninput = () => {
+		const toggleerrors = () => {
 			const errors = document.getElementsByClassName('error');
 			while(errors.length) errors[0].remove();
-			if(codeindex < codehistory.length) {
-				codehistory.length = ++codeindex;
+			const index = codehistory.findIndex(arr => arr[0] == get('codebox').value);
+			if(index == -1) return;
+			for(const div of codehistory[index][1]) {
+				get('log').append(div);
 			}
-			lastcode = get('codebox').value;
-			get('codebox').classList[get('codebox').value == runningcode? 'remove': 'add']('changed');
 		}
+		const updatecodebox = input => {
+			get('codebox').classList[get('codebox').value == runningcode? 'remove': 'add']('changed');
+			if(input) {
+				codehistory.length = codeindex + 1;
+				lastcode = get('codebox').value == codehistory[codeindex][0]? null: get('codebox').value;
+			}
+			toggleerrors();
+		}
+		get('codebox').oninput = () => updatecodebox(true);
 		get('codebox').onkeydown = e => {
 			setTimeout(() => {
 				if(get('codebox').scrollLeft < 7) {
@@ -877,17 +884,19 @@ socket.once('start', rooms => {
 				}
 			});
 			if(e.ctrlKey && e.key == 'ArrowUp') {
-				codeindex = Math.max(codeindex-1, 0);
-				if(get('codebox').value == codehistory[codeindex]) {
+				if(get('codebox').value == codehistory[codeindex][0]) {
 					codeindex = Math.max(codeindex-1, 0);
 				}
-				get('codebox').value = codehistory[codeindex];
+				get('codebox').value = codehistory[codeindex][0];
+				updatecodebox(false);
 			} else if(e.ctrlKey && e.key == 'ArrowDown') {
-				codeindex = Math.min(codeindex+1, codehistory.length);
-				if(get('codebox').value == codehistory[codeindex]) {
-					codeindex = Math.min(codeindex+1, codehistory.length);
+				if(codeindex < codehistory.length-1) {
+					codeindex++;
+					get('codebox').value = codehistory[codeindex][0];
+				} else if(lastcode != null) {
+					get('codebox').value = lastcode;
 				}
-				get('codebox').value = codehistory[codeindex] ?? lastcode;
+				updatecodebox(false);
 			} else if(e.key == 'Tab') {
 				const start = get('codebox').selectionStart;
 				const end = get('codebox').selectionEnd;
@@ -909,20 +918,20 @@ socket.once('start', rooms => {
 				get('codebox').value = arr.join('');
 				get('codebox').selectionStart = arr[0].length + num;
 				get('codebox').selectionEnd = arr[0].length + arr[1].length;
-				lastcode = get('codebox').value;
+				updatecodebox(true);
 			} else return;
 			e.preventDefault();
-			get('codebox').classList[get('codebox').value == runningcode? 'remove': 'add']('changed');
 		}
 		iframe = document.createElement('iframe');
 		iframe.id = 'iframe';
 		get('run').onclick = e => {
 			get('codebox').classList.remove('changed');
 			runningcode = get('codebox').value;
-			if(!iframe.src || codehistory.at(-1) != runningcode) {
-				codehistory.push(runningcode);
+			if(!iframe.src || codehistory.at(-1)[0] != runningcode) {
+				codehistory.push([runningcode, []]);
 				codeindex++;
 			}
+			lastcode = null;
 			if(iframe.src) {
 				updatesidebar(false, ['*']);
 				socket.emit('sendAll', false, ['*']);
@@ -1028,28 +1037,36 @@ socket.once('start', rooms => {
 				console.log(name+': '+msg);
 				iframe.contentWindow.hear(msg, name, hash);
 			});
-			const adderrormsg = iframe.contentWindow.onerror = onerror = (event, source, line, col) => {
-				const arr = runningcode.split('\n');
-				let index = col - 1;
-				for(let i = 0; i < line - 1; i++) {
-					index += arr[i].length + 1; // +1 for the linebreak
+			const adderrormsg = (event, line, col) => {
+				let div;
+				if(line != undefined && col != undefined) {
+					const arr = runningcode.split('\n');
+					let index = col - 1;
+					for(let i = 0; i < line - 1; i++) {
+						index += arr[i].length + 1; // +1 for the linebreak
+					}
+					div = addsysmsg(event+' at '+line+':'+col);
+					div.classList.add('error', 'clickableerror');
+					div.onclick = () => {
+						get('codebox').selectionStart = get('codebox').selectionEnd = index;
+						get('codebox').focus();
+					}
+				} else {
+					div = addsysmsg(event);
+					div.classList.add('error');
 				}
-				const div = addsysmsg(event+' at '+line+':'+col);
-				div.classList.add('error', 'clickableerror');
-				div.onclick = () => {
-					get('codebox').selectionStart = get('codebox').selectionEnd = index;
-					get('codebox').focus();
+				const index = codehistory.findIndex(arr => arr[0] == runningcode);
+				if(codehistory[index][1].every(error => error.textContent != div.textContent)) {
+					codehistory[index][1].push(div);
 				}
 				return true;
 			}
+			iframe.contentWindow.onerror = onerror = (event, source, line, col) => {
+				adderrormsg(event, line, col);
+			}
 			iframe.contentWindow.onunhandledrejection = onunhandledrejection = event => {
 				const numbers = event.reason.stack.split(/\D+/);
-				if(numbers[4] != undefined && numbers[5] != undefined) {
-					adderrormsg(event.reason.message, null, numbers[4], numbers[5]);
-				} else {
-					const div = addsysmsg(event.reason.message);
-					div.classList.add('error');
-				}
+				adderrormsg(event.reason.message, numbers[4], numbers[5]);
 				event.preventDefault();
 			}
 			iframe.contentWindow.eval(runningcode);
