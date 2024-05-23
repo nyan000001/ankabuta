@@ -65,6 +65,8 @@ del { text-decoration:line-through; opacity:.5; }
 #msg big * { padding:0; }
 details { display:inline-block; vertical-align:top; margin-left:1em; }
 summary { cursor:default; margin-left:-1em; }
+ruby { ruby-align:center; }
+rt { text-align:center; margin-top:18px; }
 i * { font-style:italic; }
 b * { font-weight:bold; }
 
@@ -106,6 +108,7 @@ var { opacity:.5; font-style:inherit; font-family:inherit; }
 </style>
 <script>
 const css = `
+	::selection { background:#fff; color:#000; }
 	body { background:#000; color:#fff; }
 	textarea, input, select, #arrow { background:#000; color:#fff; border-color:#ccc; }
 	textarea:focus, input:focus, select:focus { outline-color:#ccc; background:#111; }
@@ -158,6 +161,7 @@ if(theme == 'dark') {
 	<i>Set focus to specific elements
 	(Hold down <kbd>alt</kbd> to see the labels)</i></div>
 </div><div>
+<div><code>[^sample|text^]</code> <ruby>sample<rt>text</rt></ruby></div>
 <div><code>[&lt;sample text&gt;]</code> <span class="big">sample text</span></div>
 <div><code>[&gt;sample text&lt;]</code> <span class="small">sample text</span></div>
 <div><code>[{sample text}]</code> <pre>sample text</pre></div>
@@ -558,6 +562,8 @@ socket.once('start', rooms => {
 								return '<form>'+tag+'</form>';
 							}).
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
+							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
+							replace(/\[\^(?:(.*?)\|)?(.*?)\^\]/gs, '<ruby>$1<rt>$2</rt></ruby>').
 							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
 							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span class="color" style="color:#$1">$2</span>').
 							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span class="color" style="color:hsl($1, 100%, 50%)">$2</span>').
@@ -813,7 +819,7 @@ socket.once('start', rooms => {
 						sendOnly(help, name);
 					} else if(['nick', 'name', 'n'].includes(cmd)) {
 						const oldalias = user.alias;
-						user.alias = words.join('_');
+						user.alias = '[#'+user.color+words.join('_')+'#';
 						sendAll('[*'+oldalias+' is now known as '+user.alias+'*]');
 						sendAll(true, name+' '+user.id+' '+user.alias);
 					} else if(['pm', 'whisper', 'dm', 'msg'].includes(cmd)) {
@@ -828,10 +834,12 @@ socket.once('start', rooms => {
 						}
 					} else {
 						msg = words.join(' ').split(/(\\b)/);
+						let flag;
 						for(let i = 0; i < msg.length; i += 2) {
 							for(const user2 of Object.values(users)) {
 								if(parseInt(msg[i]) != user2.id) continue;
 								msg[i] = user2.alias;
+								flag = true;
 								break;
 							}
 						}
@@ -840,8 +848,8 @@ socket.once('start', rooms => {
 							sendAll('[/ * '+user.alias+' '+msg+'/]');
 						} else if(['pat', 'hug', 'poke'].includes(cmd)) {
 							sendAll('[/ * '+user.alias+' '+cmd+'s '+msg+'/]');
-						} else if(['cookie', 'cupcake', 'donut'].includes(cmd) || /^\\p{Extended_Pictographic}+$/u.test(cmd)) {
-							sendAll('[/ * '+user.alias+' gives '+msg+' a '+cmd+'/]');
+						} else if(flag) {
+							sendAll('[/ * '+user.alias+' gives '+msg+' '+('aeiou'.includes(cmd[0])? 'an': 'a')+' '+cmd+'/]');
 						} else {
 							sendOnly('Invalid command', name);
 						}
