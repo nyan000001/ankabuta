@@ -8,21 +8,24 @@
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-2B04, U+2B96-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 * { box-sizing:border-box; font-family:'Noto Color Emoji', sans-serif; }
 html, body, #top { height:100%; }
-body { font-size:8pt; padding:0; margin:0; line-height:13px; }
+body { padding:0; margin:0; line-height:13px; }
 body.blank * { display:none; }
+#top * { font-size:8pt; }
 #top { display:flex; }
 #top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
 #top > div.closed { opacity:.5; }
 #top > div.closed:hover { opacity:1; }
-#top input, #top select { pointer-events:none; font-size:8pt; }
-h1 { position:sticky; top:0; background:#fff; font-size:8pt; margin:0; padding:0; z-index:1; cursor:default; }
+#top input, #top select { pointer-events:none; }
+h1 { position:sticky; top:0; background:#fff; margin:0; padding:0; z-index:1; cursor:default; }
 .clickable:not(p.highlight) { cursor:pointer; }
 p { white-space:pre-wrap; padding:3px; margin:0; overflow-wrap:break-word; overflow:auto; }
 p:hover { background:#eee; outline:#ccc solid 1px; }
 p:not(.highlight) .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 del { text-decoration:line-through; opacity:.8; }
 p:hover del { text-decoration:none; }
-.big, .big * { font-size:9pt !important; }
+ruby { ruby-align:center; }
+rt { text-align:center; margin-top:13px; }
+.big, .big * { font-size:10pt !important; }
 .small, .small * { font-size:7pt !important; }
 p:not(.highlight) > span:first-child { display:none; }
 .highlight { color:#fff; background:#900; text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
@@ -187,6 +190,8 @@ socket.once('log', (records, regex) => {
 								return '<form>'+tag+'</form>';
 							}).
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
+							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
+							replace(/\[\^(?:(.*?)\|)?(.*?)\^\]/gs, '<ruby>$1<rt>$2</rt></ruby>').
 							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
 							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span class="color" style="color:#$1">$2</span>').
 							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span class="color" style="color:hsl($1, 100%, 50%)">$2</span>').
@@ -265,7 +270,9 @@ socket.once('log', (records, regex) => {
 	for(const record of records) addrecord(record);
 	for(const room in roomdivs) {
 		get('top').append(roomdivs[room]);
-		roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
+	}
+	for(const room in roomdivs) {
+		roomdivs[room].scrollTop = roomdivs[room].scrollHeight;
 	}
 	old = false;
 	socket.on('log', addrecord);
