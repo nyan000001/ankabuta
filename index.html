@@ -6,7 +6,7 @@
 <style>
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-2B04, U+2B96-FE837, U+200D; src:url('NotoColorEmoji.ttf') format('truetype'); }
 * { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
-#log input, #sidebar input { user-select:all; }
+#log input:not(.showless), #sidebar input { user-select:text; }
 textarea, input, select, #arrow { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
 input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
@@ -45,9 +45,10 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .msg:nth-last-child(2) { margin-bottom:-24px; }
 
 .msg { padding:3px; margin-bottom:1px; }
-.truncated { max-height:137px; overflow-y:hidden; cursor:pointer; background-image:linear-gradient(transparent 80%, rgba(128, 128, 128, .5)); outline:1px solid #888; }
+.truncated { max-height:200px; overflow-y:hidden; cursor:pointer; background:linear-gradient(transparent, rgba(128, 128, 128, .5)) bottom/100% 20px no-repeat; outline:1px solid #888; }
+.clicked { max-height:50px; }
 .full { max-height:none; overflow-y:visible; outline:1px solid #888; }
-.showless { position:sticky; display:block; bottom:0; left:100%; user-select:none !important; }
+.showless { position:sticky; display:block; bottom:0; left:100%; }
 #log:has(#arrow:not(.hidden)) .showless { bottom:26px; }
 .clickableerror { cursor:pointer; }
 .msg form, #sidebar form { display:inline-block; border:1px solid #aaa; border-radius:4px; padding:1px; max-width:100%; vertical-align:top; }
@@ -62,6 +63,7 @@ del { text-decoration:line-through; opacity:.5; }
 .sysmsg { font-weight:bold; }
 #arrow { width:100%; bottom:0; position:sticky; height:24px; background:ButtonFace; text-align:center; line-height:22px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; cursor:default; user-select:none; }
 #arrow * { pointer-events:none; }
+#arrow rt { display:none; }
 #msg big * { padding:0; }
 details { display:inline-block; vertical-align:top; margin-left:1em; }
 summary { cursor:default; margin-left:-1em; }
@@ -247,7 +249,7 @@ socket.once('start', rooms => {
 		get('log').scrollTop = get('log').scrollHeight;
 	}
 	const updatemsg = (msg, noscroll) => {
-		if(msg.scrollHeight > 155 && !(msg.classList.contains('truncated') || msg.classList.contains('full'))) {
+		if(msg.scrollHeight > 250 && !(msg.classList.contains('truncated') || msg.classList.contains('full'))) {
 			msg.classList.add('truncated');
 			msg.onclick = () => {
 				msg.onclick = null;
@@ -259,21 +261,25 @@ socket.once('start', rooms => {
 				showless.value = 'Show less';
 				showless.onclick = e => {
 					e.stopPropagation();
+					get('msgbox').focus();
 					showless.remove();
 					msg.classList.remove('full');
-					updatemsg(msg, true);
-					if(!noscroll) togglearrow();
+					msg.classList.add('clicked');
+					updatemsg(msg);
 					return;
 				}
 				msg.append(showless);
 				if(!noscroll) togglearrow();
 			}
-		} else if(msg.scrollHeight <= 155 && (msg.classList.contains('truncated') || msg.classList.contains('full'))) {
+		} else if(msg.scrollHeight <= 250 && (msg.classList.contains('truncated') || msg.classList.contains('full'))) {
 			msg.querySelector('.showless')?.remove();
 			msg.classList.remove('truncated', 'full');
 			msg.onclick = null;
 		}
-		if(!noscroll) scrolldown();
+		if(!noscroll) {
+			scrolldown();
+			togglearrow();
+		}
 	}
 	const updatemsgs = get('codebox').onmousemove = onresize = () => {
 		const msgs = get('log').getElementsByClassName('msg');
@@ -281,6 +287,7 @@ socket.once('start', rooms => {
 			updatemsg(msgs[i], true);
 		}
 		scrolldown();
+		togglearrow();
 	}
 	const addsysmsg = msg => {
 		const div = document.createElement('div');
@@ -474,7 +481,6 @@ socket.once('start', rooms => {
 		get('arrow').onclick = () => {
 			get('arrow').classList.add('hidden');
 			scrolldown();
-			get('msgbox').focus();
 		}
 		get('leave').onclick = () => {
 			if(get('leave').value.endsWith('?')) {
@@ -502,7 +508,7 @@ socket.once('start', rooms => {
 				} else {
 					socket.emit('say', msg);
 				}
-				get('msgbox').focus();
+				e.target.blur();
 			} else if(e.target.type == 'checkbox') {
 				e.target.previousSibling.type = e.target.checked? 'text': 'password';
 				e.target.previousSibling.focus();
@@ -513,15 +519,15 @@ socket.once('start', rooms => {
 				if(div) {
 					setTimeout(() => updatemsg(div));
 				}
-				if(!getSelection()?.toString()) {
-					get('msgbox').focus();
-				}
 			} else if(e.detail == 3 && e.target.tagName == 'PRE') {
 				const selection = getSelection();
 				selection.removeAllRanges();
 				const range = document.createRange();
 				range.selectNodeContents(e.target);
 				selection.addRange(range);
+			}
+			if(!(document.activeElement instanceof HTMLFormElement) && !getSelection()?.toString()) {
+				get('msgbox').focus();
 			}
 		}
 		get('log').onkeydown = get('sidebar').onkeydown = e => {
@@ -651,6 +657,7 @@ socket.once('start', rooms => {
 			} else if(!e.shiftKey && e.key == 'Enter') {
 				get('say').click();
 			} else return;
+			get('msgbox').scrollTop = get('msgbox').scrollHeight;
 			e.preventDefault();
 		}
 		addsysmsg('You have joined '+room);
