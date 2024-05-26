@@ -15,7 +15,7 @@ a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 .joined #rooms.hidden, .joined #rooms div, #codebox, #log, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave, .joined #msgbox, .joined #say { display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
-.admin #help span.hidden { display:inline; }
+.admin #help span.hidden, pre.inline { display:inline; }
 #rooms a.hidden, #rooms a.locked { opacity:.5; }
 #rooms a.locked::after { content:'🔒'; }
 
@@ -526,7 +526,7 @@ socket.once('start', rooms => {
 				range.selectNodeContents(e.target);
 				selection.addRange(range);
 			}
-			if(!(document.activeElement instanceof HTMLFormElement) && !getSelection()?.toString()) {
+			if(document.activeElement.value == undefined && !getSelection()?.toString()) {
 				get('msgbox').focus();
 			}
 		}
@@ -826,7 +826,7 @@ socket.once('start', rooms => {
 						sendOnly(help, name);
 					} else if(['nick', 'name', 'n'].includes(cmd)) {
 						const oldalias = user.alias;
-						user.alias = '[#'+user.color+words.join('_')+'#';
+						user.alias = '[#'+user.color+words.join('_')+'#]';
 						sendAll('[*'+oldalias+' is now known as '+user.alias+'*]');
 						sendAll(true, name+' '+user.id+' '+user.alias);
 					} else if(['pm', 'whisper', 'dm', 'msg'].includes(cmd)) {
