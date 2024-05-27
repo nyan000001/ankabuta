@@ -273,7 +273,7 @@ socket.once('start', rooms => {
 			}
 		} else if(msg.scrollHeight <= 250 && (msg.classList.contains('truncated') || msg.classList.contains('full'))) {
 			msg.querySelector('.showless')?.remove();
-			msg.classList.remove('truncated', 'full');
+			msg.classList.remove('truncated', 'full', 'clicked');
 			msg.onclick = null;
 		}
 		if(!noscroll) {
@@ -400,6 +400,8 @@ socket.once('start', rooms => {
 				e.preventDefault();
 				updatemsgs();
 			}
+		} else if(e.key.length == 1 && document.activeElement.value == undefined) {
+			get('msgbox').focus();
 		}
 	}
 	ontouchstart = e => {
@@ -508,7 +510,6 @@ socket.once('start', rooms => {
 				} else {
 					socket.emit('say', msg);
 				}
-				e.target.blur();
 			} else if(e.target.type == 'checkbox') {
 				e.target.previousSibling.type = e.target.checked? 'text': 'password';
 				e.target.previousSibling.focus();
@@ -525,9 +526,6 @@ socket.once('start', rooms => {
 				const range = document.createRange();
 				range.selectNodeContents(e.target);
 				selection.addRange(range);
-			}
-			if(document.activeElement.value == undefined && !getSelection()?.toString()) {
-				get('msgbox').focus();
 			}
 		}
 		get('log').onkeydown = get('sidebar').onkeydown = e => {
