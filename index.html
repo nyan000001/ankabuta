@@ -344,8 +344,8 @@ socket.once('start', rooms => {
 	}
 	onkeydown = e => {
 		if(!document.body.classList.contains('joined')) return;
+		const key = e.key.toLowerCase();
 		if(e.altKey) {
-			const key = e.key.toLowerCase();
 			if(key == (localStorage.getItem('focuscodebox') || 'c') && document.body.classList.contains('admin')) {
 				get('codebox').focus();
 			} else if(key == (localStorage.getItem('focusleave') || 'l')) {
@@ -380,19 +380,25 @@ socket.once('start', rooms => {
 			}
 		} else if(e.ctrlKey) {
 			let flag;
-			if(e.key == (localStorage.getItem('togglerooms') || 'o')) {
+			if(key == (localStorage.getItem('togglerooms') || 'o')) {
 				get('rooms').classList.toggle('hidden');
 				flag = true;
 			}
-			if(e.key == (localStorage.getItem('togglehelp') || 'h')) {
+			if(key == (localStorage.getItem('togglehelp') || 'h')) {
 				get('help').classList.toggle('hidden');
 				flag = true;
 			}
-			if(e.key == (localStorage.getItem('runcode') || 's') && document.body.classList.contains('admin')) {
+			if(key == (localStorage.getItem('runcode') || 's') && document.body.classList.contains('admin')) {
+				if(e.shiftKey) {
+					persistent = { users:persistent.users };
+					for(const name in persistent.users) {
+						persistent.users[name] = { hash:persistent.users[name].hash, admin:persistent.users[name].admin };
+					}
+				}
 				get('run').click();
 				flag = true;
 			}
-			if(e.key == (localStorage.getItem('clickerror') || 'e')) {
+			if(key == (localStorage.getItem('clickerror') || 'e')) {
 				document.getElementsByClassName('clickableerror')[0]?.click();
 				flag = true;
 			}
@@ -400,7 +406,7 @@ socket.once('start', rooms => {
 				e.preventDefault();
 				updatemsgs();
 			}
-		} else if(e.key.length == 1 && document.activeElement.value == undefined) {
+		} else if(key.length == 1 && document.activeElement.value == undefined) {
 			get('msgbox').focus();
 		}
 	}
@@ -510,6 +516,7 @@ socket.once('start', rooms => {
 				} else {
 					socket.emit('say', msg);
 				}
+				e.target.blur();
 			} else if(e.target.type == 'checkbox') {
 				e.target.previousSibling.type = e.target.checked? 'text': 'password';
 				e.target.previousSibling.focus();
@@ -777,14 +784,13 @@ socket.once('start', rooms => {
 		}
 		get('codebox').value =
 			`const users = persistent.users;
-			const colors = ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
-			const ids = [0];
-			const help = 'Available commands: /help /nick /pm /me /pat /hug /poke /cookie /cupcake /donut';
+			const colors = persistent.colors = persistent.colors ?? ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
+			const ids = persistent.ids = persistent.ids ?? [0];
+			const help = 'Available commands: /help /nick /pm /me /pat /hug /poke';
 			function join(name, hash) {
 				const user = users[name];
-				if(!user.name) user.name = name;
 				user.color = colors.shift() ?? 'fff';
-				user.alias = '[*[#'+user.color+user.name+'#]*]';
+				user.alias = '[*[#'+user.color+name+'#]*]';
 				if(ids.length == 1) {
 					user.id = ids[0]++;
 				} else {
@@ -1035,10 +1041,8 @@ socket.once('start', rooms => {
 				iframe.contentWindow[event] = () => {};
 			}
 			socket.on('join', (name, hash) => {
-				if(!persistent.users[name]) {
-					console.log(hash+'\n'+name+' has joined');
-					persistent.users[name] = { hash:hash };
-				}
+				console.log(hash+'\n'+name+' has joined');
+				persistent.users[name] = { hash:hash, admin:false };
 				iframe.contentWindow.join(name, hash);
 			});
 			socket.on('leave', (msg, name, hash) => {
