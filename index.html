@@ -51,8 +51,12 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .showless { position:sticky; display:block; bottom:0; left:100%; }
 #log:has(#arrow:not(.hidden)) .showless { bottom:26px; }
 .clickableerror { cursor:pointer; }
-.msg form, #sidebar form { display:inline-block; border:1px solid #aaa; border-radius:4px; padding:1px; max-width:100%; vertical-align:top; }
+.msg form, #sidebar form { border:1px solid #aaa; border-radius:4px; padding:1px; margin:1px; max-width:100%; vertical-align:top; }
 .msg input, .msg select, #sidebar input, #sidebar select { margin:1px; }
+.msg input[type=text], #sidebar input[type=text] { width:100px; max-width:calc(100% - 2px); }
+.msg input[type=password], #sidebar input[type=password] { width:100px; max-width:calc(100% - 20px); }
+.long { width:300px !important; }
+.short { width:40px !important; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 .color { text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
 del { text-decoration:line-through; opacity:.5; }
@@ -67,6 +71,7 @@ del { text-decoration:line-through; opacity:.5; }
 #msg big * { padding:0; }
 details { display:inline-block; vertical-align:top; margin-left:1em; }
 summary { cursor:default; margin-left:-1em; }
+table { table-layout:fixed; width:100%; }
 ruby { ruby-align:center; }
 rt { text-align:center; margin-top:18px; }
 i * { font-style:italic; }
@@ -249,7 +254,7 @@ socket.once('start', rooms => {
 		get('log').scrollTop = get('log').scrollHeight;
 	}
 	const updatemsg = (msg, noscroll) => {
-		if(msg.scrollHeight > 250 && !(msg.classList.contains('truncated') || msg.classList.contains('full'))) {
+		if(msg.scrollHeight > 250 && !(msg.classList.contains('truncated') || msg.classList.contains('full') || msg.classList.contains('clicked'))) {
 			msg.classList.add('truncated');
 			msg.onclick = () => {
 				msg.onclick = null;
@@ -271,7 +276,7 @@ socket.once('start', rooms => {
 				msg.append(showless);
 				if(!noscroll) togglearrow();
 			}
-		} else if(msg.scrollHeight <= 250 && (msg.classList.contains('truncated') || msg.classList.contains('full'))) {
+		} else if(msg.scrollHeight <= 250 && (msg.classList.contains('truncated') || msg.classList.contains('full') || msg.classList.contains('clicked'))) {
 			msg.querySelector('.showless')?.remove();
 			msg.classList.remove('truncated', 'full', 'clicked');
 			msg.onclick = null;
@@ -406,7 +411,7 @@ socket.once('start', rooms => {
 				e.preventDefault();
 				updatemsgs();
 			}
-		} else if(key.length == 1 && document.activeElement.value == undefined) {
+		} else if(key.length == 1 && !['text', 'password'].includes(document.activeElement.type) && !['TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
 			get('msgbox').focus();
 		}
 	}
@@ -503,10 +508,15 @@ socket.once('start', rooms => {
 				if(e.target.type == 'submit') {
 					const form = e.target.closest('form') ?? e.target.closest('div');
 					msg = [e.target.value];
-					const inputs = [...form.querySelectorAll('input[type=text], input[type=password], select')];
+					const inputs = [...form.querySelectorAll('input[type=text], input[type=password], input[type=checkbox][value]:checked, select')];
 					for(const input of inputs) {
-						msg.push(input.nextSibling?.type == 'checkbox'? 'hash:'+input.value: input.value);
-						input.value = '';
+						if(!input.value) continue;
+						if(input.nextSibling?.type == 'checkbox' && input.nextSibling.title) {
+							msg.push('hash:'+input.value);
+							input.value = '';
+						} else {
+							msg.push(input.value);
+						}
 					}
 					msg = '/'+msg.join(' ');
 				} else msg = '/'+e.target.value;
@@ -516,12 +526,17 @@ socket.once('start', rooms => {
 				} else {
 					socket.emit('say', msg);
 				}
-				e.target.blur();
-			} else if(e.target.type == 'checkbox') {
+			} else if(e.target.classList.contains('showpassword')) {
 				e.target.previousSibling.type = e.target.checked? 'text': 'password';
 				e.target.previousSibling.focus();
 			} else if(e.target.tagName == 'LABEL') {
-				e.target.nextElementSibling?.focus();
+				const el = e.target.classList.contains('right')? e.target.previousElementSibling: e.target.nextElementSibling;
+				if(el) {
+					if(el.type == 'checkbox') {
+						el.checked = !el.checked;
+					}
+					el.focus();
+				}
 			} else if(e.target.closest('SUMMARY')) {
 				const div = e.target.closest('.msg');
 				if(div) {
@@ -546,31 +561,32 @@ socket.once('start', rooms => {
 		const gethtml = text => {
 			let html = '';
 			const arr = text.split(/\[\{(.*)\}\]/s);
+			const add = (attr, value, arr = [value]) => value && arr.includes(value)? attr+'="'+value+'"': '';
 			for(let i = 0; i < arr.length; i++) {
 				text = arr[i].replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 				if(i % 2) {
-					html += '<pre'+(text.includes('\n')? '': ' class="inline"')+'>'+text+'</pre>';
+					html += '<pre '+add('class', !text.includes('\n') && 'inline')+'>'+text+'</pre>';
 				} else {
 					let temp;
 					do {
 						temp = text;
 						text = text.
-							replace(/\[\[([^\[]*?)\]\]/gs, (_, tag) => {
-								if(tag.startsWith('select|')) return ('<select><option>'+tag.slice(7).replace(/\|/g, '</option><option>')+'</option></select>').replace(/>([^<]*?):([^<]*?)</g, ' value="$1">$2<');
-								let style = tag.startsWith('long')? 'width:300px;': tag.startsWith('short')? 'width:40px;': 'width:100px;';
-								tag = tag.replace(/^(long|short)/, '');
-								if(tag == 'text') return '<input type="'+tag+'" style="'+style+' max-width:calc(100% - 2px)">';
-								if(tag == 'password') return '<input type="'+tag+'" style="'+style+' max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
-								if(tag == 'button' || tag == 'submit') return '<input type="'+tag+'" value="send">';
-								const match = tag.match(/^(?<tag>\w+):(?<value>.*)/)?.groups;
-								if(match) {
-									match.value = match.value.replace(/<.*?>/g, '');
-									if(match.tag == 'text') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+' max-width:calc(100% - 2px)">';
-									if(match.tag == 'password') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+' max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
-									if(match.tag == 'button' || match.tag == 'submit') return '<input type="'+match.tag+'" value="'+match.value+'">';
-									if(match.tag == 'label') return '<label>'+match.value+'</label>';
-								}
-								return '<form>'+tag+'</form>';
+							replace(/\[\[([^\[]*?)\]\]/gs, (_, match) => {
+								const [arr1, ...arr2] = match.split('|').map(x => x.replace(/<.*?>/g, '').split(':'));
+								const tag = arr1.shift();
+								if(tag == 'select') // [[select|text:value:selected]]
+									return '<select>'+(arr2.map(x => '<option '+add('selected', x[2])+' value="'+(x[1] || x[0])+'">'+x[0]+'</option>').join(''))+'</select>';
+								if(tag == 'text') // [[text:placeholder:length]]
+									return '<input type="text" '+add('placeholder', arr1[0])+' '+add('class', arr1[1], ['long', 'short'])+'>';
+								if(tag == 'password') // [[password:placeholder:length]]
+									return '<input type="password" '+add('placeholder', arr1[0])+' '+add('class', arr1[1], ['long', 'short'])+'><input type="checkbox" title="Show password" class="showpassword">';
+								if(tag == 'button' || tag == 'submit') // [[button:value]]
+									return '<input type="'+tag+'" value="'+(arr1[0] || 'send')+'">';
+								if(tag == 'checkbox') // [[checkbox:value:checked]]
+									return '<input type="checkbox" '+add('checked', arr1[1])+' value="'+arr1[0]+'">';
+								if(tag == 'label') // [[label:text:right]]
+									return '<label '+add('class', arr1[1], ['right'])+'>'+arr1[0]+'</label>';
+								return '<form '+add('class', !match.includes('\n') && 'inline')+'>'+match+'</form>';
 							}).
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
@@ -1065,8 +1081,8 @@ socket.once('start', rooms => {
 					div = addsysmsg(event+' at '+line+':'+col);
 					div.classList.add('error', 'clickableerror');
 					div.onclick = () => {
-						get('codebox').selectionStart = get('codebox').selectionEnd = index;
 						get('codebox').focus();
+						get('codebox').setSelectionRange(index, index+1);
 					}
 				} else {
 					div = addsysmsg(event);

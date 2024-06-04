@@ -163,31 +163,32 @@ socket.once('log', (records, regex) => {
 			const p = document.createElement('p');
 			let html = '';
 			const arr = text.split(/\[\{(.*)\}\]/s);
+			const add = (attr, value, arr = [value]) => value && arr.includes(value)? attr+'="'+value+'"': '';
 			for(let i = 0; i < arr.length; i++) {
-				text = arr[i].replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+				text = arr[i].replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 				if(i % 2) {
-					html += '<pre>'+text+'</pre>';
+					html += '<pre '+add('class', !text.includes('\n') && 'inline')+'>'+text+'</pre>';
 				} else {
 					let temp;
 					do {
 						temp = text;
 						text = text.
-							replace(/\[\[([^\[]*?)\]\]/gs, (_, tag) => {
-								if(tag.startsWith('select|')) return ('<select><option>'+tag.slice(7).replace(/\|/g, '</option><option>')+'</option></select>').replace(/"/g, '&quot;').replace(/>([^<]*?):([^<]*?)</g, ' value="$1">$2<');
-								let style = tag.startsWith('long')? 'width:300px;': tag.startsWith('short')? 'width:40px;': 'width:100px;';
-								tag = tag.replace(/^(long|short)/, '');
-								if(tag == 'text') return '<input type="'+tag+'" style="'+style+' max-width:calc(100% - 2px)">';
-								if(tag == 'password') return '<input type="'+tag+'" style="'+style+' max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
-								if(tag == 'button' || tag == 'submit') return '<input type="'+tag+'" value="send">';
-								const match = tag.match(/^(?<tag>\w+):(?<value>.*)/)?.groups;
-								if(match) {
-									match.value = match.value.replace(/<.*?>/g, '').replaceAll('"', '&quot;');
-									if(match.tag == 'text') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+' max-width:calc(100% - 2px)">';
-									if(match.tag == 'password') return '<input type="'+match.tag+'" placeholder="'+match.value+'" style="'+style+' max-width:calc(100% - 20px)"><input type="checkbox" title="Show password">';
-									if(match.tag == 'button' || match.tag == 'submit') return '<input type="'+match.tag+'" value="'+match.value+'">';
-									if(match.tag == 'label') return '<label>'+match.value+'</label>';
-								}
-								return '<form>'+tag+'</form>';
+							replace(/\[\[([^\[]*?)\]\]/gs, (_, match) => {
+								const [arr1, ...arr2] = match.split('|').map(x => x.replace(/<.*?>/g, '').split(':'));
+								const tag = arr1.shift();
+								if(tag == 'select') // [[select|text:value:selected]]
+									return '<select>'+(arr2.map(x => '<option '+add('selected', x[2])+' value="'+(x[1] || x[0])+'">'+x[0]+'</option>').join(''))+'</select>';
+								if(tag == 'text') // [[text:placeholder:length]]
+									return '<input type="text" '+add('placeholder', arr1[0])+' '+add('class', arr1[1], ['long', 'short'])+'>';
+								if(tag == 'password') // [[password:placeholder:length]]
+									return '<input type="password" '+add('placeholder', arr1[0])+' '+add('class', arr1[1], ['long', 'short'])+'><input type="checkbox" title="Show password" class="showpassword">';
+								if(tag == 'button' || tag == 'submit') // [[button:value]]
+									return '<input type="'+tag+'" value="'+(arr1[0] || 'send')+'">';
+								if(tag == 'checkbox') // [[checkbox:value:checked]]
+									return '<input type="checkbox" '+add('checked', arr1[1])+' value="'+arr1[0]+'">';
+								if(tag == 'label') // [[label:text:right]]
+									return '<label '+add('class', arr1[1], ['right'])+'>'+arr1[0]+'</label>';
+								return '<form '+add('class', !match.includes('\n') && 'inline')+'>'+match+'</form>';
 							}).
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
