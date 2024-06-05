@@ -175,7 +175,7 @@ socket.once('log', (records, regex) => {
 						text = text.
 							replace(/\[\[([^\[]*?)\]\]/gs, (_, match) => {
 								const [arr1, ...arr2] = match.split('|').map(x => x.replace(/<.*?>/g, '').split(':'));
-								const tag = arr1.shift();
+								const tag = arr1.shift()?.toLowerCase();
 								if(tag == 'select') // [[select|text:value:selected]]
 									return '<select>'+(arr2.map(x => '<option '+add('selected', x[2])+' value="'+(x[1] || x[0])+'">'+x[0]+'</option>').join(''))+'</select>';
 								if(tag == 'text') // [[text:placeholder:length]]
@@ -188,8 +188,9 @@ socket.once('log', (records, regex) => {
 									return '<input type="checkbox" '+add('checked', arr1[1])+' value="'+arr1[0]+'">';
 								if(tag == 'label') // [[label:text:right]]
 									return '<label '+add('class', arr1[1], ['right'])+'>'+arr1[0]+'</label>';
-								return '<form '+add('class', !match.includes('\n') && 'inline')+'>'+match+'</form>';
+								return '<form>'+match+'</form>';
 							}).
+							replace(/\[-\]/gs, '<hr>').
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
 							replace(/\[\^(?:(.*?)\|)?(.*?)\^\]/gs, '<ruby>$1<rt>$2</rt></ruby>').

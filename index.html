@@ -15,7 +15,7 @@ a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
 .joined #rooms.hidden, .joined #rooms div, #codebox, #log, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave, .joined #msgbox, .joined #say { display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
-.admin #help span.hidden, pre.inline { display:inline; }
+.admin #help span.hidden, .inline { display:inline; }
 #rooms a.hidden, #rooms a.locked { opacity:.5; }
 #rooms a.locked::after { content:'🔒'; }
 
@@ -34,7 +34,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .joined #wrapper { height:calc(100% - 50px); }
 #wrapper > * { margin:1px; }
 #wrapper > *:not(#log, #help) { padding:5px; }
-#wrapper > *:not(#codebox, #help), pre.inline, #help > div > div { white-space:pre-wrap; word-break:break-word; }
+#wrapper > *:not(#codebox, #help), .inline, #help > div > div { white-space:pre-wrap; word-break:break-word; }
 #wrapper > *:not(#codebox) { overflow-y:auto; }
 #codebox { width:300px; resize:horizontal; }
 #codebox, pre { font-size:10pt; line-height:17px; white-space:pre; overflow-x:auto; }
@@ -55,6 +55,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .msg input, .msg select, #sidebar input, #sidebar select { margin:1px; }
 .msg input[type=text], #sidebar input[type=text] { width:100px; max-width:calc(100% - 2px); }
 .msg input[type=password], #sidebar input[type=password] { width:100px; max-width:calc(100% - 20px); }
+hr { border:1px solid #aaa; border-bottom:none; }
 .long { width:300px !important; }
 .short { width:40px !important; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
@@ -123,7 +124,7 @@ const css = `
 	input[type=button]:focus, input[type=submit]:focus { background:#333; }
 	input[type=text]:read-only, textarea:read-only, input:disabled { background:#000; color:#444; }
 	input[type=checkbox] { filter:invert(100%); }
-	.msg form, #sidebar form  { border-color:#555; }
+	.msg form, #sidebar form, hr  { border-color:#555; }
 	::-webkit-scrollbar { width:15px; height:15px; }
 	::-webkit-scrollbar-track { background:#222; }
 	::-webkit-scrollbar-thumb { background-color:#333; border:1px solid #555; }
@@ -254,11 +255,11 @@ socket.once('start', rooms => {
 		get('log').scrollTop = get('log').scrollHeight;
 	}
 	const updatemsg = (msg, noscroll) => {
-		if(msg.scrollHeight > 250 && !(msg.classList.contains('truncated') || msg.classList.contains('full') || msg.classList.contains('clicked'))) {
+		if(msg.scrollHeight > 250 && !(msg.classList.contains('truncated') || msg.classList.contains('full'))) {
 			msg.classList.add('truncated');
 			msg.onclick = () => {
 				msg.onclick = null;
-				msg.classList.remove('truncated');
+				msg.classList.remove('truncated', 'clicked');
 				msg.classList.add('full');
 				const showless = document.createElement('input');
 				showless.type = 'button';
@@ -276,7 +277,7 @@ socket.once('start', rooms => {
 				msg.append(showless);
 				if(!noscroll) togglearrow();
 			}
-		} else if(msg.scrollHeight <= 250 && (msg.classList.contains('truncated') || msg.classList.contains('full') || msg.classList.contains('clicked'))) {
+		} else if(msg.scrollHeight <= 250 && (msg.classList.contains('truncated') || msg.classList.contains('full'))) {
 			msg.querySelector('.showless')?.remove();
 			msg.classList.remove('truncated', 'full', 'clicked');
 			msg.onclick = null;
@@ -573,7 +574,7 @@ socket.once('start', rooms => {
 						text = text.
 							replace(/\[\[([^\[]*?)\]\]/gs, (_, match) => {
 								const [arr1, ...arr2] = match.split('|').map(x => x.replace(/<.*?>/g, '').split(':'));
-								const tag = arr1.shift();
+								const tag = arr1.shift()?.toLowerCase();
 								if(tag == 'select') // [[select|text:value:selected]]
 									return '<select>'+(arr2.map(x => '<option '+add('selected', x[2])+' value="'+(x[1] || x[0])+'">'+x[0]+'</option>').join(''))+'</select>';
 								if(tag == 'text') // [[text:placeholder:length]]
@@ -586,8 +587,9 @@ socket.once('start', rooms => {
 									return '<input type="checkbox" '+add('checked', arr1[1])+' value="'+arr1[0]+'">';
 								if(tag == 'label') // [[label:text:right]]
 									return '<label '+add('class', arr1[1], ['right'])+'>'+arr1[0]+'</label>';
-								return '<form '+add('class', !match.includes('\n') && 'inline')+'>'+match+'</form>';
+								return '<form>'+match+'</form>';
 							}).
+							replace(/\[-\]/gs, '<hr>').
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
 							replace(/\[\^(?:(.*?)\|)?(.*?)\^\]/gs, '<ruby>$1<rt>$2</rt></ruby>').
