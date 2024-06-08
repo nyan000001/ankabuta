@@ -254,14 +254,17 @@ socket.once('start', rooms => {
 		if(!get('arrow').classList.contains('hidden')) return;
 		get('log').scrollTop = get('log').scrollHeight;
 	}
+	let extraheight = 0;
 	const updatemsg = (msg, noscroll) => {
-		if(msg.scrollHeight > 250 && !(msg.classList.contains('truncated') || msg.classList.contains('full'))) {
+		let showless = msg.querySelector('.showless');
+		let height = msg.scrollHeight - (showless? extraheight: 0);
+		if(height > 250 && !(msg.classList.contains('truncated') || msg.classList.contains('full'))) {
 			msg.classList.add('truncated');
 			msg.onclick = () => {
 				msg.onclick = null;
 				msg.classList.remove('truncated', 'clicked');
 				msg.classList.add('full');
-				const showless = document.createElement('input');
+				showless = document.createElement('input');
 				showless.type = 'button';
 				showless.classList.add('showless');
 				showless.value = 'Show less';
@@ -274,11 +277,13 @@ socket.once('start', rooms => {
 					updatemsg(msg);
 					return;
 				}
+				height = msg.scrollHeight;
 				msg.append(showless);
+				extraheight = msg.scrollHeight - height;
 				if(!noscroll) togglearrow();
 			}
-		} else if(msg.scrollHeight <= 250 && (msg.classList.contains('truncated') || msg.classList.contains('full'))) {
-			msg.querySelector('.showless')?.remove();
+		} else if(height <= 250 && (msg.classList.contains('truncated') || msg.classList.contains('full'))) {
+			showless?.remove();
 			msg.classList.remove('truncated', 'full', 'clicked');
 			msg.onclick = null;
 		}
@@ -611,6 +616,7 @@ socket.once('start', rooms => {
 		let timeout;
 		const addmsg = msg => {
 			if(!msg || typeof msg != 'string') return;
+			msg = msg.replace(/\n+$/, '');
 			const div = document.createElement('div');
 			div.classList.add('msg');
 			div.innerHTML = gethtml(msg);
