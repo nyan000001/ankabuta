@@ -93,7 +93,6 @@ const highlighthash = hash => {
 		elems[i].classList.add('highlight');
 		elems[i].parentNode.firstChild.classList.add('highlight');
 	}
-	get('hash').value = hash;
 }
 const highlightregex = regex => {
 	reset();
@@ -103,7 +102,6 @@ const highlightregex = regex => {
 		if(!new RegExp(regex).test(elems[i].textContent)) continue;
 		elems[i].classList.add('highlight');
 	}
-	get('regex').value = regex;
 }
 const login = password => {
 	socket.emit('LOGIN', password);
@@ -143,7 +141,7 @@ socket.once('log', (records, regex) => {
 		h1.textContent = room;
 		div.append(h1);
 		if(!old) {
-			get('top').append(div);
+			get('top').prepend(div);
 		}
 		roomdivs[room] = div;
 		if(room != '(not in a room)') {
@@ -151,7 +149,10 @@ socket.once('log', (records, regex) => {
 			if(get('regex').value && new RegExp(get('regex').value).test(room)) {
 				h1.classList.add('highlight');
 			}
-			h1.onclick = () => highlightregex(room);
+			h1.onclick = () => {
+				get('regex').value = regex;
+				highlightregex(room);
+			}
 		}
 	}
 	const addrecord = record => {
@@ -222,6 +223,7 @@ socket.once('log', (records, regex) => {
 				}
 				p.onclick = () => {
 					if(p.classList.contains('highlight')) return;
+					get('hash').value = hash;
 					highlighthash(hash);
 				}
 			}
@@ -269,15 +271,29 @@ socket.once('log', (records, regex) => {
 			addtext(boldname+' '+cmd+' '+arr.join(' '));
 		}
 	}
-	for(const record of records) addrecord(record);
+	for(const record of records) {
+		addrecord(record);
+	}
+	const divs = [[], [], []];
 	for(const room in roomdivs) {
-		get('top').append(roomdivs[room]);
+		const div = roomdivs[room];
+		if(div.firstChild.textContent.includes(' ')) {
+			divs[2].unshift(div);
+		} else if(div.lastChild.tagName == 'HR') {
+			divs[1].unshift(div);
+		} else {
+			divs[0].unshift(div);
+		}
+	}
+	for(const div of divs.flat()) {
+		get('top').append(div);
 	}
 	for(const room in roomdivs) {
 		roomdivs[room].scrollTop = roomdivs[room].scrollHeight;
 	}
 	old = false;
 	socket.on('log', addrecord);
+	onbeforeunload = () => true;
 });
 </script>
 </body>
