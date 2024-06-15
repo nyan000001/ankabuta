@@ -44,10 +44,10 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #log { flex-grow:1; }
 .msg:nth-last-child(2) { margin-bottom:-24px; }
 
-.msg { padding:3px; margin-bottom:1px; }
-.truncated { max-height:200px; overflow-y:hidden; cursor:pointer; background:linear-gradient(transparent, rgba(128, 128, 128, .5)) bottom/100% 20px no-repeat; outline:1px solid #888; }
-.clicked { max-height:50px; }
-.full { max-height:none; overflow-y:visible; outline:1px solid #888; }
+.msg { padding:3px; margin-bottom:1px; position:relative; }
+.msg.less { outline:1px solid #888; max-height:500px; overflow-y:hidden; }
+.msg.more { outline:1px solid #888; }
+.showmore { position:absolute; bottom:1px; right:2px; }
 .showless { position:sticky; display:block; bottom:0; left:100%; }
 #log:has(#arrow:not(.hidden)) .showless { bottom:26px; }
 .clickableerror { cursor:pointer; }
@@ -56,8 +56,8 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .msg input[type=text], #sidebar input[type=text] { width:100px; max-width:calc(100% - 2px); }
 .msg input[type=password], #sidebar input[type=password] { width:100px; max-width:calc(100% - 20px); }
 hr { border:1px solid #aaa; border-bottom:none; }
-.long { width:300px !important; }
-.short { width:40px !important; }
+input.long { width:300px !important; }
+input.short { width:40px !important; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 .color { text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
 del { text-decoration:line-through; opacity:.5; }
@@ -256,14 +256,20 @@ socket.once('start', rooms => {
 	}
 	let extraheight = 0;
 	const updatemsg = (msg, noscroll) => {
+		let showmore = msg.querySelector('.showmore');
 		let showless = msg.querySelector('.showless');
 		let height = msg.scrollHeight - (showless? extraheight: 0);
-		if(height > 250 && !(msg.classList.contains('truncated') || msg.classList.contains('full'))) {
-			msg.classList.add('truncated');
-			msg.onclick = () => {
-				msg.onclick = null;
-				msg.classList.remove('truncated', 'clicked');
-				msg.classList.add('full');
+		if(height > 700 && !showmore && !showless) {
+			msg.classList.add('less');
+			showmore = document.createElement('input');
+			showmore.type = 'button';
+			showmore.classList.add('showmore');
+			showmore.value = 'Show more';
+			showmore.onclick = e => {
+				e.stopPropagation();
+				showmore.remove();
+				msg.classList.remove('less');
+				msg.classList.add('more');
 				showless = document.createElement('input');
 				showless.type = 'button';
 				showless.classList.add('showless');
@@ -272,8 +278,7 @@ socket.once('start', rooms => {
 					e.stopPropagation();
 					get('msgbox').focus();
 					showless.remove();
-					msg.classList.remove('full');
-					msg.classList.add('clicked');
+					msg.classList.remove('more');
 					updatemsg(msg);
 					return;
 				}
@@ -282,10 +287,11 @@ socket.once('start', rooms => {
 				extraheight = msg.scrollHeight - height;
 				if(!noscroll) togglearrow();
 			}
-		} else if(height <= 250 && (msg.classList.contains('truncated') || msg.classList.contains('full'))) {
+			msg.append(showmore);
+		} else if(height <= 700 && (showmore || showless)) {
+			showmore?.remove();
 			showless?.remove();
-			msg.classList.remove('truncated', 'full', 'clicked');
-			msg.onclick = null;
+			msg.classList.remove('more', 'less');
 		}
 		if(!noscroll) {
 			scrolldown();
@@ -689,7 +695,7 @@ socket.once('start', rooms => {
 			get('msgbox').scrollTop = get('msgbox').scrollHeight;
 			e.preventDefault();
 		}
-		addsysmsg('You have joined '+room);
+		addsysmsg((adminhash? 'You are now hosting': 'You have joined')+' '+room);
 		socket.once('leaveroom', msg => {
 			onbeforeunload = null;
 			get('leave').value = get('leave').value.replace('?', '');

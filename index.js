@@ -170,28 +170,11 @@ io.on('connection', async socket => {
 			}
 		});
 	});
-	const getname = name => {
-		const sockets = [...io.sockets.sockets.values()].filter(socket2 => socket2.name && socket2.room == socket.room);
-		if(sockets.some(socket2 => socket2.name == name)) {
-			let i = 0;
-			do i++;
-			while(sockets.some(socket2 => socket2.name == name+i));
-			name += i;
-		}
-		socket.name = name;
-		socket.join(name);
-	}
 	const getrandomname = async () => {
 		const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
-		const arr = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 12*60*60*1000) }, cmd:'join' }, { projection:{ _id:0, name:1 } }).toArray();
-		const names = [];
-		for(const socket2 of arr) {
-			if(names.includes(socket2.name)) continue;
-			names.push(socket2.name);
-		}
-		const sockets = [...io.sockets.sockets.values()].filter(socket2 => socket2.name && socket2.room == socket.room);
+		let sockets = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 12*60*60*1000) }, cmd:'join' }, { projection:{ _id:0, name:1 } }).toArray();
 		let name;
-		const issimilar = (name2) => {
+		const issimilar = name2 => {
 			if(name == name2 || name.slice(0, 3) == name2.slice(0, 3)) return true;
 			let i = 0;
 			while(i < name.length && i < name2.length && name[i] == name2[i]) {
@@ -199,7 +182,6 @@ io.on('connection', async socket => {
 			}
 			return name.slice(i + (name.length >= name2.length)) == name2.slice(i + (name2.length >= name.length));
 		}
-		const bad = /([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[htw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|p[eou]t|napp|s[hn]?[aeiou]+[gtx]|w.[nk]k|[jy]i|nazi|sep|ild|moro|snob|nye|.w[ei]|wu|huo.+tl/;
 		do {
 			for(let i = 0; i < 1000; i++) {
 				name = rand([...'bfhklmnpstwxy', 'bl', 'ch', 'fl', 'ny', 'sh', 'sn']) + rand('aeiou');
@@ -219,12 +201,19 @@ io.on('connection', async socket => {
 						rand([...'bdghjklmnpstwxyz', 'ch', 'tx']) + rand([...'aiou', 'ai'])
 					]);
 				}
-				if(bad.test(name)) continue;
 				//name = name[0].toUpperCase() + name.slice(1);
-				if(names.every(name2 => !issimilar(name2)) && sockets.every(socket2 => socket2.name[0] != name[0])) break;
+				if(sockets.every(socket2 => !issimilar(socket2.name))) break;
 			}
-		} while(bad.test(name));
-		getname(name);
+		} while(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[htw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|p[eou]t|napp|s[hn]?[aeiou]+[gtx]|w.[nk]k|[jy]i|nazi|sep|ild|moro|dung|snob|nye|.w[ei]|wu|huo.+tl/.test(name));
+		sockets = [...io.sockets.sockets.values()].filter(socket2 => socket2.name && socket2.room == socket.room);
+		if(sockets.some(socket2 => socket2.name == name)) {
+			let i = 0;
+			do i++;
+			while(sockets.some(socket2 => socket2.name == name+i));
+			name += i;
+		}
+		socket.name = name;
+		socket.join(name);
 	}
 	if(socket.handshake.headers.referer?.includes('blank')) {
 		getrandomname();

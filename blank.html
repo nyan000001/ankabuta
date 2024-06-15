@@ -21,13 +21,14 @@ h1 { position:sticky; top:0; background:#fff; margin:0; padding:0; z-index:1; cu
 p { white-space:pre-wrap; padding:3px; margin:0; overflow-wrap:break-word; overflow:auto; }
 p:hover { background:#eee; outline:#ccc solid 1px; }
 p:not(.highlight) .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+p > span:first-of-type { display:none; }
+p:hover > span:first-of-type { display:block; }
 del { text-decoration:line-through; opacity:.8; }
 p:hover del { text-decoration:none; }
 ruby { ruby-align:center; }
 rt { text-align:center; margin-top:13px; }
 .big, .big * { font-size:10pt !important; }
 .small, .small * { font-size:7pt !important; }
-p:not(.highlight) > span:first-child { display:none; }
 .highlight { color:#fff; background:#900; text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
 .highlight:hover { background:#700; outline:#b00 solid 1px; }
 pre { display:inline; }
@@ -83,7 +84,6 @@ const reset = () => {
 	while(elems.length) {
 		elems[0].classList.remove('highlight');
 	}
-	get('hash').value = get('regex').value = '';
 }
 const highlighthash = hash => {
 	reset();
