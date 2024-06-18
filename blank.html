@@ -240,7 +240,9 @@ socket.once('log', (records, regex) => {
 			addtext(msg);
 		} else if(cmd == 'restart') {
 			for(const room in roomdivs) {
+				if(roomdivs[room].classList.contains('closed')) continue;
 				roomdivs[room].classList.add('closed');
+				roomdivs[room].append(document.createElement('hr'));
 			}
 		} else if(cmd == 'join') {
 			addtext(boldname+' has joined');

@@ -73,6 +73,7 @@ del { text-decoration:line-through; opacity:.5; }
 details { display:inline-block; vertical-align:top; margin-left:1em; }
 summary { cursor:default; margin-left:-1em; }
 table { table-layout:fixed; width:100%; }
+.inlineblock { display:inline-block; }
 ruby { ruby-align:center; }
 rt { text-align:center; display:ruby-text-container; }
 i * { font-style:italic; }
@@ -603,7 +604,7 @@ socket.once('start', rooms => {
 							replace(/\[-\]/gs, '<hr>').
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
-							replace(/\[\^(?:(.*?)\|)?(.*?)\^\]/gs, '<ruby>$1<rt>$2</rt></ruby>').
+							replace(/\[\^(?:(.*?)\|)?(.*?)\^\]/gs, '<span class="inlineblock"><ruby>$1<rt>$2</rt></ruby></span>').
 							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
 							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span class="color" style="color:#$1">$2</span>').
 							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span class="color" style="color:hsl($1, 100%, 50%)">$2</span>').

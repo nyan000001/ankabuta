@@ -170,7 +170,7 @@ io.on('connection', async socket => {
 			}
 		});
 	});
-	const getrandomname = async () => {
+	const getname = async () => {
 		const rand = (arr, num = 1) => Math.random() < num? arr[~~(Math.random()*arr.length)]: '';
 		let sockets = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 12*60*60*1000) }, cmd:'join' }, { projection:{ _id:0, name:1 } }).toArray();
 		let name;
@@ -216,7 +216,7 @@ io.on('connection', async socket => {
 		socket.join(name);
 	}
 	if(socket.handshake.headers.referer?.includes('blank')) {
-		getrandomname();
+		getname();
 		return;
 	}
 	if(lockeduntil > Date.now() || user.banneduntil > Date.now()) return;
@@ -284,7 +284,7 @@ io.on('connection', async socket => {
 			return;
 		}
 		socket.room = room;
-		await getrandomname();
+		await getname();
 		logaction(socket, 'join');
 		if(rooms[socket.room]) {
 			socket.join(socket.room);
