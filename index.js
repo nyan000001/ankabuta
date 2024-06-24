@@ -275,7 +275,7 @@ io.on('connection', async socket => {
 	}
 	socket.on('join', async room => {
 		if(!validstring(room)) return;
-		room = room.trim().replace(/^#*/, '#').slice(0, 30).replace(/\s/g, '_');
+		room = '#'+(room.trim().replace(/^#+/, '').slice(0, 30).replace(/\s/g, '_'));
 		if(socket.room) {
 			await leave(socket, '', 'has left');
 		}

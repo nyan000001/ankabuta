@@ -25,6 +25,13 @@ p > span:first-of-type { display:none; }
 p:hover > span:first-of-type { display:block; }
 del { text-decoration:line-through; opacity:.8; }
 p:hover del { text-decoration:none; }
+.wavy span { display:inline-block; position:relative; }
+.wavy span:nth-child(8n+1) { top:-1px; }
+.wavy span:nth-child(8n+2) { top:-2px; }
+.wavy span:nth-child(8n+3) { top:-1px; }
+.wavy span:nth-child(8n+5) { top:1px; }
+.wavy span:nth-child(8n+6) { top:2px; }
+.wavy span:nth-child(8n+7) { top:1px; }
 ruby { ruby-align:center; }
 rt { text-align:center; margin-top:13px; }
 .big, .big * { font-size:10pt !important; }
@@ -191,7 +198,7 @@ socket.once('log', (records, regex) => {
 									return '<label '+add('class', arr1[1], ['right'])+'>'+arr1[0]+'</label>';
 								return '<form>'+match+'</form>';
 							}).
-							replace(/\[-\]/gs, '<hr>').
+							replace(/\[-\]/gs, '<br>').
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
 							replace(/\[\^(?:(.*?)\|)?(.*?)\^\]/gs, '<ruby>$1<rt>$2</rt></ruby>').
@@ -202,6 +209,7 @@ socket.once('log', (records, regex) => {
 							replace(/\[\/(.*?)\/\]/gs, '<i>$1</i>').
 							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
 							replace(/\[-(.*?)-\]/gs, '<del>$1</del>').
+							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/./gs, '<span>$&</span>')+'</span>').
 							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
 							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>');
 					} while(temp != text);
