@@ -60,7 +60,6 @@ input.long { width:300px !important; }
 input.short { width:40px !important; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 .color { text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
-s { text-decoration:line-through; opacity:.5; }
 .wavy > span { position:relative; }
 .wavy > span:nth-child(8n+1), .wavy > span:nth-child(8n+3) { top:-2px; }
 .wavy > span:nth-child(8n+2) { top:-3px; }
@@ -75,16 +74,14 @@ s { text-decoration:line-through; opacity:.5; }
 #arrow * { pointer-events:none; }
 #arrow rt { display:none; }
 #msg big * { padding:0; }
-details { display:inline-block; vertical-align:top; margin-left:1em; }
-summary { cursor:default; margin-left:-1em; list-style-type:'🡆'; }
-details[open] > summary { list-style-type:'🡇'; }
+details { display:inline-block; vertical-align:top; }
+summary { cursor:default; list-style-type:'⬇'; }
+details[open] > summary { list-style-type:'⬆'; }
 table { table-layout:fixed; width:100%; }
 .inlineblock { display:inline-block; }
 ruby { ruby-align:center; }
 rt { text-align:center; display:ruby-text-container; }
 rt details { vertical-align:bottom; }
-i * { font-style:italic; }
-b * { font-weight:bold; }
 
 #sidebar { max-width:min(35vw, 250px); }
 #sidebar:empty { display:none; }
@@ -180,14 +177,14 @@ if(theme == 'dark') {
 <div><code>[^sample|text^]</code> <ruby>sample<rt>text</rt></ruby></div>
 <div><code>[&lt;sample text&gt;]</code> <span class="big">sample text</span></div>
 <div><code>[&gt;sample text&lt;]</code> <span class="small">sample text</span></div>
-<div><code>[{sample text}]</code> <pre>sample text</pre></div>
+<div><code>[{sample text}]</code> <pre class="inline">sample text</pre></div>
 <div><code>[!sample text!]</code> <span class="rainbow">sample text</span></div>
-<div><code>[*sample text*]</code> <b>sample text</b></div>
-<div><code>[/sample text/]</code> <i>sample text</i></div>
+<div><code>[*sample text*]</code> <span style="font-weight:bold">sample text</span></div>
+<div><code>[/sample text/]</code> <span style="font-style:italic">sample text</span></div>
 <div><code>[_sample text_]</code> <span style="text-decoration:underline">sample text</span></div>
-<div><code>[-sample text-]</code> <s>sample text</s></div>
-<div><code>[#f00sample text#]</code> <span style="color:#f00">sample text</span></div>
-<div><code>[°360sample text°]</code> <span style="color:hsl(360, 100%, 50%)">sample text</span></div>
+<div><code>[-sample text-]</code> <span style="text-decoration:line-through">sample text</span></div>
+<div><code>[#f00sample text#]</code> <span class="color" style="color:#f00">sample text</span></div>
+<div><code>[°360sample text°]</code> <span class="color" style="color:hsl(360, 100%, 50%)">sample text</span></div>
 <div><code>[%050sample text%]</code> <span style="opacity:0.50">sample text</span></div>
 <div><code>[~sample text~]</code> <span class="wavy"><span>s</span><span>a</span><span>m</span><span>p</span><span>l</span><span>e</span><span> </span><span>t</span><span>e</span><span>x</span><span>t</span></span></div>
 <div><details><summary>[(sample text)]</summary>sample text</details></div>
@@ -617,11 +614,11 @@ socket.once('start', rooms => {
 							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
 							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span class="color" style="color:#$1">$2</span>').
 							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span class="color" style="color:hsl($1, 100%, 50%)">$2</span>').
-							replace(/\[%(\d)(\d\d)(.*?)%\]/gsi, '<span class="color" style="opacity:$1.$2">$3</span>').
-							replace(/\[\*(.*?)\*\]/gs, '<b>$1</b>').
-							replace(/\[\/(.*?)\/\]/gs, '<i>$1</i>').
+							replace(/\[%(\d)(\d\d)(.*?)%\]/gsi, '<span style="opacity:$1.$2">$3</span>').
+							replace(/\[\*(.*?)\*\]/gs, '<span style="font-weight:bold">$1</span>').
+							replace(/\[\/(.*?)\/\]/gs, '<span style="font-style:italic">$1</span>').
 							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
-							replace(/\[-(.*?)-\]/gs, '<s>$1</s>').
+							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
 							//replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/((?:<.*?>)*)(.)?/gs, (_, tags, char) => tags+(char? '<span>'+char+'</span>': ''))+'</span>').
 							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/./gs, '<span>$&</span>')+'</span>').
 							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
