@@ -884,11 +884,11 @@ socket.once('start', rooms => {
 							sendOnly('Invalid id', name);
 						}
 					} else {
-						msg = words.join(' ').split(/(\\b)/);
+						msg = words.join(' ').split(/\\b(\\d+)\\b/);
 						let flag;
-						for(let i = 0; i < msg.length; i += 2) {
+						for(let i = 1; i < msg.length; i += 2) {
 							for(const user2 of Object.values(users)) {
-								if(parseInt(msg[i]) != user2.id) continue;
+								if(msg[i] != user2.id) continue;
 								msg[i] = user2.alias;
 								flag = true;
 								break;
