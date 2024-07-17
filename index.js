@@ -114,6 +114,7 @@ io.on('connection', async socket => {
 	socket.join(socket.hash);
 	const validstring = string => string && typeof string == 'string';
 	const validnumber = num => num >= 0;
+	const validarray = arr => Array.isArray(arr);
 	socket.on('LOGIN', async password => {
 		logaction(socket, 'LOGIN', password);
 		if(password != process.env.PASSWORD) {
@@ -312,14 +313,17 @@ io.on('connection', async socket => {
 			}
 			socket.emit('joinroom', socket.room, socket.name, socket.hash);
 			const send = async (msg1, names, msg2, add) => {
-				if(!Array.isArray(names)) names = [];
+				if(!validarray(names)) return;
+				if(add != null) {
+					if(!validarray(msg1) || !validarray(msg2)) return;
+				}
 				const sockets = await io.in(socket.room).fetchSockets();
 				for(const socket2 of sockets) {
 					if(add != null) {
 						if(names.includes(socket2.name)) {
-							msg1 && socket2.emit('updatesidebar', add, msg1);
+							msg1.length && socket2.emit('updatesidebar', add, msg1);
 						} else {
-							msg2 && socket2.emit('updatesidebar', add, msg2);
+							msg2.length && socket2.emit('updatesidebar', add, msg2);
 						}
 					} else {
 						if(names.includes(socket2.name)) {

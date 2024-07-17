@@ -900,7 +900,7 @@ socket.once('start', rooms => {
 						} else if(['pat', 'hug', 'poke'].includes(cmd)) {
 							sendAll('[/ * '+user.alias+' '+cmd+'s '+msg+'/]');
 						} else if(flag) {
-							sendAll('[/ * '+user.alias+' gives '+msg+' '+('aeiou'.includes(cmd[0])? 'an': 'a')+' '+cmd+'/]');
+							sendAll('[/ * '+user.alias+' gives '+msg+' '+('aeiou'.includes(cmd.normalize('NFKD')[0])? 'an': 'a')+' '+cmd+'/]');
 						} else {
 							sendOnly('Invalid command', name);
 						}
@@ -993,7 +993,7 @@ socket.once('start', rooms => {
 			lastcode = null;
 			if(iframe.src) {
 				updatesidebar(false, ['*']);
-				socket.emit('sendAll', false, ['*']);
+				socket.emit('sendAll', false, ['*'], [], []);
 			}
 			iframe.src = 'about:blank';
 			document.body.append(iframe);
@@ -1003,7 +1003,7 @@ socket.once('start', rooms => {
 			iframe.contentWindow.lock = mins => socket.emit('lock', mins);
 			iframe.contentWindow.save = (name, value) => localStorage.setItem('_'+name, JSON.stringify(value));
 			iframe.contentWindow.load = name => JSON.parse(localStorage.getItem('_'+name));
-			const convert = x => x == undefined || Array.isArray(x)? x: [x];
+			const convert = x => x == undefined? []: Array.isArray(x)? x: [x];
 			iframe.contentWindow.print = (...arr) => {
 				if(typeof arr[0] == 'boolean') {
 					arr[1] = convert(arr[1]);
@@ -1020,29 +1020,28 @@ socket.once('start', rooms => {
 				}
 				if(typeof arr[0] == 'boolean') {
 					let [add, msg1, names, msg2] = arr;
-					if(names == undefined) return;
+					if(!names || (!msg1 && !msg2)) return;
 					msg1 = convert(msg1);
 					names = convert(names);
 					msg2 = convert(msg2);
 					if(names.includes(myname)) {
-						updatesidebar(add, msg1);
-					} else if(msg2) {
-						updatesidebar(add, msg2);
+						msg1.length && updatesidebar(add, msg1);
+					} else {
+						msg2.length && updatesidebar(add, msg2);
 					}
-					if(names.some(name => name != myname) || msg2) {
+					if(msg2.length || names.some(name => name != myname)) {
 						socket.emit('sendOnly', add, msg1, names, msg2);
 					}
 				} else {
 					let [msg1, names, msg2] = arr;
-					if(names == undefined) return;
-					if(!msg1 || !names) return;
+					if(!names || (!msg1 && !msg2)) return;
 					names = convert(names);
 					if(names.includes(myname)) {
-						addmsg(msg1);
-					} else if(msg2) {
-						addmsg(msg2);
+						msg1 && addmsg(msg1);
+					} else {
+						msg2 && addmsg(msg2);
 					}
-					if(names.some(name => name != myname) || msg2) {
+					if(msg2 || names.some(name => name != myname)) {
 						socket.emit('sendOnly', msg1, names, msg2);
 					}
 				}
@@ -1055,25 +1054,30 @@ socket.once('start', rooms => {
 				}
 				if(typeof arr[0] == 'boolean') {
 					let [add, msg1, names, msg2] = arr;
+					if(!msg1 && !msg2) return;
 					msg1 = convert(msg1);
 					names = convert(names);
 					msg2 = convert(msg2);
-					if(!names || !names.includes(myname)) {
-						updatesidebar(add, msg1);
-					} else if(msg2) {
-						updatesidebar(add, msg2);
+					if(!names.includes(myname)) {
+						msg1.length && updatesidebar(add, msg1);
+					} else {
+						msg2.length && updatesidebar(add, msg2);
 					}
-					socket.emit('sendAll', add, msg1, names, msg2);
+					if(msg1.length || names.some(name => name != myname)) {
+						socket.emit('sendAll', add, msg1, names, msg2);
+					}
 				} else {
 					let [msg1, names, msg2] = arr;
-					if(!msg1) return;
+					if(!msg1 && !msg2) return;
 					names = convert(names);
-					if(!names || !names.includes(myname)) {
-						addmsg(msg1);
-					} else if(msg2) {
-						addmsg(msg2);
+					if(!names.includes(myname)) {
+						msg1 && addmsg(msg1);
+					} else {
+						msg2 && addmsg(msg2);
 					}
-					socket.emit('sendAll', msg1, names, msg2);
+					if(msg1 || names.some(name => name != myname)) {
+						socket.emit('sendAll', msg1, names, msg2);
+					}
 				}
 			}
 			for(const event of ['join', 'leave', 'hear']) {
