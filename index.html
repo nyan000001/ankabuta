@@ -530,7 +530,7 @@ socket.once('start', rooms => {
 					const inputs = [...form.querySelectorAll('input[type=text], input[type=password], input[type=checkbox][value]:checked, select')];
 					for(const input of inputs) {
 						if(!input.value) continue;
-						if(input.nextSibling?.classList.contains('showpassword')) {
+						if(input.nextElementSibling?.classList.contains('showpassword')) {
 							msg.push('hash:'+input.value);
 							input.value = '';
 						} else {
@@ -546,8 +546,8 @@ socket.once('start', rooms => {
 					socket.emit('say', msg);
 				}
 			} else if(e.target.classList.contains('showpassword')) {
-				e.target.previousSibling.type = e.target.checked? 'text': 'password';
-				e.target.previousSibling.focus();
+				e.target.previousElementSibling.type = e.target.checked? 'text': 'password';
+				e.target.previousElementSibling.focus();
 			} else if(e.target.tagName == 'LABEL') {
 				const el = e.target.classList.contains('right')? e.target.previousElementSibling: e.target.nextElementSibling;
 				if(el) {
