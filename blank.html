@@ -163,9 +163,6 @@ socket.once('log', (records, regex) => {
 	}
 	const addrecord = record => {
 		let { room, name, hash, cmd, arr = [], msg, regex } = record;
-		const isboolean = typeof arr[0] == 'boolean';
-		[room, name, hash, cmd, ...arr] = [room, name, hash, cmd, ...arr].
-			map(x => x? JSON.stringify(x).replace(/(?<!\\)"/g, '').replace(/\\"/g, '"'): '');
 		const addtext = text => {
 			const p = document.createElement('p');
 			let html = '';
@@ -267,15 +264,21 @@ socket.once('log', (records, regex) => {
 			addtext(boldname+': '+arr[0]);
 		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
 			let verb = 'says to';
-			if(isboolean) verb = ['removes from', 'adds to'][arr.shift()? 1: 0];
-			if(!arr[0]) return;
-			if((!arr[1] && cmd == 'sendAll') || JSON.stringify(arr[0]) == JSON.stringify(arr[2])) {
+			if(typeof arr[0] == 'boolean') {
+				verb = ['removes from', 'adds to'][arr.shift()? 1: 0];
+				arr[0] = arr[0].join(', ');
+				arr[2] = arr[2].join(', ');
+			}
+			if(!arr[0] && !arr[2]) return;
+			if((!arr[1].length && cmd == 'sendAll') || arr[0] == arr[2]) {
 				addtext(boldname+' '+verb+' everyone: '+arr[0]);
-			} else if(arr[1]) {
+			} else if(arr[1].length) {
 				if(cmd == 'sendAll') {
 					[arr[0], arr[2]] = [arr[2], arr[0]];
 				}
-				addtext(boldname+' '+verb+' '+arr[1]+': '+arr[0]+(arr[2]? '\n'+boldname+' '+verb+' everyone else: '+arr[2]: ''));
+				addtext(boldname+' '+verb+' '+arr[1].join(', ')+': '+arr[0]+
+					(arr[2]? '\n'+boldname+' '+verb+' everyone else: '+arr[2]: '')
+				);
 			}
 		} else {
 			addtext(boldname+' '+cmd+' '+arr.join(' '));
