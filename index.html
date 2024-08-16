@@ -829,15 +829,17 @@ socket.once('start', rooms => {
 			const help = 'Available commands: /help /nick /pm /me /pat /hug /poke';
 			function join(name, hash) {
 				const user = users[name];
-				user.color = colors.shift() ?? 'fff';
-				user.alias = '[*[#'+user.color+name+'#]*]';
-				if(ids.length == 1) {
-					user.id = ids[0]++;
-				} else {
-					user.id = ids.sort((a, b) => b - a).pop();
+				if(!user.alias) {
+					user.color = colors.shift() ?? 'fff';
+					user.alias = '[*[#'+user.color+name+'#]*]';
+					if(ids.length == 1) {
+						user.id = ids[0]++;
+					} else {
+						user.id = ids.sort((a, b) => b - a).pop();
+					}
+					sendAll('[*'+user.alias+' has joined*]');
+					sendOnly(help, name);
 				}
-				sendAll('[*'+user.alias+' has joined*]');
-				sendOnly(help, name);
 				sendAll(true, name+' '+user.id+' '+user.alias,
 					name, Object.keys(users).map(name2 => name2+' '+users[name2].id+' '+users[name2].alias));
 			}
