@@ -532,9 +532,13 @@ socket.once('start', rooms => {
 						if(!input.value) continue;
 						if(input.nextElementSibling?.classList.contains('showpassword')) {
 							msg.push('hash:'+input.value);
-							input.value = '';
 						} else {
 							msg.push(input.value);
+						}
+						if(input.type == 'checkbox') {
+							input.checked = false;
+						} else {
+							input.value = '';
 						}
 					}
 					msg = '/'+msg.join(' ');
@@ -605,7 +609,7 @@ socket.once('start', rooms => {
 									return '<input type="checkbox" '+add('checked', arr1[1])+' value="'+arr1[0]+'">';
 								if(tag == 'label') // [[label:text:right]]
 									return '<label '+add('class', arr1[1], ['right'])+'>'+arr1[0]+'</label>';
-								return '<form>'+match+'</form>';
+								return '<form autocomplete="off">'+match+'</form>';
 							}).
 							replace(/\[-\]/gs, '<hr>').
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
@@ -624,6 +628,9 @@ socket.once('start', rooms => {
 							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
 							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>');
 					} while(temp != text);
+					if(text.includes('<input') || text.includes('<select')) {
+						text = '<form autocomplete="off">'+text+'</form>';
+					}
 					html += text;
 				}
 			}
@@ -777,7 +784,8 @@ socket.once('start', rooms => {
 					'dailymotion':text.match(/(?<=\/video\/)[0-9A-Za-z_-]+/),
 					'vimeo':text.match(/\d+/)
 				}[id];
-				if(divid == 'divvideo' && match) {
+				if(divid == 'divvideo') {
+					if(!match) return;
 					const video = get('video') || document.createElement('iframe');
 					const a = document.createElement('a');
 					a.textContent = a.href = {
@@ -805,7 +813,7 @@ socket.once('start', rooms => {
 					}
 					div.append(a);
 					a.scrollIntoView();
-					fetch('https://noembed.com/embed?url='+a.href).then(x => x.json()).then(x => a.textContent = x.title);
+					fetch('https://noembed.com/embed?url='+a.href).then(x => x.json()).then(x => x.error? a.remove(): a.textContent = x.title);
 				} else {
 					div.textContent = '';
 					div.innerHTML = gethtml(text);
