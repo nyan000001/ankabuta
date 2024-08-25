@@ -51,7 +51,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .showless { position:sticky; display:block; bottom:0; left:100%; }
 #log:has(#arrow:not(.hidden)) .showless { bottom:26px; }
 .clickableerror { cursor:pointer; }
-.msg form, #sidebar form { border:1px solid #aaa; border-radius:4px; padding:1px; margin:1px; max-width:100%; vertical-align:top; }
+.msg form, #sidebar form { border:1px solid #aaa; border-radius:4px; padding:1px; margin:1px; max-width:100%; vertical-align:top; display:inline-block; }
 .msg input, .msg select, #sidebar input, #sidebar select { margin:1px; }
 .msg input[type=text], #sidebar input[type=text] { width:100px; max-width:calc(100% - 2px); }
 .msg input[type=password], #sidebar input[type=password] { width:100px; max-width:calc(100% - 20px); }
@@ -525,7 +525,7 @@ socket.once('start', rooms => {
 		get('log').onclick = get('sidebar').onclick = e => {
 			if(e.target.type == 'button' || e.target.type == 'submit') {
 				if(e.target.type == 'submit') {
-					const form = e.target.closest('form') ?? e.target.closest('div');
+					const form = e.target.closest('form');
 					msg = [e.target.value];
 					const inputs = [...form.querySelectorAll('input[type=text], input[type=password], input[type=checkbox][value]:checked, select')];
 					for(const input of inputs) {
@@ -594,23 +594,6 @@ socket.once('start', rooms => {
 					do {
 						temp = text;
 						text = text.
-							replace(/\[\[([^\[]*?)\]\]/gs, (_, match) => {
-								const [arr1, ...arr2] = match.split('|').map(x => x.replace(/<.*?>/g, '').split(':'));
-								const tag = arr1.shift()?.toLowerCase();
-								if(tag == 'select') // [[select|text:value:selected]]
-									return '<select>'+(arr2.map(x => '<option '+add('selected', x[2])+' value="'+(x[1] || x[0])+'">'+x[0]+'</option>').join(''))+'</select>';
-								if(tag == 'text') // [[text:placeholder:length]]
-									return '<input type="text" '+add('placeholder', arr1[0])+' '+add('class', arr1[1], ['long', 'short'])+'>';
-								if(tag == 'password') // [[password:placeholder:length]]
-									return '<input type="password" '+add('placeholder', arr1[0])+' '+add('class', arr1[1], ['long', 'short'])+'><input type="checkbox" title="Show password" class="showpassword">';
-								if(tag == 'button' || tag == 'submit') // [[button:value]]
-									return '<input type="'+tag+'" value="'+(arr1[0] || 'send')+'">';
-								if(tag == 'checkbox') // [[checkbox:value:checked]]
-									return '<input type="checkbox" '+add('checked', arr1[1])+' value="'+arr1[0]+'">';
-								if(tag == 'label') // [[label:text:right]]
-									return '<label '+add('class', arr1[1], ['right'])+'>'+arr1[0]+'</label>';
-								return '<form autocomplete="off">'+match+'</form>';
-							}).
 							replace(/\[-\]/gs, '<hr>').
 							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
 							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
@@ -626,10 +609,30 @@ socket.once('start', rooms => {
 							//replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/((?:<.*?>)*)(.)?/gs, (_, tags, char) => tags+(char? '<span>'+char+'</span>': ''))+'</span>').
 							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/./gs, '<span>$&</span>')+'</span>').
 							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
-							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>');
+							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>').
+							replace(/\[\[([^\[]*?)\]\]/gs, (_, match) => {
+								const [arr1, ...arr2] = match.split('|').map(x => x.replace(/<.*?>/g, '').split(':'));
+								const tag = arr1.shift()?.toLowerCase();
+								if(tag == 'select') // [[select|text:value:selected]]
+									return '<select>'+(arr2.map(x => '<option '+add('selected', x[2])+' value="'+(x[1] || x[0])+'">'+x[0]+'</option>').join(''))+'</select>';
+								if(tag == 'text') // [[text:placeholder:length]]
+									return '<input type="text" '+add('placeholder', arr1[0])+' '+add('class', arr1[1], ['long', 'short'])+'>';
+								if(tag == 'password') // [[password:placeholder:length]]
+									return '<input type="password" '+add('placeholder', arr1[0])+' '+add('class', arr1[1], ['long', 'short'])+'><input type="checkbox" title="Show password" class="showpassword">';
+								if(tag == 'button' || tag == 'submit') // [[button:value]]
+									return '<input type="'+tag+'" value="'+(arr1[0] || 'send')+'">';
+								if(tag == 'checkbox') // [[checkbox:value:checked]]
+									return '<input type="checkbox" '+add('checked', arr1[1])+' value="'+arr1[0]+'">';
+								if(tag == 'label') // [[label:text:right]]
+									return '<label '+add('class', arr1[1], ['right'])+'>'+arr1[0]+'</label>';
+								return '<form autocomplete="off" '+add('class', !match.includes('\n') && 'inline')+'>'+match+'</form>';
+							});
 					} while(temp != text);
-					if(text.includes('<input') || text.includes('<select')) {
-						text = '<form autocomplete="off">'+text+'</form>';
+					if(/<select|<input (?!type="button")/.test(text.replace(/<form.*?<\/form>/g, ''))) {
+						text = text.
+							replace(/<\/?form.*?>/g, '').
+							replace(/<(select|input|label).*?>(.*<(\/select|input|\/label).*?>)*/s, match =>
+								'<form autocomplete="off" '+add('class', !match.includes('\n') && 'inline')+'>'+match+'</form>');
 					}
 					html += text;
 				}

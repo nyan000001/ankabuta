@@ -38,6 +38,7 @@ rt { text-align:center; margin-top:13px; }
 .highlight { color:#fff; background:#900; text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
 .highlight:hover { background:#700; outline:#b00 solid 1px; }
 pre { display:inline; }
+details { display:inline-block; vertical-align:top; }
 #bottom { position:fixed; bottom:0; min-width:660px; width:100%; text-align:center; font-size:12pt; }
 #bottom form { display:inline-block; margin:8px; }
 #bottom input[type=number] { width:40px; }
@@ -177,6 +178,21 @@ socket.once('log', (records, regex) => {
 					do {
 						temp = text;
 						text = text.
+							replace(/\[-\]/gs, '<br>').
+							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
+							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
+							replace(/\[\^(?:(.*?)\|)?(.*?)\^\]/gs, '<ruby>$1<rt>$2</rt></ruby>').
+							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
+							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span class="color" style="color:#$1">$2</span>').
+							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span class="color" style="color:hsl($1, 100%, 50%)">$2</span>').
+							replace(/\[%(\d)(\d\d)(.*?)%\]/gsi, '<span style="opacity:$1.$2">$3</span>').
+							replace(/\[\*(.*?)\*\]/gs, '<span style="font-weight:bold">$1</span>').
+							replace(/\[\/(.*?)\/\]/gs, '<span style="font-style:italic">$1</span>').
+							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
+							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
+							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/./gs, '<span>$&</span>')+'</span>').
+							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
+							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>').
 							replace(/\[\[([^\[]*?)\]\]/gs, (_, match) => {
 								const [arr1, ...arr2] = match.split('|').map(x => x.replace(/<.*?>/g, '').split(':'));
 								const tag = arr1.shift()?.toLowerCase();
@@ -193,22 +209,7 @@ socket.once('log', (records, regex) => {
 								if(tag == 'label') // [[label:text:right]]
 									return '<label '+add('class', arr1[1], ['right'])+'>'+arr1[0]+'</label>';
 								return '<form>'+match+'</form>';
-							}).
-							replace(/\[-\]/gs, '<br>').
-							replace(/\[\((?:(.*?)\|)?(.*?)\)\]/gs, '<details><summary>$1</summary>$2</details>').
-							replace(/\[\|(.*?)\|\]/gs, (_, match) => '<table><tr><td>'+match.replaceAll('|\n|', '</td></tr><tr><td>').replaceAll('|', '</td><td>')+'</td></tr></table>').
-							replace(/\[\^(?:(.*?)\|)?(.*?)\^\]/gs, '<ruby>$1<rt>$2</rt></ruby>').
-							replace(/\[!(.*?)!\]/gs, '<span class="rainbow">$1</span>').
-							replace(/\[#([0-9a-f]{3})(.*?)#\]/gsi, '<span class="color" style="color:#$1">$2</span>').
-							replace(/\[°([0-9a-f]{3})(.*?)°\]/gsi, '<span class="color" style="color:hsl($1, 100%, 50%)">$2</span>').
-							replace(/\[%(\d)(\d\d)(.*?)%\]/gsi, '<span style="opacity:$1.$2">$3</span>').
-							replace(/\[\*(.*?)\*\]/gs, '<span style="font-weight:bold">$1</span>').
-							replace(/\[\/(.*?)\/\]/gs, '<span style="font-style:italic">$1</span>').
-							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
-							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
-							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/./gs, '<span>$&</span>')+'</span>').
-							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
-							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>');
+							});
 					} while(temp != text);
 					html += text;
 				}
