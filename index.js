@@ -188,7 +188,7 @@ io.on('connection', async socket => {
 				name = rand([...'bfhjklmnpstwxy', 'bl', 'ch', 'fl', 'ny', 'sh', 'sn']) + rand('aeiou');
 				if(Math.random() < .9) {
 					name = rand([
-						name + rand(['bbo', 'ffy', 'ggo', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'pper', 'ppy', 'pster', 'psu', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
+						name + rand(['bbo', 'ffy', 'ggo', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'p', 'pper', 'ppy', 'pster', 'psu', 't', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
 						name + rand([...'blmnprtx', 'ch', 'ff', 'kk', 'll', 'pp']) + rand('aiou')
 					]);
 				} else {
