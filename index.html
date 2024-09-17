@@ -756,8 +756,10 @@ socket.once('start', rooms => {
 				myroom = '';
 				document.title = 'ankabuta';
 				document.body.classList.remove('joined', 'admin');
+				const preview = get('preview');
 				const arrow = get('arrow');
 				get('log').textContent = get('sidebar').textContent = '';
+				get('log').append(preview);
 				get('log').append(arrow);
 				get('room').focus();
 				leave = () => {};
