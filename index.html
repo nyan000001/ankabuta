@@ -12,7 +12,7 @@ textarea:focus, input:focus, select:focus { outline:1px solid #000; outline-offs
 input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 input[type=checkbox] { vertical-align:middle; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
-.joined #rooms.hidden, .joined #rooms div, #codebox, #log, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
+.joined #rooms.hidden, .joined #rooms div, #codebox, #log, #preview.hidden, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave, .joined #msgbox, .joined #say { display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
 .admin #help span.hidden, .inline { display:inline; }
@@ -42,7 +42,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #codebox.changed { border-color:#f00; outline-color:#f00; }
 #codebox, #sidebar, #help { flex-shrink:0; }
 #log { flex-grow:1; }
-.msg:nth-last-child(2) { margin-bottom:-24px; }
+#preview:not(.hidden), #log:has(#preview.hidden) .msg:nth-last-child(3) { margin-bottom:-24px; }
 
 .msg { padding:3px; margin-bottom:1px; position:relative; }
 .msg.less { outline:1px solid #888; max-height:500px; overflow-y:hidden; }
@@ -58,9 +58,9 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 hr { border:1px solid #aaa; border-bottom:none; }
 input.long { width:300px !important; }
 input.short { width:40px !important; }
+.msg span *, #sidebar span * { color:inherit; font-weight:inherit; font-style:inherit; text-decoration:inherit; }
 .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 .color { text-shadow:-1px -1px 1px #000, -1px 0 1px #000, -1px 1px 1px #000, 0 -1px 1px #000, 0 1px 1px #000, 1px -1px 1px #000, 1px 0 1px #000, 1px 1px 1px #000; }
-.color * { color:inherit; }
 .wavy > span { position:relative; }
 .wavy > span:nth-child(8n+1), .wavy > span:nth-child(8n+3) { top:-2px; }
 .wavy > span:nth-child(8n+2) { top:-3px; }
@@ -71,6 +71,8 @@ input.short { width:40px !important; }
 .msg .small, .msg .small *, #sidebar .small, #sidebar .small *, #help .small { font-size:8pt; }
 .msg .small input, .msg .small select, #sidebar .small input, #sidebar .small select  { line-height:10px; }
 .sysmsg { font-weight:bold; }
+#preview { bottom:0; position:sticky; background:#fff; border-top:1px solid #888; }
+#log:has(#arrow:not(.hidden)) #preview { bottom:24px; }
 #arrow { width:100%; bottom:0; position:sticky; height:24px; background:ButtonFace; text-align:center; line-height:22px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; cursor:default; user-select:none; }
 #arrow * { pointer-events:none; }
 #arrow rt { display:none; }
@@ -139,7 +141,8 @@ const css = `
 	textarea { cursor:auto; }
 	a.disabled, #rooms.disabled > a { color:#fff; }
 	.shortcut { background:#ccc; color:#000; box-shadow:0 0 5px #000; }
-	.color { text-shadow:none; }`;
+	.color { text-shadow:none; }
+	#preview { background:#000; }`;
 const theme = localStorage.getItem('theme');
 if(theme == 'dark') {
 	document.getElementsByTagName('style')[0].textContent += css;
@@ -155,7 +158,7 @@ if(theme == 'dark') {
 <input type="text" id="room" aria-label="Room" maxlength="30" autofocus><input type="submit" id="go" value="Go">
 </form></div>
 <textarea id="codebox" spellcheck="false"></textarea>
-<div id="log" role="log"><div id="arrow" class="hidden">⬇</div></div>
+<div id="log" role="log"><div id="preview" class="msg hidden"></div><div id="arrow" class="hidden">⬇</div></div>
 <div id="sidebar" role="log"></div>
 <div id="help" class="hidden">
 <div>
@@ -163,6 +166,8 @@ if(theme == 'dark') {
 	<i>Toggle the help menu</i></div>
 <div><kbd>ctrl</kbd> + <kbd id="togglerooms">o</kbd>
 	<i>Show or hide the rooms</i></div>
+<div><kbd>ctrl</kbd> + <kbd id="togglepreview">p</kbd>
+	<i>Show or hide the message preview</i></div>
 <div><kbd>ctrl</kbd> + <kbd>⬆</kbd>
 	<i>Previous message<span class="hidden"> or code</span></i></div>
 <div><kbd>ctrl</kbd> + <kbd>⬇</kbd>
@@ -234,6 +239,7 @@ for(let i = 0; i < kbds.length; i++) {
 }
 if(localStorage.getItem('showrooms')) get('rooms').classList.remove('hidden');
 if(localStorage.getItem('showhelp')) get('help').classList.remove('hidden');
+if(localStorage.getItem('showpreview')) get('preview').classList.remove('hidden');
 const style = localStorage.getItem('style');
 if(style) document.getElementsByTagName('style')[0].append(style);
 const script = localStorage.getItem('script');
@@ -320,7 +326,7 @@ socket.once('start', rooms => {
 		div.textContent = msg;
 		if(document.body.classList.contains('joined')) {
 			div.classList.add('msg');
-			get('arrow').before(div);
+			get('preview').before(div);
 			scrolldown();
 		} else {
 			document.querySelector('#rooms > .sysmsg')?.remove();
@@ -411,6 +417,10 @@ socket.once('start', rooms => {
 			}
 			if(key == (localStorage.getItem('togglehelp') || 'h')) {
 				get('help').classList.toggle('hidden');
+				flag = true;
+			}
+			if(key == (localStorage.getItem('togglepreview') || 'p')) {
+				get('preview').classList.toggle('hidden');
 				flag = true;
 			}
 			if(key == (localStorage.getItem('runcode') || 's') && document.body.classList.contains('admin')) {
@@ -647,7 +657,7 @@ socket.once('start', rooms => {
 			const div = document.createElement('div');
 			div.classList.add('msg');
 			div.innerHTML = gethtml(msg);
-			get('arrow').before(div);
+			get('preview').before(div);
 			updatemsg(div);
 			if(document.visibilityState == 'visible') {
 				if(!get('arrow').classList.contains('hidden')) {
@@ -696,12 +706,15 @@ socket.once('start', rooms => {
 			} else {
 				socket.emit('say', msg);
 			}
+			get('preview').textContent = '';
 		}
 		get('msgbox').oninput = () => {
 			lastmsg = get('msgbox').value;
 			if(msgindex < msghistory.length) {
 				msghistory.length = ++msgindex;
 			}
+			get('preview').innerHTML = gethtml(lastmsg);
+			scrolldown();
 		}
 		get('msgbox').onkeydown = e => {
 			if(e.ctrlKey && e.key == 'ArrowUp') {

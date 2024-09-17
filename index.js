@@ -86,17 +86,17 @@ io.on('connection', async socket => {
 	socket.hash = makehash(cookie.parse(socket.handshake.headers.cookie).uid);
 	const user = users[socket.hash];
 	if(!user) return;
-	const logmsg = (msg, room = socket.room) => {
-		io.to('admin').emit('log', { time:Date.now(), room, msg });
-		logs.insertOne({ createdAt:new Date(), room, msg });
+	const logerror = (error, room = socket.room) => {
+		io.to('admin').emit('log', { time:Date.now(), room, error });
+		logs.insertOne({ time:new Date(), room, error });
 	}
-	const logaction = (socket, cmd, ...arr) => {
-		const obj = { room:socket.room, name:socket.name, hash:socket.hash, cmd, arr };
+	const logaction = (socket, cmd, obj) => {
+		obj = { cmd, room:socket.room, name:socket.name, hash:socket.hash, ...obj };
 		const json = JSON.stringify(obj);
 		if(json == lastaction) return;
 		lastaction = json;
 		io.to('admin').emit('log', { time:Date.now(), ...obj });
-		logs.insertOne({ createdAt:new Date(), ip:user.ip, ...obj });
+		logs.insertOne({ time:new Date(), ip:user.ip, ...obj });
 	}
 	socket.onAny(async cmd => {
 		if(cmd == 'sendOnly' || cmd == 'sendAll') return;
@@ -116,23 +116,19 @@ io.on('connection', async socket => {
 	const validnumber = num => num >= 0;
 	const validarray = arr => Array.isArray(arr);
 	socket.on('LOGIN', async password => {
-		logaction(socket, 'LOGIN', password);
+		logaction(socket, 'LOGIN', { password });
 		if(password != process.env.PASSWORD) {
-			logmsg('Invalid password');
+			logerror('Invalid password');
 			return;
 		}
 		socket.removeAllListeners('LOGIN');
-		const records = await logs.find({ createdAt:{ $gt:new Date(Date.now() - 24*60*60*1000) } },  { projection:{ _id:0 } }).toArray();
-		for(const i in records) {
-			records[i].time = Date.parse(records[i].createdAt);
-			delete records[i].createdAt;
-		}
+		const records = await logs.find({ time:{ $gt:new Date(Date.now() - 24*60*60*1000) } },  { projection:{ _id:0, ip:0 } }).toArray();
 		socket.emit('log', records, currentregex);
 		socket.join('admin');
 		socket.on('BAN', async (hash, mins) => {
-			logaction(socket, 'BAN', hash, mins);
+			logaction(socket, 'BAN', { target:hash, mins });
 			if(!validstring(hash)) {
-				logmsg('Invalid hash');
+				logerror('Invalid hash');
 				return;
 			}
 			sockets = await io.in(hash).fetchSockets();
@@ -145,24 +141,23 @@ io.on('connection', async socket => {
 			}
 		});
 		socket.on('LOCK', mins => {
-			logaction(socket, 'LOCK', mins);
+			logaction(socket, 'LOCK', { mins });
 			if(validnumber(mins)) {
-				logmsg('Invalid time');
+				logerror('Invalid time');
 				return;
 			}
 			lockeduntil = Date.now() + mins * 60000;
 		});
 		socket.on('REGEX', regex => {
-			logaction(socket, 'REGEX', regex);
+			logaction(socket, 'REGEX', { regex });
 			try {
 				new RegExp(regex);
 			} catch(error) {
-				logmsg(error);
+				logerror(error);
 				return;
 			}
 			currentregex = regex;
 			regex = new RegExp(regex);
-			io.to('admin').emit('log', { time:Date.now(), room:socket.room, regex:currentregex });
 			for(const room in rooms) {
 				if(regex.test(room)) {
 					rooms[room].admin.msg = 'Kicked by regex:'+regex;
@@ -241,7 +236,7 @@ io.on('connection', async socket => {
 	const leave = async (socket, msg1, msg2, msg3) => {
 		socket.emit('leaveroom', msg1);
 		if(rooms[socket.room].admin == socket) {
-			logaction(socket, 'leave', true, msg3);
+			logaction(socket, 'adminleave', { msg:msg3 });
 			const sockets = await io.in(socket.room).fetchSockets();
 			for(const socket2 of sockets) {
 				socket2.emit('leaveroom', 'Admin '+msg2+'!');
@@ -261,7 +256,7 @@ io.on('connection', async socket => {
 			}
 			delete rooms[socket.room];
 		} else {
-			logaction(socket, 'leave', false, msg3);
+			logaction(socket, 'leave', { msg:msg3 });
 			rooms[socket.room].admin.emit('leave', msg2, socket.name, socket.hash);
 			for(const listener of ['say', 'leave']) {
 				socket.removeAllListeners(listener);
@@ -296,7 +291,7 @@ io.on('connection', async socket => {
 			socket.on('say', msg => {
 				if(!validstring(msg)) return;
 				msg = msg.slice(0, 5000).replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));
-				logaction(socket, 'say', msg);
+				logaction(socket, 'say', { msg });
 				rooms[socket.room].admin.emit('hear', msg, socket.name, socket.hash);
 			});
 		} else {
@@ -335,19 +330,19 @@ io.on('connection', async socket => {
 				}
 			}
 			socket.on('sendOnly', (...arr) => {
-				logaction(socket, 'sendOnly', ...arr);
+				logaction(socket, 'sendOnly', { arr });
 				const add = typeof arr[0] == 'boolean'? arr.shift(): null;
 				const [msg1, names, msg2] = arr;
 				send(msg1, names, msg2, add);
 			});
 			socket.on('sendAll', async (...arr) => {
-				logaction(socket, 'sendAll', ...arr);
+				logaction(socket, 'sendAll', { arr });
 				const add = typeof arr[0] == 'boolean'? arr.shift(): null;
 				const [msg1, names, msg2] = arr;
 				send(msg2, names, msg1, add);
 			});
 			socket.on('kick', async (name, msg) => {
-				logaction(socket, 'kick', name, msg);
+				logaction(socket, 'kick', { target:name, msg });
 				if(socket.name == name) return;
 				if(!validstring(name)) {
 					socket.emit('notify', 'Invalid name');
@@ -362,7 +357,7 @@ io.on('connection', async socket => {
 				leave(socket2, 'You\'ve been kicked'+msg, 'has been kicked'+msg, 'Kicked by host');
 			});
 			socket.on('ban', async (hash, mins = 0, msg) => {
-				logaction(socket, 'ban', hash, mins, msg);
+				logaction(socket, 'ban', { target:hash, mins, msg });
 				if(socket.hash == hash) return;
 				if(!validstring(hash))  {
 					socket.emit('notify', 'Invalid hash');
@@ -392,7 +387,7 @@ io.on('connection', async socket => {
 				}, mins * 60000);
 			});
 			socket.on('lock', async mins => {
-				logaction(socket, 'lock', mins);
+				logaction(socket, 'lock', { mins });
 				if(!validnumber(mins)) {
 					socket.emit('notify', 'Invalid time');
 					return;
@@ -429,7 +424,7 @@ io.on('connection', async socket => {
 		if(socket.room) {
 			leave(socket, '', 'has disconnected', socket.msg);
 		} else if(socket.msg) {
-			logaction(socket, 'leave', false, socket.msg);
+			logaction(socket, 'leave', { msg:socket.msg });
 		}
 		user.sockets--;
 		if(!user.sockets) {

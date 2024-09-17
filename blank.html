@@ -24,6 +24,7 @@ p:hover { background:#eee; outline:#ccc solid 1px; }
 p:not(.highlight) .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 p > span:first-of-type { display:none; }
 p:hover > span:first-of-type { display:block; }
+.msg span *, #sidebar span * { color:inherit; font-weight:inherit; font-style:inherit; text-decoration:inherit; }
 .wavy span { display:inline-block; position:relative; }
 .wavy span:nth-child(8n+1) { top:-1px; }
 .wavy span:nth-child(8n+2) { top:-2px; }
@@ -138,7 +139,7 @@ socket.once('disconnect', () => {
 	document.title += '☠️';
 	socket.disconnect();
 });
-socket.once('log', (records, regex) => {
+socket.once('log', (logs, regex) => {
 	let old = true;
 	document.body.classList.remove('blank');
 	const roomdivs = {};
@@ -162,8 +163,8 @@ socket.once('log', (records, regex) => {
 			}
 		}
 	}
-	const addrecord = record => {
-		let { room, name, hash, cmd, arr = [], msg, regex } = record;
+	const addlog = log => { console.log(log)
+		let { cmd, room, name, hash } = log;
 		const addtext = text => {
 			const p = document.createElement('p');
 			let html = '';
@@ -216,7 +217,7 @@ socket.once('log', (records, regex) => {
 			}
 			p.innerHTML = html;
 			const span = document.createElement('span');
-			span.textContent = '['+new Date(record.time).toLocaleString()+'] ';
+			span.textContent = '['+new Date(log.time).toLocaleString()+'] ';
 			p.prepend(span);
 			if(!room) room = '(not in a room)';
 			if(!roomdivs[room]) addroom(room);
@@ -238,12 +239,18 @@ socket.once('log', (records, regex) => {
 			}
 		}
 		const boldname = '[*'+name+'*]';
-		if(!cmd) {
-			if(regex) {
-				get('currentregex').textContent = regex;
-				msg = 'New regex '+regex;
+		if(log.error) {
+			addtext(log.error);
+		} if(cmd == cmd.toUpperCase()) {
+			const arr = [];
+			if(cmd == 'REGEX') {
+				get('currentregex').textContent = log.regex;
+				arr.push(log.regex);
 			}
-			addtext(msg);
+			if(log.password) arr.push(log.password);
+			if(log.target) arr.push(log.target);
+			if(log.mins) arr.push(log.mins+'min');
+			addtext(boldname+' '+cmd+' '+arr.join(' '));
 		} else if(cmd == 'restart') {
 			for(const room in roomdivs) {
 				if(roomdivs[room].classList.contains('closed')) continue;
@@ -253,17 +260,19 @@ socket.once('log', (records, regex) => {
 		} else if(cmd == 'join') {
 			addtext(boldname+' has joined');
 			roomdivs[room].classList.remove('closed');
-		} else if(cmd == 'leave') {
-			arr[1] = arr[1]? ' ('+arr[1]+')': '';
-			addtext(boldname+' has left'+arr[1]);
-			if(arr[0]) {
+		} else if(cmd == 'leave' || cmd == 'adminleave') {
+			const msg = log.msg? ' ('+log.msg+')': '';
+			addtext(boldname+' has left'+msg);
+			if(cmd == 'adminleave') {
 				roomdivs[room].classList.add('closed');
 				roomdivs[room].append(document.createElement('hr'));
 				roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
 			}
 		} else if(cmd == 'say') {
-			addtext(boldname+': '+arr[0]);
+			addtext(boldname+': '+log.msg);
 		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
+			const arr = log.arr;
+			if(!arr) return;
 			let verb = 'says to';
 			if(typeof arr[0] == 'boolean') {
 				verb = ['removes from', 'adds to'][arr.shift()? 1: 0];
@@ -281,12 +290,14 @@ socket.once('log', (records, regex) => {
 					(arr[2]? '\n'+boldname+' '+verb+' everyone else: '+arr[2]: '')
 				);
 			}
+		} else if(cmd == 'lock') {
+			addtext('Room locked by host for '+log.mins+'min');
 		} else {
-			addtext(boldname+' '+cmd+' '+arr.join(' '));
+			console.log(log);
 		}
 	}
-	for(const record of records) {
-		addrecord(record);
+	for(const log of logs) {
+		addlog(log);
 	}
 	const divs = [[], [], []];
 	for(const room in roomdivs) {
@@ -306,7 +317,7 @@ socket.once('log', (records, regex) => {
 		roomdivs[room].scrollTop = roomdivs[room].scrollHeight;
 	}
 	old = false;
-	socket.on('log', addrecord);
+	socket.on('log', addlog);
 	onbeforeunload = () => true;
 });
 </script>
