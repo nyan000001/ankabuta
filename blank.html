@@ -111,8 +111,8 @@ const highlightregex = regex => {
 		elems[i].classList.add('highlight');
 	}
 }
-const login = password => {
-	socket.emit('LOGIN', password);
+const login = (password, hours = 24) => {
+	socket.emit('LOGIN', password, hours);
 	get('hash').oninput = () => highlighthash(get('hash').value);
 	get('regex').oninput = () => highlightregex(get('regex').value);
 	get('banform').onsubmit = e => {
@@ -163,7 +163,7 @@ socket.once('log', (logs, regex) => {
 			}
 		}
 	}
-	const addlog = log => { console.log(log)
+	const addlog = log => {
 		let { cmd, room, name, hash } = log;
 		const addtext = text => {
 			const p = document.createElement('p');

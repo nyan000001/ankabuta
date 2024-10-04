@@ -115,14 +115,14 @@ io.on('connection', async socket => {
 	const validstring = string => string && typeof string == 'string';
 	const validnumber = num => num >= 0;
 	const validarray = arr => Array.isArray(arr);
-	socket.on('LOGIN', async password => {
+	socket.on('LOGIN', async (password, hours) => {
 		logaction(socket, 'LOGIN', { password });
 		if(password != process.env.PASSWORD) {
 			logerror('Invalid password');
 			return;
 		}
 		socket.removeAllListeners('LOGIN');
-		const records = await logs.find({ time:{ $gt:new Date(Date.now() - 24*60*60*1000) } },  { projection:{ _id:0, ip:0 } }).toArray();
+		const records = await logs.find({ time:{ $gt:new Date(Date.now() - hours*60*60*1000) } },  { projection:{ _id:0, ip:0 } }).toArray();
 		socket.emit('log', records, currentregex);
 		socket.join('admin');
 		socket.on('BAN', async (hash, mins) => {

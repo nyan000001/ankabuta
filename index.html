@@ -45,7 +45,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #preview:not(.hidden), #log:has(#preview.hidden) .msg:nth-last-child(3) { margin-bottom:-24px; }
 
 .msg { padding:3px; margin-bottom:1px; position:relative; }
-.msg.less { outline:1px solid #888; max-height:500px; overflow-y:hidden; }
+.msg.less { outline:1px solid #888; max-height:100px; overflow-y:hidden; }
 .msg.more { outline:1px solid #888; }
 .showmore { position:absolute; bottom:1px; right:2px; }
 .showless { position:sticky; display:block; bottom:0; left:100%; }
@@ -70,6 +70,7 @@ input.short { width:40px !important; }
 .msg .big input, .msg .big select, #sidebar .big input, #sidebar .big select { line-height:30px; }
 .msg .small, .msg .small *, #sidebar .small, #sidebar .small *, #help .small { font-size:8pt; }
 .msg .small input, .msg .small select, #sidebar .small input, #sidebar .small select  { line-height:10px; }
+.vertical { writing-mode:vertical-rl; text-orientation:upright; vertical-align:top; }
 .sysmsg { font-weight:bold; }
 #preview { bottom:0; position:sticky; background:#fff; border-top:1px solid #888; }
 #log:has(#arrow:not(.hidden)) #preview { bottom:24px; }
@@ -194,6 +195,7 @@ if(theme == 'dark') {
 <div><code>[%050sample text%]</code> <span style="opacity:0.50">sample text</span></div>
 <div><code>[~sample text~]</code> <span class="wavy"><span>s</span><span>a</span><span>m</span><span>p</span><span>l</span><span>e</span><span> </span><span>t</span><span>e</span><span>x</span><span>t</span></span></div>
 <div><details><summary>[(sample text)]</summary>sample text</details></div>
+<div><code>[↓sample text↓]</code> <span class="vertical">sample text</span></div>
 </div><div class="hidden">
 <div><code>sendOnly(<var>message1, users, message2</var>)</code>
 	<i>Sends <var>message1</var> to <var>users</var>
@@ -273,26 +275,26 @@ socket.once('start', rooms => {
 		let showmore = msg.querySelector('.showmore');
 		let showless = msg.querySelector('.showless');
 		let height = msg.scrollHeight - (showless? extraheight: 0);
-		if(height > 700 && !showmore && !showless) {
-			msg.classList.add('less');
+		if(height > 200 && !showmore && !showless) {
+			msg.classList.add('more');
 			showmore = document.createElement('input');
 			showmore.type = 'button';
-			showmore.classList.add('showmore');
-			showmore.value = 'Show more';
+			showmore.classList.add('showless');
+			showmore.value = 'Show less';
 			showmore.onclick = e => {
 				e.stopPropagation();
 				showmore.remove();
-				msg.classList.remove('less');
-				msg.classList.add('more');
+				msg.classList.remove('more');
+				msg.classList.add('less');
 				showless = document.createElement('input');
 				showless.type = 'button';
-				showless.classList.add('showless');
-				showless.value = 'Show less';
+				showless.classList.add('showmore');
+				showless.value = 'Show more';
 				showless.onclick = e => {
 					e.stopPropagation();
 					get('msgbox').focus();
 					showless.remove();
-					msg.classList.remove('more');
+					msg.classList.remove('less');
 					updatemsg(msg);
 					return;
 				}
@@ -302,7 +304,7 @@ socket.once('start', rooms => {
 				if(!noscroll) togglearrow();
 			}
 			msg.append(showmore);
-		} else if(height <= 700 && (showmore || showless)) {
+		} else if(height <= 200 && (showmore || showless)) {
 			showmore?.remove();
 			showless?.remove();
 			msg.classList.remove('more', 'less');
@@ -619,6 +621,7 @@ socket.once('start', rooms => {
 							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
 							//replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/((?:<.*?>)*)(.)?/gs, (_, tags, char) => tags+(char? '<span>'+char+'</span>': ''))+'</span>').
 							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/./gs, '<span>$&</span>')+'</span>').
+							replace(/\[↓(.*?)↓\]/gs, '<span class="vertical">$1</span>').
 							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
 							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>').
 							replace(/\[\[([^\[]*?)\]\]/gs, (_, match) => {
