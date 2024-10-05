@@ -1025,7 +1025,9 @@ socket.once('start', rooms => {
 			lastcode = null;
 			if(iframe.src) {
 				updatesidebar(false, ['*']);
-				socket.emit('sendAll', false, ['*'], [], []);
+				if(Object.keys(persistent.users).length > 1) {
+					socket.emit('sendAll', false, ['*'], [], []);
+				}
 			}
 			iframe.src = 'about:blank';
 			document.body.append(iframe);
@@ -1045,14 +1047,11 @@ socket.once('start', rooms => {
 				}
 			}
 			iframe.contentWindow.sendOnly = (...arr) => {
-				if(arr[0] === 1) {
-					arr[0] = true;
-				} else if(arr[0] === 0) {
-					arr[0] = false;
+				if(arr[0] === 1 || arr[0] === 0) {
+					arr[0] = !!arr[0];
 				}
 				if(typeof arr[0] == 'boolean') {
 					let [add, msg1, names, msg2] = arr;
-					if(!names || (!msg1 && !msg2)) return;
 					msg1 = convert(msg1);
 					names = convert(names);
 					msg2 = convert(msg2);
@@ -1061,32 +1060,34 @@ socket.once('start', rooms => {
 					} else {
 						msg2.length && updatesidebar(add, msg2);
 					}
-					if(msg2.length || names.some(name => name != myname)) {
+					if(Object.keys(persistent.users).length == 1) return;
+					names = names.filter(name => name != myname);
+					if(!names.length) msg1 = [];
+					if(msg1.length || msg2.length) {
 						socket.emit('sendOnly', add, msg1, names, msg2);
 					}
 				} else {
 					let [msg1, names, msg2] = arr;
-					if(!names || (!msg1 && !msg2)) return;
 					names = convert(names);
 					if(names.includes(myname)) {
 						msg1 && addmsg(msg1);
 					} else {
 						msg2 && addmsg(msg2);
 					}
-					if(msg2 || names.some(name => name != myname)) {
+					if(Object.keys(persistent.users).length == 1) return;
+					names = names.filter(name => name != myname);
+					if(!names.length) msg1 = null;
+					if(msg1 || msg2) {
 						socket.emit('sendOnly', msg1, names, msg2);
 					}
 				}
 			}
 			iframe.contentWindow.sendAll = (...arr) => {
-				if(arr[0] === 1) {
-					arr[0] = true;
-				} else if(arr[0] === 0) {
-					arr[0] = false;
+				if(arr[0] === 1 || arr[0] === 0) {
+					arr[0] = !!arr[0];
 				}
 				if(typeof arr[0] == 'boolean') {
 					let [add, msg1, names, msg2] = arr;
-					if(!msg1 && !msg2) return;
 					msg1 = convert(msg1);
 					names = convert(names);
 					msg2 = convert(msg2);
@@ -1095,19 +1096,24 @@ socket.once('start', rooms => {
 					} else {
 						msg2.length && updatesidebar(add, msg2);
 					}
-					if(msg1.length || names.some(name => name != myname)) {
+					if(Object.keys(persistent.users).length == 1) return;
+					names = names.filter(name => name != myname);
+					if(!names.length) msg2 = [];
+					if(msg1.length || msg2.length) {
 						socket.emit('sendAll', add, msg1, names, msg2);
 					}
 				} else {
 					let [msg1, names, msg2] = arr;
-					if(!msg1 && !msg2) return;
 					names = convert(names);
 					if(!names.includes(myname)) {
 						msg1 && addmsg(msg1);
 					} else {
 						msg2 && addmsg(msg2);
 					}
-					if(msg1 || names.some(name => name != myname)) {
+					if(Object.keys(persistent.users).length == 1) return;
+					names = names.filter(name => name != myname);
+					if(!names.length) msg2 = null;
+					if(msg1 || msg2) {
 						socket.emit('sendAll', msg1, names, msg2);
 					}
 				}
