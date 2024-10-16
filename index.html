@@ -245,7 +245,13 @@ if(localStorage.getItem('showpreview')) get('preview').classList.remove('hidden'
 const style = localStorage.getItem('style');
 if(style) document.getElementsByTagName('style')[0].append(style);
 const script = localStorage.getItem('script');
-if(script) eval(script);
+if(script) {
+	try {
+		eval(script);
+	} catch(err) {
+		console.log(err);
+	}
+}
 socket.once('start', rooms => {
 	let animation;
 	let msgcount = 0;
