@@ -12,7 +12,7 @@ textarea:focus, input:focus, select:focus { outline:1px solid #000; outline-offs
 input[type=text]:read-only, textarea:read-only, input:disabled { border-color:#555 !important; background:#ccc; color:#888; outline:none; }
 input[type=checkbox] { vertical-align:middle; }
 a { font-weight:bold; color:#09f; text-decoration:none; display:block; }
-.joined #rooms.hidden, .joined #rooms div, #codebox, #log, #preview.hidden, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
+.joined #rooms.hidden, .joined #rooms div, #codebox, #log, #banner.hidden, #preview.hidden, #arrow.hidden, #sidebar, #help.hidden, #help .hidden, #msgform > *, #iframe { display:none; }
 .joined #log, .joined #sidebar, .joined #leave, .joined #msgbox, .joined #say { display:block; }
 .admin #help div.hidden, .admin #codebox, .admin #run { display:block; }
 .admin #help span.hidden, .inline { display:inline; }
@@ -44,6 +44,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #log { flex-grow:1; }
 #preview:not(.hidden), #log:has(#preview.hidden) .msg:nth-last-child(3) { margin-bottom:-24px; }
 
+#banner { top:0; position:sticky; background:#fff; z-index:100; }
 .msg { padding:3px; margin-bottom:1px; position:relative; }
 .msg.less { outline:1px solid #888; max-height:100px; overflow-y:hidden; }
 .msg.more { outline:1px solid #888; }
@@ -143,7 +144,7 @@ const css = `
 	a.disabled, #rooms.disabled > a { color:#fff; }
 	.shortcut { background:#ccc; color:#000; box-shadow:0 0 5px #000; }
 	.color { text-shadow:none; }
-	#preview { background:#000; }`;
+	#banner, #preview { background:#000; }`;
 const theme = localStorage.getItem('theme');
 if(theme == 'dark') {
 	document.getElementsByTagName('style')[0].textContent += css;
@@ -159,7 +160,7 @@ if(theme == 'dark') {
 <input type="text" id="room" aria-label="Room" maxlength="30" autofocus><input type="submit" id="go" value="Go">
 </form></div>
 <textarea id="codebox" spellcheck="false"></textarea>
-<div id="log" role="log"><div id="preview" class="msg hidden"></div><div id="arrow" class="hidden">⬇</div></div>
+<div id="log" role="log"><div id="banner" class="msg hidden"></div><div id="preview" class="msg hidden"></div><div id="arrow" class="hidden">⬇</div></div>
 <div id="sidebar" role="log"></div>
 <div id="help" class="hidden">
 <div>
@@ -801,6 +802,16 @@ socket.once('start', rooms => {
 					id = text.replace(/\s.*/s, '');
 					text = text.replace(/.*?\s/s, '');
 				}
+				if(id == 'banner') {
+					if(add) {
+						get('banner').innerHTML = gethtml(text);
+						get('banner').classList.remove('hidden');
+					} else {
+						get('banner').textContent = '';
+						get('banner').classList.add('hidden');
+					}
+					continue;
+				}
 				let divid = 'div'+(['youtube', 'dailymotion', 'vimeo'].includes(id)? 'video': id);
 				if(!add) {
 					get(divid)?.remove();
@@ -843,7 +854,6 @@ socket.once('start', rooms => {
 					a.scrollIntoView();
 					fetch('https://noembed.com/embed?url='+a.href).then(x => x.json()).then(x => x.error? a.remove(): a.textContent = x.title);
 				} else {
-					div.textContent = '';
 					div.innerHTML = gethtml(text);
 				}
 				if(!div.parentNode) {
