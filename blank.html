@@ -12,14 +12,14 @@ body { padding:0; margin:0; line-height:13px; }
 body.blank * { display:none; }
 #top * { font-size:8pt; }
 #top { display:flex; }
-#top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; }
+#top > div { min-width:200px; overflow:auto scroll; margin-bottom:40px; flex-basis:100%; }
 #top > div.closed { opacity:.5; }
 #top > div.closed:hover { opacity:1; }
 #top input { user-select:text; }
 #top input, #top select { pointer-events:none; }
 h1 { position:sticky; top:0; background:#fff; margin:0; padding:0; z-index:1; cursor:default; }
 .clickable:not(p.highlight) { cursor:pointer; }
-p { white-space:pre-wrap; padding:3px; margin:0; overflow-wrap:break-word; overflow:auto; }
+p { white-space:pre-wrap; padding:3px; margin:0; overflow-wrap:break-word; overflow-x:hidden; }
 p:hover { background:#eee; outline:#ccc solid 1px; }
 p:not(.highlight) .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 p > span:first-of-type { display:none; }
@@ -191,7 +191,7 @@ socket.once('log', (logs, regex) => {
 							replace(/\[\/(.*?)\/\]/gs, '<span style="font-style:italic">$1</span>').
 							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
 							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
-							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/./gs, '<span>$&</span>')+'</span>').
+							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/\&lt;|\&gt;|./gs, '<span>$&</span>')+'</span>').
 							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
 							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>').
 							replace(/\[\[([^\[]*?)\]\]/gs, (_, match) => {

@@ -45,7 +45,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 #preview:not(.hidden), #log:has(#preview.hidden) .msg:nth-last-child(3) { margin-bottom:-24px; }
 
 #banner { top:0; position:sticky; background:#fff; z-index:100; }
-.msg { padding:3px; margin-bottom:1px; position:relative; }
+.msg { padding:3px; margin-bottom:1px; position:relative; overflow-x:hidden; }
 .msg.less { outline:1px solid #888; max-height:100px; overflow-y:hidden; }
 .msg.more { outline:1px solid #888; }
 .showmore { position:absolute; bottom:1px; right:2px; }
@@ -627,7 +627,7 @@ socket.once('start', rooms => {
 							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
 							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
 							//replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/((?:<.*?>)*)(.)?/gs, (_, tags, char) => tags+(char? '<span>'+char+'</span>': ''))+'</span>').
-							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/./gs, '<span>$&</span>')+'</span>').
+							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/\&lt;|\&gt;|./gs, '<span>$&</span>')+'</span>').
 							replace(/\[↓(.*?)↓\]/gs, '<span class="vertical">$1</span>').
 							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
 							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>').
