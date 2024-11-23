@@ -57,6 +57,7 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .msg input[type=text], #sidebar input[type=text] { width:100px; max-width:calc(100% - 2px); }
 .msg input[type=password], #sidebar input[type=password] { width:100px; max-width:calc(100% - 20px); }
 hr { border:1px solid #aaa; border-bottom:none; }
+.tts { cursor:default; }
 input.long { width:300px !important; }
 input.short { width:40px !important; }
 .msg span *, #sidebar span * { color:inherit; font-weight:inherit; font-style:inherit; text-decoration:inherit; }
@@ -235,6 +236,7 @@ if(!Array.prototype.at) {
 		return num < 0? this[this.length+num]: this[num];
 	}
 }
+let tts = () => {};
 const get = id => document.getElementById(id);
 const kbds = document.getElementsByTagName('kbd');
 for(let i = 0; i < kbds.length; i++) {
@@ -627,7 +629,7 @@ socket.once('start', rooms => {
 							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
 							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
 							//replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/((?:<.*?>)*)(.)?/gs, (_, tags, char) => tags+(char? '<span>'+char+'</span>': ''))+'</span>').
-							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/\&lt;|\&gt;|./gs, '<span>$&</span>')+'</span>').
+							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/\&lt;|\&gt;|\&quot;|./gs, '<span>$&</span>')+'</span>').
 							replace(/\[↓(.*?)↓\]/gs, '<span class="vertical">$1</span>').
 							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
 							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>').
@@ -646,6 +648,13 @@ socket.once('start', rooms => {
 									return '<input type="checkbox" '+add('checked', arr1[1])+' value="'+arr1[0]+'">';
 								if(tag == 'label') // [[label:text:right]]
 									return '<label '+add('class', arr1[1], ['right'])+'>'+arr1[0]+'</label>';
+								if(tag == 'tts') { // [[tts:text:lang]]
+									if(!arr1[0]) return '▶️';
+									arr1[0] = arr1[0].replace(/\n+/g, ' ').replaceAll('\'', '\\\'');
+									if(!arr1[1]) return '<span class="tts" onclick="tts(this, \''+arr1[0]+'\')">▶️</span>';
+									arr1[1] = arr1[1].replace(/'|\n+/, '');
+									return '<span class="tts" onclick="tts(this, \''+arr1[0]+'\', \''+arr1[1]+'\')">▶️</span>';
+								}
 								return '<form autocomplete="off" '+add('class', !match.includes('\n') && 'inline')+'>'+match+'</form>';
 							});
 					} while(temp != text);
@@ -1182,8 +1191,12 @@ socket.once('start', rooms => {
 				adderrormsg(event, line, col);
 			}
 			iframe.contentWindow.onunhandledrejection = onunhandledrejection = event => {
-				const numbers = event.reason.stack.split(/\D+/);
-				adderrormsg(event.reason.message, numbers[4], numbers[5]);
+				if(event.reason.stack) {
+					const numbers = event.reason.stack.split(/\D+/);
+					adderrormsg(event.reason.message, numbers[4], numbers[5]);
+				} else {
+					adderrormsg(event.reason.message);
+				}
 				event.preventDefault();
 			}
 			iframe.contentWindow.eval(runningcode);
