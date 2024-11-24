@@ -191,7 +191,7 @@ socket.once('log', (logs, regex) => {
 							replace(/\[\/(.*?)\/\]/gs, '<span style="font-style:italic">$1</span>').
 							replace(/\[_(.*?)_\]/gs, '<span style="text-decoration:underline">$1</span>').
 							replace(/\[-(.*?)-\]/gs, '<span style="text-decoration:line-through">$1</span>').
-							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/\&lt;|\&gt;|./gs, '<span>$&</span>')+'</span>').
+							replace(/\[~(.*?)~\]/gs, (_, match) => '<span class="wavy">'+match.replace(/<.*?>/g, '').replace(/\&lt;|\&gt;|\&quot;|./gs, '<span>$&</span>')+'</span>').
 							replace(/\[&lt;(.*?)&gt;\]/gs, '<span class="big">$1</span>').
 							replace(/\[&gt;(.*?)&lt;\]/gs, '<span class="small">$1</span>').
 							replace(/\[\[([^\[]*?)\]\]/gs, (_, match) => {

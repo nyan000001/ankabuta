@@ -266,7 +266,13 @@ socket.once('start', rooms => {
 		socket.emit('join', decodeURI(location.hash));
 	}
 	onhashchange = () => {
-		socket.emit('join', decodeURI(location.hash));
+		if(!socket.connected) {
+			location.reload();
+		} else if(myroom && !confirm('Do you want to leave #'+myroom+' and go to '+location.hash+'?')) {
+			history.replaceState(null, '', document.location.pathname+'#'+myroom);
+		} else {
+			socket.emit('join', decodeURI(location.hash));
+		}
 	}
 	const togglearrow = get('log').onscroll = () => {
 		if(get('log').scrollHeight > get('log').clientHeight && get('log').scrollHeight - get('log').scrollTop - get('log').clientHeight > 3) {
@@ -359,6 +365,7 @@ socket.once('start', rooms => {
 		onbeforeunload = null;
 		stopanimation();
 		document.title = 'ankabuta☠️'+myroom;
+		myroom = '';
 		get('room').readOnly = get('go').disabled = get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 		get('leave').onclick = () => location.href = '/';
 		addsysmsg('Connection failed!');
@@ -753,6 +760,7 @@ socket.once('start', rooms => {
 			onbeforeunload = null;
 			get('leave').value = get('leave').value.replace('?', '');
 			stopanimation();
+			myroom = '';
 			get('codebox').readOnly = get('run').disabled = get('msgbox').readOnly = get('say').disabled = true;
 			history.replaceState(null, '', document.location.pathname);
 			if(get(room).classList.contains('hidden') || get(room).classList.contains('locked')) {
@@ -772,14 +780,10 @@ socket.once('start', rooms => {
 				socket.off('updatesidebar');
 			}
 			let leave = () => {
-				myroom = '';
 				document.title = 'ankabuta';
 				document.body.classList.remove('joined', 'admin');
-				const preview = get('preview');
-				const arrow = get('arrow');
-				get('log').textContent = get('sidebar').textContent = '';
-				get('log').append(preview);
-				get('log').append(arrow);
+				get('log').replaceChildren(get('banner'), get('preview'), get('arrow'));
+				get('banner').textContent = get('sidebar').textContent = '';
 				get('room').focus();
 				leave = () => {};
 			}
