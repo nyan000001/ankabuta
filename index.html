@@ -79,11 +79,12 @@ input.short { width:40px !important; }
 #arrow { width:100%; bottom:0; position:sticky; height:24px; background:ButtonFace; text-align:center; line-height:22px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; cursor:default; user-select:none; }
 #arrow * { pointer-events:none; }
 #arrow rt { display:none; }
-#msg big * { padding:0; }
+#arrow big * { padding:0; }
 details { display:inline-block; vertical-align:top; }
 summary { cursor:default; list-style-type:'⬇'; }
 details[open] > summary { list-style-type:'⬆'; }
-table { table-layout:fixed; width:100%; }
+table { table-layout:fixed; }
+.msg table { width:100%; }
 .inlineblock { display:inline-block; }
 ruby { ruby-align:center; }
 rt { text-align:center; display:ruby-text-container; }
@@ -101,6 +102,8 @@ rt details { vertical-align:bottom; }
 #help > div > div { margin:5px 0; white-space:pre; }
 kbd { border-radius:4px; padding:2px; border:1px solid #888; display:inline-block; min-width:20px; text-align:center; }
 var { opacity:.5; font-style:inherit; font-family:inherit; }
+#help > div > div:has(table) { display:flex; gap:1em; }
+#help table { border-collapse:collapse; flex-grow:1; }
 
 #msgform { bottom:0; position:fixed; width:100%; height:50px; display:flex; padding:0 1px 1px 1px; }
 #msgform > * { margin:1px; }
@@ -197,6 +200,8 @@ if(theme == 'dark') {
 <div><code>[%050sample text%]</code> <span style="opacity:0.50">sample text</span></div>
 <div><code>[~sample text~]</code> <span class="wavy"><span>s</span><span>a</span><span>m</span><span>p</span><span>l</span><span>e</span><span> </span><span>t</span><span>e</span><span>x</span><span>t</span></span></div>
 <div><details><summary>[(sample text)]</summary>sample text</details></div>
+<div><code>[|sample|text|
+|text|sample|]</code> <table><tr><td>sample</td><td>text</td></tr><tr><td>text</td><td>sample</td></tr></table></div>
 <div><code>[↓sample text↓]</code> <span class="vertical">sample text</span></div>
 </div><div class="hidden">
 <div><code>sendOnly(<var>message1, users, message2</var>)</code>
@@ -252,7 +257,7 @@ if(script) {
 	try {
 		eval(script);
 	} catch(err) {
-		console.log(err);
+		console.error(err);
 	}
 }
 socket.once('start', rooms => {
