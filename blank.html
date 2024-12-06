@@ -18,7 +18,7 @@ body.blank * { display:none; }
 #top input { user-select:text; }
 #top input, #top select { pointer-events:none; }
 h1 { position:sticky; top:0; background:#fff; margin:0; padding:0; z-index:1; cursor:default; }
-.clickable:not(p.highlight) { cursor:pointer; }
+.clickable { cursor:pointer; }
 p { white-space:pre-wrap; padding:3px; margin:0; overflow-wrap:break-word; overflow-x:hidden; }
 p:hover { background:#eee; outline:#ccc solid 1px; }
 p:not(.highlight) .rainbow { background:linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0/100px 100px; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
@@ -75,7 +75,6 @@ input[type=checkbox] { vertical-align:middle; }
 </form>
 <form id="regexform">
 <input type="text" id="regex" spellcheck="false">
-<output id="currentregex"></output>
 <input type="submit" value="Regex">
 </form>
 <form id="lockform">
@@ -87,28 +86,36 @@ input[type=checkbox] { vertical-align:middle; }
 <script>
 const socket = io();
 const get = id => document.getElementById(id);
-const reset = () => {
-	const elems = document.getElementsByClassName('highlight');
-	while(elems.length) {
-		elems[0].classList.remove('highlight');
-	}
-}
+let req;
 const highlighthash = hash => {
-	reset();
-	const elems = document.getElementsByTagName('p');
-	for(let i = 0; i < elems.length; i++) {
-		if(!elems[i].classList.contains(hash)) continue;
-		elems[i].classList.add('highlight');
-		elems[i].parentNode.firstChild.classList.add('highlight');
+	cancelAnimationFrame(req);
+	const highlight = () => {
+		const elem = document.querySelector('p.'+hash.replaceAll('/', '\\/').replaceAll('=', '\\=')+':not(.highlight)');
+		if(!elem) return;
+		elem.classList.add('highlight');
+		elem.parentNode.firstChild.classList.add('highlight');
+		req = requestAnimationFrame(highlight);
 	}
+	const unhighlight = () => {
+		const elem = document.querySelector('p.highlight');
+		if(!elem) {
+			highlight();
+			return;
+		}
+		elem.classList.remove('highlight');
+		elem.parentNode.firstChild.classList.remove('highlight');
+		req = requestAnimationFrame(unhighlight);
+	}
+	unhighlight();
 }
 const highlightregex = regex => {
-	reset();
-	if(!regex) return;
-	const elems = document.getElementsByClassName('room');
-	for(let i = 0; i < elems.length; i++) {
-		if(!new RegExp(regex).test(elems[i].textContent)) continue;
-		elems[i].classList.add('highlight');
+	const elems = document.getElementsByTagName('h1');
+	for(let i = 0; i < elems.length-1; i++) {
+		if(regex && new RegExp(regex).test(elems[i].textContent)) {
+			elems[i].classList.add('highlight');
+		} else {
+			elems[i].classList.remove('highlight');
+		}
 	}
 }
 const login = (password, hours = 24) => {
@@ -140,7 +147,8 @@ socket.once('disconnect', () => {
 	socket.disconnect();
 });
 socket.once('log', (logs, regex) => {
-	let old = true;
+	let loaded = false;
+	get('regex').value = regex;
 	document.body.classList.remove('blank');
 	const roomdivs = {};
 	const addroom = room => {
@@ -148,7 +156,7 @@ socket.once('log', (logs, regex) => {
 		const h1 = document.createElement('h1');
 		h1.textContent = room;
 		div.append(h1);
-		if(!old) {
+		if(loaded) {
 			get('top').prepend(div);
 		}
 		roomdivs[room] = div;
@@ -158,7 +166,6 @@ socket.once('log', (logs, regex) => {
 				h1.classList.add('highlight');
 			}
 			h1.onclick = () => {
-				get('regex').value = regex;
 				highlightregex(room);
 			}
 		}
@@ -234,7 +241,7 @@ socket.once('log', (logs, regex) => {
 					highlighthash(hash);
 				}
 			}
-			if(!old && document.querySelector('#top > div:hover') != roomdiv) {
+			if(loaded && document.querySelector('#top > div:hover') != roomdiv) {
 				roomdiv.scrollTo({ top:roomdiv.scrollHeight, left:0 });
 			}
 		}
@@ -244,7 +251,7 @@ socket.once('log', (logs, regex) => {
 		} if(cmd == cmd.toUpperCase()) {
 			const arr = [];
 			if(cmd == 'REGEX') {
-				get('currentregex').textContent = log.regex;
+				get('regex').value = log.regex;
 				arr.push(log.regex);
 			}
 			if(log.password) arr.push(log.password);
@@ -316,7 +323,7 @@ socket.once('log', (logs, regex) => {
 	for(const room in roomdivs) {
 		roomdivs[room].scrollTop = roomdivs[room].scrollHeight;
 	}
-	old = false;
+	loaded = true;
 	socket.on('log', addlog);
 	onbeforeunload = () => true;
 });
