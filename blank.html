@@ -87,10 +87,11 @@ input[type=checkbox] { vertical-align:middle; }
 const socket = io();
 const get = id => document.getElementById(id);
 let req;
-const highlighthash = hash => {
+const highlighthash = () => {
 	cancelAnimationFrame(req);
+	const hash = CSS.escape(get('hash').value);
 	const highlight = () => {
-		const elem = document.querySelector('p.'+hash.replaceAll('/', '\\/').replaceAll('=', '\\=')+':not(.highlight)');
+		const elem = document.querySelector('p.'+hash+':not(.highlight)');
 		if(!elem) return;
 		elem.classList.add('highlight');
 		elem.parentNode.firstChild.classList.add('highlight');
@@ -108,10 +109,18 @@ const highlighthash = hash => {
 	}
 	unhighlight();
 }
-const highlightregex = regex => {
+const highlightregex = () => {
+	let regex = get('regex').value;
+	if(regex) {
+		try {
+			regex = new RegExp(regex);
+		} catch(err) {
+			regex = null;
+		}
+	}
 	const elems = document.getElementsByTagName('h1');
 	for(let i = 0; i < elems.length-1; i++) {
-		if(regex && new RegExp(regex).test(elems[i].textContent)) {
+		if(regex && regex.test(elems[i].textContent)) {
 			elems[i].classList.add('highlight');
 		} else {
 			elems[i].classList.remove('highlight');
@@ -120,8 +129,8 @@ const highlightregex = regex => {
 }
 const login = (password, hours = 24) => {
 	socket.emit('LOGIN', password, hours);
-	get('hash').oninput = () => highlighthash(get('hash').value);
-	get('regex').oninput = () => highlightregex(get('regex').value);
+	get('hash').oninput = () => highlighthash();
+	get('regex').oninput = () => highlightregex();
 	get('banform').onsubmit = e => {
 		e.preventDefault();
 		socket.emit('BAN', get('hash').value, get('bantime').value);
@@ -145,10 +154,12 @@ socket.once('disconnect', () => {
 	get('bottom').prepend(div);
 	document.title += '☠️';
 	socket.disconnect();
+	onbeforeunload = null;
 });
 socket.once('log', (logs, regex) => {
 	let loaded = false;
 	get('regex').value = regex;
+	highlightregex();
 	document.body.classList.remove('blank');
 	const roomdivs = {};
 	const addroom = room => {
@@ -161,17 +172,13 @@ socket.once('log', (logs, regex) => {
 		}
 		roomdivs[room] = div;
 		if(room != '(not in a room)') {
-			h1.className = 'clickable';
 			if(get('regex').value && new RegExp(get('regex').value).test(room)) {
 				h1.classList.add('highlight');
-			}
-			h1.onclick = () => {
-				highlightregex(room);
 			}
 		}
 	}
 	const addlog = log => {
-		let { cmd, room, name, hash } = log;
+		let { cmd, room, name, hash, msg, target, mins, error, regex, password, time, arr } = log;
 		const addtext = text => {
 			const p = document.createElement('p');
 			let html = '';
@@ -224,7 +231,7 @@ socket.once('log', (logs, regex) => {
 			}
 			p.innerHTML = html;
 			const span = document.createElement('span');
-			span.textContent = '['+new Date(log.time).toLocaleString()+'] ';
+			span.textContent = '['+new Date(time).toLocaleString()+'] ';
 			p.prepend(span);
 			if(!room) room = '(not in a room)';
 			if(!roomdivs[room]) addroom(room);
@@ -238,7 +245,7 @@ socket.once('log', (logs, regex) => {
 				p.onclick = () => {
 					if(p.classList.contains('highlight')) return;
 					get('hash').value = hash;
-					highlighthash(hash);
+					highlighthash();
 				}
 			}
 			if(loaded && document.querySelector('#top > div:hover') != roomdiv) {
@@ -246,17 +253,21 @@ socket.once('log', (logs, regex) => {
 			}
 		}
 		const boldname = '[*'+name+'*]';
-		if(log.error) {
-			addtext(log.error);
-		} if(cmd == cmd.toUpperCase()) {
+		if(error) {
+			addtext(error);
+		} else if(cmd == cmd.toUpperCase()) {
 			const arr = [];
 			if(cmd == 'REGEX') {
-				get('regex').value = log.regex;
-				arr.push(log.regex);
+				try {
+					new RegExp(regex);
+					get('regex').value = regex;
+					highlightregex();
+				} catch(err) {}
+				arr.push(regex);
 			}
-			if(log.password) arr.push(log.password);
-			if(log.target) arr.push(log.target);
-			if(log.mins) arr.push(log.mins+'min');
+			if(password) arr.push(password);
+			if(target) arr.push(target);
+			if(mins) arr.push(mins+'min');
 			addtext(boldname+' '+cmd+' '+arr.join(' '));
 		} else if(cmd == 'restart') {
 			for(const room in roomdivs) {
@@ -268,7 +279,7 @@ socket.once('log', (logs, regex) => {
 			addtext(boldname+' has joined');
 			roomdivs[room].classList.remove('closed');
 		} else if(cmd == 'leave' || cmd == 'adminleave') {
-			const msg = log.msg? ' ('+log.msg+')': '';
+			msg = msg? ' ('+msg+')': '';
 			addtext(boldname+' has left'+msg);
 			if(cmd == 'adminleave') {
 				roomdivs[room].classList.add('closed');
@@ -276,9 +287,8 @@ socket.once('log', (logs, regex) => {
 				roomdivs[room].scrollTo({ top:roomdivs[room].scrollHeight, left:0 });
 			}
 		} else if(cmd == 'say') {
-			addtext(boldname+': '+log.msg);
+			addtext(boldname+': '+msg);
 		} else if(cmd == 'sendAll' || cmd == 'sendOnly') {
-			const arr = log.arr;
 			if(!arr) return;
 			let verb = 'says to';
 			if(typeof arr[0] == 'boolean') {
@@ -297,8 +307,12 @@ socket.once('log', (logs, regex) => {
 					(arr[2]? '\n'+boldname+' '+verb+' everyone else: '+arr[2]: '')
 				);
 			}
+		} else if(cmd == 'kick') {
+			addtext(boldname+' kicks '+target+' '+msg);
+		} else if(cmd == 'ban') {
+			addtext(boldname+' bans '+target+' for '+mins+' minutes');
 		} else if(cmd == 'lock') {
-			addtext('Room locked by host for '+log.mins+'min');
+			addtext(boldname+' locks the room for '+mins+' minutes');
 		} else {
 			console.log(log);
 		}

@@ -90,13 +90,13 @@ io.on('connection', async socket => {
 		io.to('admin').emit('log', { time:Date.now(), room, error });
 		logs.insertOne({ time:new Date(), room, error });
 	}
-	const logaction = (socket, cmd, obj) => {
+	const logaction = async (socket, cmd, obj) => {
 		obj = { cmd, room:socket.room, name:socket.name, hash:socket.hash, ...obj };
 		const json = JSON.stringify(obj);
 		if(json == lastaction) return;
 		lastaction = json;
 		io.to('admin').emit('log', { time:Date.now(), ...obj });
-		logs.insertOne({ time:new Date(), ip:user.ip, ...obj });
+		await logs.insertOne({ time:new Date(), ip:user.ip, ...obj });
 	}
 	socket.onAny(async cmd => {
 		if(cmd == 'sendOnly' || cmd == 'sendAll') return;
@@ -116,7 +116,7 @@ io.on('connection', async socket => {
 	const validnumber = num => num >= 0;
 	const validarray = arr => Array.isArray(arr);
 	socket.on('LOGIN', async (password, hours) => {
-		logaction(socket, 'LOGIN', { password });
+		await logaction(socket, 'LOGIN', { password });
 		if(password != process.env.PASSWORD) {
 			logerror('Invalid password');
 			return;
@@ -126,6 +126,7 @@ io.on('connection', async socket => {
 		socket.emit('log', records, currentregex);
 		socket.join('admin');
 		socket.on('BAN', async (hash, mins) => {
+			if(!mins) mins = 0;
 			logaction(socket, 'BAN', { target:hash, mins });
 			if(!validstring(hash)) {
 				logerror('Invalid hash');
@@ -153,14 +154,14 @@ io.on('connection', async socket => {
 			try {
 				new RegExp(regex);
 			} catch(error) {
-				logerror(error);
+				logerror('Invalid regex');
 				return;
 			}
 			currentregex = regex;
 			regex = new RegExp(regex);
 			for(const room in rooms) {
 				if(regex.test(room)) {
-					rooms[room].admin.msg = 'Kicked by regex:'+regex;
+					rooms[room].admin.msg = 'Kicked by regex: '+regex;
 					rooms[room].admin.disconnect();
 				}
 			}
@@ -356,7 +357,8 @@ io.on('connection', async socket => {
 				msg = validstring(msg)? ' '+msg: '!';
 				leave(socket2, 'You\'ve been kicked'+msg, 'has been kicked'+msg, 'Kicked by host');
 			});
-			socket.on('ban', async (hash, mins = 0, msg) => {
+			socket.on('ban', async (hash, mins, msg) => {
+				if(!mins) mins = 0;
 				logaction(socket, 'ban', { target:hash, mins, msg });
 				if(socket.hash == hash) return;
 				if(!validstring(hash))  {
@@ -387,6 +389,7 @@ io.on('connection', async socket => {
 				}, mins * 60000);
 			});
 			socket.on('lock', async mins => {
+				if(!mins) mins = 0;
 				logaction(socket, 'lock', { mins });
 				if(!validnumber(mins)) {
 					socket.emit('notify', 'Invalid time');
