@@ -221,8 +221,10 @@ if(theme == 'dark') {
 	<i>Kicks <var>name</var></i></div>
 <div><code>ban(<var>hash</var>, <var>minutes</var>, <var>msg</var>)</code>
 	<i>Bans <var>hash</var> for <var>minutes</var></i></div>
-<div><code>lock(<var>minutes</var>)</code>
-	<i>Locks the room for <var>minutes</var></i></div>
+<div><code>lock()</code>
+	<i>Locks the room</i></div>
+<div><code>unlock()</code>
+	<i>Unlocks the room</i></div>
 <div><code>save(<var>key</var>, <var>value</var>)</code></div>
 <div><code>load(<var>key</var>)</code></div>
 </div>
@@ -248,17 +250,25 @@ const kbds = document.getElementsByTagName('kbd');
 for(let i = 0; i < kbds.length; i++) {
 	if(kbds[i].id) kbds[i].textContent = localStorage.getItem(kbds[i].id) || kbds[i].textContent;
 }
-if(localStorage.getItem('showrooms')) get('rooms').classList.remove('hidden');
-if(localStorage.getItem('showhelp')) get('help').classList.remove('hidden');
-if(localStorage.getItem('showpreview')) get('preview').classList.remove('hidden');
+if(localStorage.getItem('showrooms')) {
+	get('rooms').classList.remove('hidden');
+}
+if(localStorage.getItem('showhelp')) {
+	get('help').classList.remove('hidden');
+}
+if(localStorage.getItem('showpreview')) {
+	get('preview').classList.remove('hidden');
+}
 const style = localStorage.getItem('style');
-if(style) document.getElementsByTagName('style')[0].append(style);
+if(style) {
+	document.getElementsByTagName('style')[0].append(style);
+}
 const script = localStorage.getItem('script');
 if(script) {
 	try {
 		eval(script);
-	} catch(err) {
-		console.error(err);
+	} catch(error) {
+		console.error(error);
 	}
 }
 socket.once('start', rooms => {

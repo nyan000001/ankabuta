@@ -219,12 +219,12 @@ io.on('connection', async socket => {
 	if(lockeduntil > Date.now() || user.banneduntil > Date.now()) return;
 	const visiblerooms = [];
 	for(const room in rooms) {
-		if(room.includes('hidden') || rooms[room].timeout != undefined || rooms[room].banned[socket.hash]) continue;
+		if(room.includes('hidden') || rooms[room].locked || rooms[room].banned[socket.hash]) continue;
 		visiblerooms.push([room, (await io.in(room).fetchSockets()).length+1]);
 	}
 	socket.emit('start', visiblerooms);
 	const updateroom = (room, num) => {
-		if(rooms[room].timeout != undefined || room.includes('hidden')) {
+		if(rooms[room].locked || room.includes('hidden')) {
 			io.to(room).emit('updateroom', room, num);
 		} else {
 			for(const socket2 of [...io.sockets.sockets.values()]) {
@@ -251,7 +251,6 @@ io.on('connection', async socket => {
 				socket.removeAllListeners(listener);
 			}
 			updateroom(socket.room, 0);
-			clearTimeout(rooms[socket.room].timeout);
 			for(const i in rooms[socket.room].banned) {
 				clearTimeout(rooms[socket.room].banned[i]);
 			}
@@ -276,7 +275,7 @@ io.on('connection', async socket => {
 		if(socket.room) {
 			await leave(socket, '', 'has left');
 		}
-		if(rooms[room] && (rooms[room].timeout != undefined || rooms[room].banned[socket.name] || rooms[room].banned[socket.hash])) {
+		if(rooms[room] && (rooms[room].locked || rooms[room].banned[socket.name] || rooms[room].banned[socket.hash])) {
 			socket.emit('notify', room+' is unavailable', true);
 			return;
 		}
@@ -380,7 +379,7 @@ io.on('connection', async socket => {
 				}
 				rooms[socket.room].banned[hash] = setTimeout(async () => {
 					delete rooms[socket.room].banned[hash];
-					if(rooms[socket.room].timeout != undefined || socket.room.includes('hidden')) return;
+					if(rooms[socket.room].locked || socket.room.includes('hidden')) return;
 					sockets = await io.in(hash).fetchSockets();
 					const num = (await io.in(socket.room).fetchSockets()).length+1;
 					for(const socket2 of sockets) {
@@ -388,15 +387,10 @@ io.on('connection', async socket => {
 					}
 				}, mins * 60000);
 			});
-			socket.on('lock', async mins => {
-				if(!mins) mins = 0;
-				logaction(socket, 'lock', { mins });
-				if(!validnumber(mins)) {
-					socket.emit('notify', 'Invalid time');
-					return;
-				}
-				clearTimeout(rooms[socket.room].timeout);
-				if(rooms[socket.room].timeout == undefined && !socket.room.includes('hidden')) {
+			socket.on('lock', () => {
+				rooms[socket.room].locked = true;
+				logaction(socket, 'lock');
+				if(!socket.room.includes('hidden')) {
 					for(const socket2 of [...io.sockets.sockets.values()]) {
 						if(socket2.room == socket.room) {
 							socket2.emit('lockroom');
@@ -405,21 +399,22 @@ io.on('connection', async socket => {
 						}
 					}
 				}
-				socket.emit('notify', 'Room locked for '+mins+' minutes');
-				rooms[socket.room].timeout = setTimeout(async () => {
-					delete rooms[socket.room].timeout;
-					socket.emit('notify', 'Room unlocked');
-					if(socket.room.includes('hidden')) return;
-					const num = (await io.in(socket.room).fetchSockets()).length+1;
-					for(const socket2 of [...io.sockets.sockets.values()]) {
-						if(socket2.room == socket.room) {
-							socket2.emit('unlockroom');
-						} else if(!rooms[socket.room].banned[socket2.hash]) {
-							socket2.emit('updateroom', socket.room, num);
-						}
-					}
-				}, mins * 60000);
+				socket.emit('notify', 'Room locked');
 			});
+			socket.on('unlock', async () => {
+				rooms[socket.room].locked = false;
+				logaction(socket, 'unlock');
+				socket.emit('notify', 'Room unlocked');
+				if(socket.room.includes('hidden')) return;
+				const num = (await io.in(socket.room).fetchSockets()).length+1;
+				for(const socket2 of [...io.sockets.sockets.values()]) {
+					if(socket2.room == socket.room) {
+						socket2.emit('unlockroom');
+					} else if(!rooms[socket.room].banned[socket2.hash]) {
+						socket2.emit('updateroom', socket.room, num);
+					}
+				}
+			}, mins * 60000);
 		}
 		socket.on('leave', () => leave(socket, '', 'has left'));
 	});

@@ -17,7 +17,7 @@ body.blank * { display:none; }
 #top > div.closed:hover { opacity:1; }
 #top input { user-select:text; }
 #top input, #top select { pointer-events:none; }
-h1 { position:sticky; top:0; background:#fff; margin:0; padding:0; z-index:1; cursor:default; }
+h1 { position:sticky; top:0; background:#fff; margin:0; padding:0; z-index:1; cursor:default; overflow-x:hidden; }
 .clickable { cursor:pointer; }
 p { white-space:pre-wrap; padding:3px; margin:0; overflow-wrap:break-word; overflow-x:hidden; }
 p:hover { background:#eee; outline:#ccc solid 1px; }
@@ -114,7 +114,7 @@ const highlightregex = () => {
 	if(regex) {
 		try {
 			regex = new RegExp(regex);
-		} catch(err) {
+		} catch(error) {
 			regex = null;
 		}
 	}
@@ -262,7 +262,7 @@ socket.once('log', (logs, regex) => {
 					new RegExp(regex);
 					get('regex').value = regex;
 					highlightregex();
-				} catch(err) {}
+				} catch(error) {}
 				arr.push(regex);
 			}
 			if(password) arr.push(password);
