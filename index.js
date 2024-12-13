@@ -288,10 +288,12 @@ io.on('connection', async socket => {
 			updateroom(socket.room, num);
 			socket.emit('joinroom', socket.room, socket.name);
 			rooms[socket.room].admin.emit('join', socket.name, socket.hash);
-			socket.on('say', msg => {
+			socket.on('say', async msg => {
 				if(!validstring(msg)) return;
 				msg = msg.slice(0, 5000).replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));
-				logaction(socket, 'say', { msg });
+				if((await io.in(socket.room).fetchSockets()).some(socket2 => socket2.hash != socket.hash)) {
+					logaction(socket, 'say', { msg });
+				}
 				rooms[socket.room].admin.emit('hear', msg, socket.name, socket.hash);
 			});
 		} else {
@@ -329,14 +331,18 @@ io.on('connection', async socket => {
 					}
 				}
 			}
-			socket.on('sendOnly', (...arr) => {
-				logaction(socket, 'sendOnly', { arr });
+			socket.on('sendOnly', async (...arr) => {
+				if((await io.in(socket.room).fetchSockets()).some(socket2 => socket2.hash != socket.hash)) {
+					logaction(socket, 'sendOnly', { arr });
+				}
 				const add = typeof arr[0] == 'boolean'? arr.shift(): null;
 				const [msg1, names, msg2] = arr;
 				send(msg1, names, msg2, add);
 			});
 			socket.on('sendAll', async (...arr) => {
-				logaction(socket, 'sendAll', { arr });
+				if((await io.in(socket.room).fetchSockets()).some(socket2 => socket2.hash != socket.hash)) {
+					logaction(socket, 'sendAll', { arr });
+				}
 				const add = typeof arr[0] == 'boolean'? arr.shift(): null;
 				const [msg1, names, msg2] = arr;
 				send(msg2, names, msg1, add);
@@ -414,7 +420,7 @@ io.on('connection', async socket => {
 						socket2.emit('updateroom', socket.room, num);
 					}
 				}
-			}, mins * 60000);
+			});
 		}
 		socket.on('leave', () => leave(socket, '', 'has left'));
 	});
