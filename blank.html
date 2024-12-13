@@ -100,7 +100,9 @@ const highlighthash = () => {
 	const unhighlight = () => {
 		const elem = document.querySelector('p.highlight');
 		if(!elem) {
-			highlight();
+			if(hash) {
+				highlight();
+			}
 			return;
 		}
 		elem.classList.remove('highlight');
