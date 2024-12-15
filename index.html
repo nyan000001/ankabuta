@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <title>ankabuta</title>
@@ -939,7 +939,9 @@ socket.once('start', rooms => {
 						} else if(['ban', 'b'].includes(cmd)) {
 							ban(words.shift(), words.shift(), words.join(' '));
 						} else if(['lock', 'l'].includes(cmd)) {
-							lock(words[0]);
+							lock();
+						} else if(['unlock', 'ul'].includes(cmd)) {
+							unlock();
 						} else {
 							sendOnly('Invalid command', name);
 						}
@@ -1084,7 +1086,8 @@ socket.once('start', rooms => {
 			iframe.contentWindow.persistent = persistent;
 			iframe.contentWindow.kick = (name, msg) => socket.emit('kick', name, msg);
 			iframe.contentWindow.ban = (hash, mins, msg) => socket.emit('ban', hash, mins, msg);
-			iframe.contentWindow.lock = mins => socket.emit('lock', mins);
+			iframe.contentWindow.lock = () => socket.emit('lock');
+			iframe.contentWindow.unlock = () => socket.emit('unlock');
 			iframe.contentWindow.save = (name, value) => localStorage.setItem('_'+name, JSON.stringify(value));
 			iframe.contentWindow.load = name => JSON.parse(localStorage.getItem('_'+name));
 			const convert = x => x == undefined? []: Array.isArray(x)? x: [x];
