@@ -291,7 +291,7 @@ io.on('connection', async socket => {
 			socket.on('say', async msg => {
 				if(!validstring(msg)) return;
 				msg = msg.slice(0, 5000).replace(/(hash:)([^ ]+)/, (a, b, c) => b+makehash(c));
-				if((await io.in(socket.room).fetchSockets()).some(socket2 => socket2.hash != socket.hash)) {
+				if((await io.in(socket.room).fetchSockets()).some(socket2 => socket2.hash != rooms[socket.room].admin.hash)) {
 					logaction(socket, 'say', { msg });
 				}
 				rooms[socket.room].admin.emit('hear', msg, socket.name, socket.hash);
