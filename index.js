@@ -368,7 +368,7 @@ io.on('connection', async socket => {
 				if(sockets.length) {
 					msg = validstring(msg)? ' '+msg: '!';
 					for(const socket2 of sockets) {
-						if(!socket2.room != socket.room) continue;
+						if(socket2.room != socket.room) continue;
 						await leave(socket2, 'You\'ve been banned from '+socket.room+msg, 'has been banned'+msg, 'Banned by host');
 					}
 				}
