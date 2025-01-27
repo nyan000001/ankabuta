@@ -331,15 +331,15 @@ io.on('connection', async socket => {
 			}
 			socket.on('sendOnly', (...arr) => {
 				logaction(socket, 'sendOnly', { arr });
-				const add = typeof arr[0] == 'boolean'? arr.shift(): null;
-				const [msg1, names, msg2] = arr;
-				send(msg1, names, msg2, add);
+				const isboolean = typeof arr[0] == 'boolean';
+				const [msg1, names, msg2] = isboolean? arr.slice(1): arr;
+				send(msg1, names, msg2, isboolean? arr[0]: null);
 			});
 			socket.on('sendAll', (...arr) => {
 				logaction(socket, 'sendAll', { arr });
-				const add = typeof arr[0] == 'boolean'? arr.shift(): null;
-				const [msg1, names, msg2] = arr;
-				send(msg2, names, msg1, add);
+				const isboolean = typeof arr[0] == 'boolean';
+				const [msg1, names, msg2] = isboolean? arr.slice(1): arr;
+				send(msg2, names, msg1, isboolean? arr[0]: null);
 			});
 			socket.on('kick', async (name, msg) => {
 				logaction(socket, 'kick', { target:name, msg });
