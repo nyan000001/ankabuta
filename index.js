@@ -184,7 +184,7 @@ io.on('connection', async socket => {
 				name = rand([...'bfhjklmnpstwxy', 'bl', 'ch', 'fl', 'ny', 'sh', 'sn']) + rand('aeiou');
 				if(Math.random() < .9) {
 					name = rand([
-						name + rand(['bbo', 'ffy', 'ggo', 'mba', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'p', 'pper', 'ppy', 'pster', 'psu', 't', 'tsu', 'tty', 'tzy', 'xter', 'zz']),
+						name + rand(['bbo', 'ffy', 'ggo', 'mba', 'mp', 'mpster', 'nka', 'ndy', 'ng', 'ngo', 'nter', 'p', 'pper', 'ppy', 'pster', 'psu', 't', 'tsu', 'tty', 'tzy', 'x', 'xter', 'zz']),
 						name + rand([...'blmnprtx', 'ch', 'ff', 'kk', 'll', 'pp']) + rand('aiou')
 					]);
 				} else {
@@ -192,16 +192,13 @@ io.on('connection', async socket => {
 						rand([...'bdghjklmnpstwxyz', 'tx']) + rand([...'aeiou', 'ai', 'au']) + rand([...'bdghklmnrstwxz', 'ld', 'rr']) + rand('aeiou') + rand([...'lnr', 'ts', 'tz'], .2),
 						name + rand('bdfghklmnprstwx') + rand('aeiou') + rand(['ng', 'sh'], .2),
 						rand([...'cmnptxy', 'ch', 'hu', 'tz']) + rand('aeio') + rand('cmnpxy') + rand('aeio') + 'tl',
-						rand('bkw') + 'a' + rand('hlz') + 'oo',
-						rand([...'bhkltwy', 'ch', 'xi']) + 'ao',
-						rand('bhkltw') + 'ei',
-						rand([...'bdghjklmnpstwxyz', 'ch', 'tx']) + rand([...'aiou', 'ai'])
+						rand([...'bdghjklmnpstwxyz', 'ch', 'tx']) + rand([...'aiou', 'ai', 'ei', 'ao', 'oo'])
 					]);
 				}
 				//name = name[0].toUpperCase() + name.slice(1);
 				if(sockets.every(socket2 => !issimilar(socket2.name))) break;
 			}
-		} while(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[dhtw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|p[eou]t|napp|s[hn]?[aeiou]+[gtx]|w.[nk]k|[jy]i|nazi|sep|ild|moro|snob|sn[iu]f|s[ou]k|nye|.w[ei]|wu|huo.+tl/.test(name));
+		} while(/([bcdfghklmnprstwxz])[aeiou]+\1|l[aeiou]+r|r[aeiou]+l|[aeiou]{2}[^aeiou]{2}|y.+y|[hw]o|[kp][aeiou]+n|[dhtw][aeiou]+ng|b[aeiou]+[cnst]|ch[aeiou]+n|d[aeiou]+[gkm]|f.?[aeiou]+[cgkptx]|l[aeiou]+[bpz]|m[aeiou]+f|n.+[dgt]|p[aeiou]+[dsz]|pak|p[eou]t|napp|s[hn]?[aeiou]+[gtx]|w.[nk]k|[jy]i|k[ou][ck]|tub|ch[ou]b|kill|kat|nazi|sep|ild|moro|snob|sn[iu]f|s[ou]k|wet|nye|.w[ei]|wu|huo.+tl/.test(name));
 		sockets = [...io.sockets.sockets.values()].filter(socket2 => socket2.name && socket2.room == socket.room);
 		if(sockets.some(socket2 => socket2.name == name)) {
 			let i = 0;

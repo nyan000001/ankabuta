@@ -739,11 +739,13 @@ socket.once('start', rooms => {
 				msghistory.push(msg);
 				msgindex++;
 			}
-			const arr = msg.split(/ +/);
-			const cmd = arr.shift();
 			//if(msg[0] == '/') addsysmsg(msg);
 			get('msgbox').value = lastmsg = '';
-			if(iframe) {
+			if(msg == '/clear') {
+				while(!get('log').children[1].id) {
+					get('log').children[1].remove();
+				}
+			} else if(iframe) {
 				console.log(myname+': '+msg);
 				iframe.contentWindow.hear(msg, myname, adminhash);
 			} else {
