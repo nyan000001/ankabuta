@@ -935,10 +935,11 @@ socket.once('start', rooms => {
 				if(msg[0] == '/') {
 					const words = msg.split(' ');
 					let cmd = words.shift().slice(1).toLowerCase();
+					msg = words.join(' ');
 					if(cmd[0] == '!' && user.admin) {
 						cmd = cmd.slice(1);
 						if(['kick', 'k'].includes(cmd)) {
-							kick(words.shift(), words.join(' '));
+							kick(words.shift(), msg);
 						} else if(['ban', 'b'].includes(cmd)) {
 							ban(words.shift(), words.shift(), words.join(' '));
 						} else if(['lock', 'l'].includes(cmd)) {
@@ -956,20 +957,19 @@ socket.once('start', rooms => {
 						sendAll('[*'+oldalias+' is now known as '+user.alias+'*]');
 						sendAll(true, getinfo(name));
 					} else if(['status', 's'].includes(cmd)) {
-						user.status = words.join(' ').replaceAll('\\n', ' ');
+						user.status = msg.replaceAll('\\n', ' ');
 						sendAll(true, getinfo(name));
 					} else if(['pm', 'whisper', 'dm', 'msg'].includes(cmd)) {
 						const id = parseInt(words.shift());
 						const name2 = Object.entries(users).find(user2 => user2[1].id == id)?.[0];
 						if(name2) {
-							msg = words.join(' ');
-							sendOnly('[/(private) '+user.alias+': '+msg+'/]', name2);
 							sendOnly('[/'+user.alias+' (to '+users[name2].alias+'): '+msg+'/]', name);
+							sendOnly('[/(private) '+user.alias+': '+msg+'/]', name2);
 						} else {
 							sendOnly('Invalid id', name);
 						}
 					} else {
-						msg = words.join(' ').split(/\\b(\\d+)\\b/);
+						msg = msg.split(/\\b(\\d+)\\b/);
 						let flag;
 						for(let i = 1; i < msg.length; i += 2) {
 							for(const user2 of Object.values(users)) {
