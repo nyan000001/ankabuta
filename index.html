@@ -902,20 +902,25 @@ socket.once('start', rooms => {
 		}
 		get('codebox').value =
 			`const users = persistent.users;
-			const colors = persistent.colors = persistent.colors ?? ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
+			const colors = ['f20', 'f70', 'ff0', '0f0', '0ff', '06f', '70f', 'e09'];
 			const ids = persistent.ids = persistent.ids ?? [0];
-			const help = 'Available commands: /help /nick /pm /status /me /pat /hug /poke';
-			const getinfo = name => name+' '+users[name].id+' '+users[name].alias+(users[name].status? ' ('+users[name].status+')': '');
+			const help = 'Available commands: /help /nick /color /pm /status /me /pat /hug /poke';
+			const getinfo = name => {
+				const user = users[name];
+				const status = user.status? ' ('+user.status+')': '';
+				return name+' '+user.id+' '+user.alias+status;
+			}
 			function join(name, hash) {
 				const user = users[name];
 				if(!user.alias) {
-					user.color = colors.shift() ?? 'fff';
-					user.alias = '[*[#'+user.color+name+'#]*]';
 					if(ids.length == 1) {
 						user.id = ids[0]++;
 					} else {
 						user.id = ids.sort((a, b) => b - a).pop();
 					}
+					user.name = name;
+					user.color = colors[user.id % colors.length];
+					user.alias = '[*[#'+user.color+name+'#]*]';
 					sendAll('[*'+user.alias+' has joined*]');
 					sendOnly(help, name);
 				}
@@ -926,16 +931,15 @@ socket.once('start', rooms => {
 				sendAll('[*'+user.alias+' '+msg+'*]');
 				sendAll(false, name);
 				ids.push(user.id);
-				if(user.color != 'fff') {
-					colors.push(user.color);
-				}
 			}
 			function hear(msg, name, hash) {
 				const user = users[name];
 				if(msg[0] == '/') {
+					sendOnly('[%090'+msg+'%]', name);
 					const words = msg.split(' ');
 					let cmd = words.shift().slice(1).toLowerCase();
 					msg = words.join(' ');
+					const shortmsg = msg.slice(0, 100).trim();
 					if(cmd[0] == '!' && user.admin) {
 						cmd = cmd.slice(1);
 						if(['kick', 'k'].includes(cmd)) {
@@ -951,17 +955,25 @@ socket.once('start', rooms => {
 						}
 					} else if(['help', 'h'].includes(cmd)) {
 						sendOnly(help, name);
-					} else if(['nick', 'name', 'n'].includes(cmd)) {
+					} else if(['nick', 'name', 'username', 'n', 'color', 'colour', 'c'].includes(cmd)) {
 						const oldalias = user.alias;
-						user.alias = '[#'+user.color+words.join('_')+'#]';
+						if(cmd[0] == 'c') {
+							const color = shortmsg.replace('#', '').toLowerCase();
+							const index = ['black', 'blue', 'green', 'cyan', 'red', 'magenta', 'yellow', 'white'].indexOf(color);
+							user.color = index < 0? color: index.toString(2).padStart(3, '0').replaceAll('1', 'f');
+						} else {
+							user.name = shortmsg;
+						}
+						user.alias = '[*[#'+user.color+user.name+'#]*]';
 						sendAll('[*'+oldalias+' is now known as '+user.alias+'*]');
 						sendAll(true, getinfo(name));
 					} else if(['status', 's'].includes(cmd)) {
-						user.status = msg.replaceAll('\\n', ' ');
+						user.status = shortmsg.replaceAll('\\n', ' ');
 						sendAll(true, getinfo(name));
 					} else if(['pm', 'whisper', 'dm', 'msg'].includes(cmd)) {
-						const id = parseInt(words.shift());
-						const name2 = Object.entries(users).find(user2 => user2[1].id == id)?.[0];
+						const id2 = parseInt(words.shift());
+						msg = words.join(' ');
+						const name2 = Object.keys(users).find(name2 => users[name2].id == id2);
 						if(name2) {
 							sendOnly('[/'+user.alias+' (to '+users[name2].alias+'): '+msg+'/]', name);
 							sendOnly('[/(private) '+user.alias+': '+msg+'/]', name2);
