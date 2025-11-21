@@ -958,7 +958,7 @@ socket.once('start', rooms => {
 					} else if(['nick', 'name', 'username', 'n', 'color', 'colour', 'c'].includes(cmd)) {
 						const oldalias = user.alias;
 						if(cmd[0] == 'c') {
-							const color = shortmsg.replace('#', '').toLowerCase();
+							const color = shortmsg.replace('#', '').toLowerCase() || 'fff';
 							const index = ['black', 'blue', 'green', 'cyan', 'red', 'magenta', 'yellow', 'white'].indexOf(color);
 							user.color = index < 0? color: index.toString(2).padStart(3, '0').replaceAll('1', 'f');
 						} else {
