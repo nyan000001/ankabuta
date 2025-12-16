@@ -581,14 +581,12 @@ socket.once('start', rooms => {
 						} else {
 							msg.push(input.value);
 						}
-						if(input.type == 'checkbox') {
-							input.checked = false;
-						} else {
-							input.value = '';
-						}
 					}
 					msg = '/'+msg.join(' ');
-				} else msg = '/'+e.target.value;
+					form.reset();
+				} else {
+					msg = '/'+e.target.value;
+				}
 				if(iframe) {
 					console.log(myname+': '+msg);
 					iframe.contentWindow.hear(msg, myname, adminhash);
