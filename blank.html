@@ -299,6 +299,9 @@ socket.once('log', (logs, regex) => {
 				arr[2] = arr[2].join(', ');
 			}
 			if(!arr[0] && !arr[2]) return;
+			if(!arr[1]) {
+				arr[1] = [];
+			}
 			if((!arr[1].length && cmd == 'sendAll') || arr[0] == arr[2]) {
 				addtext(boldname+' '+verb+' everyone: '+arr[0]);
 			} else if(arr[1].length) {

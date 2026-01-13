@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <style>
 @font-face { font-family:'Noto Color Emoji'; font-style:normal; font-weight:400; font-display:swap; size-adjust:120%; unicode-range:U+2139-2B04, U+2B96-FE837, U+200D, U+2B1B; src:url('NotoColorEmoji.ttf') format('truetype'); }
-* { font-size:11pt; font-family:'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
+body { font-size:11pt; }
+* { font-family:'Noto Color Emoji', sans-serif; margin:0; box-sizing:border-box; tab-size:4; line-height:18px; }
 #log input:not(.showless), #sidebar input { user-select:text; }
 textarea, input, select, #arrow { border:1px solid #000; border-radius:3px; }
 textarea:focus, input:focus, select:focus { outline:1px solid #000; outline-offset:-2px; }
@@ -51,7 +52,6 @@ a.disabled, #rooms.disabled > a { color:#000; pointer-events:none; }
 .msg.more { outline:1px solid #888; }
 .showmore { position:absolute; bottom:1px; right:2px; }
 .showless { position:sticky; display:block; bottom:0; left:100%; }
-#log:has(#arrow:not(.hidden)) .showless { bottom:26px; }
 .clickableerror { cursor:pointer; }
 .msg form, #sidebar form { border:1px solid #aaa; border-radius:4px; padding:1px; margin:1px; max-width:100%; vertical-align:top; display:inline-block; }
 .msg input, .msg select, #sidebar input, #sidebar select { margin:1px; }
@@ -69,14 +69,11 @@ input.short { width:40px !important; }
 .wavy > span:nth-child(8n+2) { top:-3px; }
 .wavy > span:nth-child(8n+5), .wavy > span:nth-child(8n+7) { top:2px; }
 .wavy > span:nth-child(8n+6) { top:3px; }
-.msg .big, .msg .big *, #sidebar .big, #sidebar .big *, #help .big { font-size:17pt; line-height:26px; }
-.msg .big input, .msg .big select, #sidebar .big input, #sidebar .big select { line-height:30px; }
-.msg .small, .msg .small *, #sidebar .small, #sidebar .small *, #help .small { font-size:8pt; }
-.msg .small input, .msg .small select, #sidebar .small input, #sidebar .small select  { line-height:10px; }
+.big { font-size:150%; line-height:120%; }
+.small { font-size:66%; }
 .vertical { writing-mode:vertical-rl; text-orientation:upright; vertical-align:top; }
 .sysmsg { font-weight:bold; }
 #preview { bottom:0; position:sticky; background:#fff; border-top:1px solid #888; }
-#log:has(#arrow:not(.hidden)) #preview { bottom:24px; }
 #arrow { width:100%; bottom:0; position:sticky; height:24px; background:ButtonFace; text-align:center; line-height:22px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; cursor:default; user-select:none; }
 #arrow * { pointer-events:none; }
 #arrow rt { display:none; }
@@ -751,21 +748,26 @@ socket.once('start', rooms => {
 			}
 			get('preview').textContent = '';
 		}
+		const preview = msg => {
+			get('preview').innerHTML = gethtml(msg);
+			scrolldown();
+		}
 		get('msgbox').oninput = () => {
 			lastmsg = get('msgbox').value;
 			if(msgindex < msghistory.length) {
 				msghistory.length = ++msgindex;
 			}
-			get('preview').innerHTML = gethtml(lastmsg);
-			scrolldown();
+			preview(lastmsg);
 		}
 		get('msgbox').onkeydown = e => {
 			if(e.ctrlKey && e.key == 'ArrowUp') {
 				msgindex = Math.max(msgindex-1, 0);
-				get('msgbox').value = msghistory[msgindex] ?? '';
+				const msg = get('msgbox').value = msghistory[msgindex] ?? '';
+				preview(msg);
 			} else if(e.ctrlKey && e.key == 'ArrowDown') {
 				msgindex = Math.min(msgindex+1, msghistory.length);
-				get('msgbox').value = msghistory[msgindex] ?? lastmsg;
+				const msg = get('msgbox').value = msghistory[msgindex] ?? lastmsg;
+				preview(msg);
 			} else if(!e.shiftKey && e.key == 'Enter') {
 				get('say').click();
 			} else return;
